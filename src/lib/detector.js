@@ -12,8 +12,7 @@ export async function getFaceLandmarker() {
   }
 
   initPromise = (async () => {
-    // FilesetResolver loads vision_wasm_internal.js & vision_wasm_internal.wasm
-    // Both are placed in public/wasm/ and public/
+    // FilesetResolver loads vision_wasm_internal.js & vision_wasm_internal.wasm from /wasm
     const vision = await FilesetResolver.forVisionTasks('/wasm')
 
     landmarkerInstance = await FaceLandmarker.createFromOptions(vision, {
@@ -22,6 +21,7 @@ export async function getFaceLandmarker() {
       },
       runningMode: 'IMAGE',
       numFaces: 2,
+      outputFaceBlendshapes: true,
     })
 
     return landmarkerInstance
@@ -66,6 +66,7 @@ export async function detectFaceInBitmap(bitmap) {
   return {
     success: true,
     landmarks: result.faceLandmarks[0],
+    blendshapes: result.faceBlendshapes?.[0]?.categories || [],
     originalWidth: origW,
     originalHeight: origH,
   }

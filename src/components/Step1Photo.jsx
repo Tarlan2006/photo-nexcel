@@ -99,13 +99,6 @@ export default function Step1Photo() {
     }
   }
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      triggerInput()
-    }
-  }
-
   const resolvedErrorMessage = errorKey ? t[errorKey] || errorKey : null
 
   return (
@@ -115,22 +108,18 @@ export default function Step1Photo() {
         <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-text mb-2 tracking-tight">
           {t.step1Title}
         </h1>
-        <p className="text-[#4B525D] text-sm sm:text-base max-w-lg mx-auto truncate">
+        <p className="text-[#4B525D] text-sm sm:text-base max-w-lg mx-auto">
           {t.step1Subtitle}
         </p>
       </div>
 
-      {/* Upload Zone */}
+      {/* Upload Zone (drop & click zone) */}
       <div
-        tabIndex={0}
-        role="button"
-        aria-label={t.btnShootOrUpload}
-        onKeyDown={handleKeyDown}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         onClick={triggerInput}
-        className={`bg-card border-2 border-dashed rounded-xl p-8 sm:p-12 text-center cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent ${
+        className={`bg-card border-2 border-dashed rounded-xl p-8 sm:p-12 text-center cursor-pointer transition-all ${
           isDragging
             ? 'border-accent bg-accent/5'
             : 'border-border hover:border-accent/50'
@@ -243,9 +232,16 @@ export default function Step1Photo() {
           </svg>
           <div className="text-sm">
             <p className="font-bold text-amber-950 mb-0.5">{resolvedErrorMessage}</p>
-            <p className="text-xs text-amber-900 font-medium">
-              {t.errOutOfBoundsHint}
-            </p>
+            {errorKey === 'errOutOfBounds' && (
+              <p className="text-xs text-amber-900 font-medium">
+                {t.errOutOfBoundsHint}
+              </p>
+            )}
+            {errorKey === 'errNoFace' && (
+              <p className="text-xs text-amber-900 font-medium">
+                {t.errNoFaceHint}
+              </p>
+            )}
           </div>
         </div>
       )}

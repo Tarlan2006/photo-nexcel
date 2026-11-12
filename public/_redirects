@@ -1,2 +1,1 @@
-/* Handle SPA routing — redirect all paths to /index.html */
-/*  /index.html  200
+# Static single-page wizard: no catch-all rewrite so nonexistent URLs return 404

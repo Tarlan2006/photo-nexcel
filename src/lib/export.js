@@ -10,7 +10,8 @@ function getCanvasBlob(canvas, quality) {
 
 /**
  * Binary search for JPEG quality between 0.35 and 0.95
- * to satisfy file size <= maxKb with maximum possible visual quality.
+ * to satisfy file size <= (maxKb * 1000 - 1000) bytes (for 30 KB this is 29,000 bytes)
+ * with maximum possible visual quality.
  *
  * @param {HTMLCanvasElement} canvas - Canvas with cropped image
  * @param {number} maxKb - Maximum allowable size in kilobytes
@@ -26,7 +27,8 @@ export async function exportToJpegLimit(canvas, maxKb) {
     }
   }
 
-  const maxBytes = maxKb * 1024
+  // Target maxKb * 1000 - 1000 bytes (e.g. 29,000 bytes for 30 KB)
+  const maxBytes = maxKb * 1000 - 1000
 
   // Check highest quality (0.95) first
   const blob95 = await getCanvasBlob(canvas, 0.95)

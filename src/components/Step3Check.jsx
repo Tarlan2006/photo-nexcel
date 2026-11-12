@@ -39,7 +39,8 @@ export default function Step3Check() {
         originalImage.bitmap.width,
         originalImage.bitmap.height,
         selectedPreset,
-        activeCropState.headPct
+        activeCropState.headPct,
+        originalImage.blendshapes
       )
       setChecks(results)
     }
@@ -58,6 +59,12 @@ export default function Step3Check() {
   const scalePercent = Math.round((adjustments.scaleOffset || 0) * 100)
   const shiftYPercent = Math.round((adjustments.offsetY || 0) * 100)
   const hasAdjustments = scalePercent !== 0 || shiftYPercent !== 0
+
+  // Nominal guidelines calculation
+  const midHeadPct = (selectedPreset.headMinPct + selectedPreset.headMaxPct) / 2 / 100
+  const chinPercentFromTop = (0.4 * (1 - midHeadPct) + midHeadPct) * 100
+  const corridorTopMaxPct = chinPercentFromTop - selectedPreset.headMaxPct
+  const corridorTopMinPct = chinPercentFromTop - selectedPreset.headMinPct
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-10 sm:py-14 pb-28">
@@ -103,7 +110,7 @@ export default function Step3Check() {
           )}
 
           {/* Canvas Container */}
-          <div className="flex justify-center mb-6">
+          <div className="flex flex-col items-center mb-6">
             <div className={`relative rounded-lg overflow-hidden border ${isValidCrop ? 'border-border shadow-2xs' : 'border-amber-400 bg-amber-50'}`}>
               <canvas
                 ref={previewCanvasRef}
@@ -112,8 +119,37 @@ export default function Step3Check() {
                   width: 'auto',
                   display: isValidCrop ? 'block' : 'none',
                 }}
-                className="bg-white"
+                className="bg-white block"
               />
+              {isValidCrop && (
+                <div className="absolute inset-0 pointer-events-none select-none">
+                  {/* Corridor band */}
+                  <div
+                    style={{
+                      top: `${corridorTopMaxPct}%`,
+                      height: `${corridorTopMinPct - corridorTopMaxPct}%`,
+                    }}
+                    className="absolute left-0 right-0 bg-sky-500/10 border-y border-dashed border-sky-500/70"
+                  >
+                    <span className="absolute right-1 top-0.5 text-[9px] font-mono font-bold text-sky-800 bg-white/80 px-1 rounded leading-none border border-sky-300">
+                      {selectedPreset.headMaxPct}%
+                    </span>
+                    <span className="absolute right-1 bottom-0.5 text-[9px] font-mono font-bold text-sky-800 bg-white/80 px-1 rounded leading-none border border-sky-300">
+                      {selectedPreset.headMinPct}%
+                    </span>
+                  </div>
+
+                  {/* Chin line */}
+                  <div
+                    style={{ top: `${chinPercentFromTop}%` }}
+                    className="absolute left-0 right-0 border-t-2 border-emerald-500"
+                  >
+                    <span className="absolute right-1 bottom-0.5 text-[9px] font-mono font-bold text-emerald-800 bg-white/80 px-1 rounded leading-none border border-emerald-300">
+                      {t.guideChin}
+                    </span>
+                  </div>
+                </div>
+              )}
               {!isValidCrop && (
                 <div className="w-56 h-64 flex flex-col items-center justify-center p-4 text-center">
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-amber-700 mb-2" aria-hidden="true">
@@ -127,6 +163,11 @@ export default function Step3Check() {
                 </div>
               )}
             </div>
+            {isValidCrop && (
+              <p className="text-xs text-[#4B525D] text-center mt-2.5 font-medium max-w-xs">
+                {t.guideCorridor}
+              </p>
+            )}
           </div>
 
           {/* Sliders with accessible labels */}

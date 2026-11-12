@@ -3,9 +3,11 @@ import { translations } from '../i18n.js'
 export const THRESHOLDS = {
   MAX_TILT_DEG: 8, // Наклон головы больше 8°
   MAX_YAW_RATIO: 0.12, // Поворот головы в сторону
-  MIN_BRIGHTNESS: 70, // Слишком темное
-  MAX_BRIGHTNESS: 210, // Пересвеченное
+  MIN_BRIGHTNESS: 70, // Слишком темное лицо
+  MAX_BRIGHTNESS: 210, // Пересвеченное лицо
   MIN_LAPLACIAN_VAR: 50, // Порог нерезкости/размытия
+  MIN_BG_BRIGHTNESS: 170, // Порог яркости фона
+  MAX_BG_STDDEV: 28, // Порог разброса однотонности фона
 }
 
 function rotatePoint(x, y, cx, cy, rad) {
@@ -43,9 +45,10 @@ function formatMessage(key, params = {}) {
  * @param {number} origH - Original image height
  * @param {Object} preset - Selected document preset
  * @param {number} headPct - Actual percentage of head in canvas
+ * @param {Array} blendshapes - Face blendshapes categories from MediaPipe
  * @returns {Array<Object>} List of checks with { id, ok: boolean, status: 'ok'|'warn', key, message: { ru, kz } }
  */
-export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct) {
+export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct, blendshapes = []) {
   const checks = []
 
   // Safeguard: validate landmarks
@@ -92,19 +95,63 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct)
     message: formatMessage(yawKey),
   })
 
-  // 3. Brightness & Sharpness checks from face region on canvas
+  // 3. Eyes blink & Mouth open checks from Blendshapes
+  let eyesOk = true
+  let eyesKey = 'checkEyesOk'
+  let mouthOk = true
+  let mouthKey = 'checkMouthOk'
+
+  if (Array.isArray(blendshapes) && blendshapes.length > 0) {
+    const eyeBlinkLeft = blendshapes.find((b) => b.categoryName === 'eyeBlinkLeft')?.score || 0
+    const eyeBlinkRight = blendshapes.find((b) => b.categoryName === 'eyeBlinkRight')?.score || 0
+    const jawOpen = blendshapes.find((b) => b.categoryName === 'jawOpen')?.score || 0
+
+    if (eyeBlinkLeft > 0.5 || eyeBlinkRight > 0.5) {
+      eyesOk = false
+      eyesKey = 'checkEyesWarn'
+    }
+
+    if (jawOpen > 0.2) {
+      mouthOk = false
+      mouthKey = 'checkMouthWarn'
+    }
+  }
+
+  checks.push({
+    id: 'eyes',
+    ok: eyesOk,
+    status: eyesOk ? 'ok' : 'warn',
+    key: eyesKey,
+    message: formatMessage(eyesKey),
+  })
+
+  checks.push({
+    id: 'mouth',
+    ok: mouthOk,
+    status: mouthOk ? 'ok' : 'warn',
+    key: mouthKey,
+    message: formatMessage(mouthKey),
+  })
+
+  // 4. Brightness & Sharpness checks from face region on canvas
   let brightnessOk = true
   let brightnessKey = 'checkBrightnessOk'
   let sharpnessOk = true
   let sharpnessKey = 'checkSharpnessOk'
+  let bgOk = true
+  let bgKey = 'checkBgOk'
 
   try {
     if (canvas && canvas.width >= 10 && canvas.height >= 10) {
       const ctx = canvas.getContext('2d')
-      const boxX = Math.round(canvas.width * 0.25)
-      const boxY = Math.round(canvas.height * 0.2)
-      const boxW = Math.max(10, Math.min(Math.round(canvas.width * 0.5), canvas.width - boxX))
-      const boxH = Math.max(10, Math.min(Math.round(canvas.height * 0.5), canvas.height - boxY))
+      const w = canvas.width
+      const h = canvas.height
+
+      // A. Face region checks (center 50%)
+      const boxX = Math.round(w * 0.25)
+      const boxY = Math.round(h * 0.2)
+      const boxW = Math.max(10, Math.min(Math.round(w * 0.5), w - boxX))
+      const boxH = Math.max(10, Math.min(Math.round(h * 0.5), h - boxY))
 
       const imgData = ctx.getImageData(boxX, boxY, boxW, boxH)
       const data = imgData.data
@@ -130,7 +177,7 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct)
           brightnessKey = 'checkBrightnessBright'
         }
 
-        // 4. Sharpness via discrete Laplacian variance
+        // Sharpness via discrete Laplacian variance
         let lapSum = 0
         let lapSumSq = 0
         let lapCount = 0
@@ -159,6 +206,41 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct)
           sharpnessKey = 'checkSharpnessWarn'
         }
       }
+
+      // B. Background check: 8% strips on left, right, and top edges
+      const leftW = Math.max(1, Math.round(w * 0.08))
+      const rightX = w - leftW
+      const topH = Math.max(1, Math.round(h * 0.08))
+
+      const fullImgData = ctx.getImageData(0, 0, w, h)
+      const fullData = fullImgData.data
+
+      let bgLumaSum = 0
+      let bgLumaSqSum = 0
+      let bgPixelCount = 0
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          if (y < topH || x < leftW || x >= rightX) {
+            const idx = (y * w + x) * 4
+            const lum = 0.299 * fullData[idx] + 0.587 * fullData[idx + 1] + 0.114 * fullData[idx + 2]
+            bgLumaSum += lum
+            bgLumaSqSum += lum * lum
+            bgPixelCount++
+          }
+        }
+      }
+
+      if (bgPixelCount > 0) {
+        const bgMean = bgLumaSum / bgPixelCount
+        const bgVariance = Math.max(0, bgLumaSqSum / bgPixelCount - bgMean * bgMean)
+        const bgStdDev = Math.sqrt(bgVariance)
+
+        if (bgMean < THRESHOLDS.MIN_BG_BRIGHTNESS || bgStdDev > THRESHOLDS.MAX_BG_STDDEV) {
+          bgOk = false
+          bgKey = 'checkBgWarn'
+        }
+      }
     }
   } catch (err) {
     console.warn('Checks image analysis error:', err)
@@ -180,7 +262,15 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct)
     message: formatMessage(sharpnessKey),
   })
 
-  // 5. Head proportion in final frame
+  checks.push({
+    id: 'background',
+    ok: bgOk,
+    status: bgOk ? 'ok' : 'warn',
+    key: bgKey,
+    message: formatMessage(bgKey),
+  })
+
+  // 5. Head proportion in final frame (marked as approximately)
   const inRange = headPct >= preset.headMinPct && headPct <= preset.headMaxPct
   const headKey = inRange ? 'checkHeadOk' : 'checkHeadWarn'
   const headParams = {

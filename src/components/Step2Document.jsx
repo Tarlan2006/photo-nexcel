@@ -108,7 +108,7 @@ export default function Step2Document() {
       </div>
 
       {/* Preset Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5" role="radiogroup" aria-label={t.step2Title}>
         {presetList.map((preset) => {
           const isSelected = selectedPresetId === preset.id
           const cropRes = cropStates[preset.id]
@@ -118,7 +118,16 @@ export default function Step2Document() {
           return (
             <div
               key={preset.id}
+              role="radio"
+              aria-checked={isSelected}
+              tabIndex={0}
               onClick={() => handleCardClick(preset.id)}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.preventDefault()
+                  handleCardClick(preset.id)
+                }
+              }}
               className={`bg-card border rounded-xl p-5 text-left transition-all cursor-pointer relative flex flex-col justify-between ${
                 isSelected
                   ? 'border-accent ring-2 ring-accent/30 bg-accent/[0.01]'
@@ -197,7 +206,7 @@ export default function Step2Document() {
                           ✓ {lang === 'ru' ? 'Кадр сформирован' : 'Кадр дайын'}
                         </span>
                         <p className="text-[#4B525D] text-xs font-medium">
-                          {lang === 'ru' ? 'Голова:' : 'Бас:'} ~{cropRes?.headPct || 0}% ({lang === 'ru' ? 'норма' : 'норма'} {preset.headMinPct}–{preset.headMaxPct}%)
+                          {lang === 'ru' ? 'Голова: примерно' : 'Бас: шамамен'} ~{cropRes?.headPct || 0}% ({lang === 'ru' ? 'норма' : 'норма'} {preset.headMinPct}–{preset.headMaxPct}%)
                         </p>
                       </div>
                     )}
@@ -207,7 +216,7 @@ export default function Step2Document() {
                       {preset.rules[lang].slice(0, 2).map((rule, idx) => (
                         <li key={idx} className="flex items-start gap-1 font-medium">
                           <span className="text-accent shrink-0 font-bold">·</span>
-                          <span className="truncate">{rule}</span>
+                          <span>{rule}</span>
                         </li>
                       ))}
                     </ul>

@@ -33,6 +33,9 @@ export const translations = {
     // Step 3
     step3Title: 'Проверка и подстройка',
     step3Subtitle: 'Убедитесь, что лицо в кадре, или отрегулируйте ползунками',
+    guideCorridor: 'Голова (макушка — подбородок) должна быть внутри коридора',
+    guideChin: 'Подбородок',
+    guideHeadTop: 'Макушка (норма)',
 
     // Step 4
     step4Title: 'Фото готово к скачиванию',
@@ -89,6 +92,7 @@ export const translations = {
     processingFace: 'Поиск лица и кадрирование...',
     downloading: 'Подготовка и сжатие файла...',
     errNoFace: 'Лицо не обнаружено. Пожалуйста, загрузите чёткое фото лица анфас.',
+    errNoFaceHint: 'Лицо должно занимать большую часть кадра: подойдите ближе или обрежьте фото, свет — спереди.',
     errMultipleFaces: 'Обнаружено несколько лиц. На фото должен быть только один человек.',
     errOutOfBounds: 'Отойдите дальше, вокруг головы нужно больше места.',
     errOutOfBoundsHint: 'Кадр выходит за границы фото. Уменьшите масштаб ползунком ниже.',
@@ -123,8 +127,14 @@ export const translations = {
     checkBrightnessBright: 'Лицо пересвечено, уменьшите свет',
     checkSharpnessOk: 'Резкость и четкость в норме',
     checkSharpnessWarn: 'Возможно, фото размыто или не в фокусе',
-    checkHeadOk: 'Размер головы: {pct}% кадра (норма {min}–{max}%)',
-    checkHeadWarn: 'Размер головы: {pct}% кадра (вне нормы {min}–{max}%)',
+    checkHeadOk: 'Размер головы: примерно {pct}% кадра (норма {min}–{max}%)',
+    checkHeadWarn: 'Размер головы: примерно {pct}% кадра (вне нормы {min}–{max}%)',
+    checkBgOk: 'Фон светлый и однотонный',
+    checkBgWarn: 'Фон должен быть светлым и однотонным',
+    checkEyesOk: 'Глаза открыты',
+    checkEyesWarn: 'Глаза закрыты',
+    checkMouthOk: 'Рот закрыт',
+    checkMouthWarn: 'Рот открыт',
 
     // Manual checks
     manualGlasses: 'Без бликов на очках',
@@ -193,6 +203,9 @@ export const translations = {
     // Step 3
     step3Title: 'Тексеру және баптау',
     step3Subtitle: 'Беттің дұрыс орналасқанына көз жеткізіңіз немесе сырғытпалармен реттеңіз',
+    guideCorridor: 'Бас (төбесі — иегі) дәліздің ішінде болуы керек',
+    guideChin: 'Иек',
+    guideHeadTop: 'Төбесі (норма)',
 
     // Step 4
     step4Title: 'Фото жүктеп алуға дайын',
@@ -248,6 +261,7 @@ export const translations = {
     processingFace: 'Бетті анықтау және кадрлау...',
     downloading: 'Файлды дайындау және сығу...',
     errNoFace: 'Бет анықталмады. Бетті анық көрсететін фото жүктеңіз.',
+    errNoFaceHint: 'Бет кадрдың негізгі бөлігін алуы тиіс: жақынырақ тұрыңыз немесе фотоны қиыңыз, жарық — алдынан.',
     errMultipleFaces: 'Бірнеше адам табылды. Фотода тек бір адам болуы керек.',
     errOutOfBounds: 'Алысырақ тұрыңыз, бас айналасында көбірек орын қажет.',
     errOutOfBoundsHint: 'Кадр фото шекарасынан шығып тұр. Төмендегі сырғытпамен масштабты азайтыңыз.',
@@ -282,8 +296,14 @@ export const translations = {
     checkBrightnessBright: 'Бет тым жарық, жарықты азайтыңыз',
     checkSharpnessOk: 'Анықтылығы жақсы',
     checkSharpnessWarn: 'Фото бұлыңғыр болуы мүмкін',
-    checkHeadOk: 'Бас өлшемі: кадрдың {pct}% (норма {min}–{max}%)',
-    checkHeadWarn: 'Бас өлшемі: кадрдың {pct}% (нормадан тыс {min}–{max}%)',
+    checkHeadOk: 'Бас өлшемі: шамамен кадрдың {pct}% (норма {min}–{max}%)',
+    checkHeadWarn: 'Бас өлшемі: шамамен кадрдың {pct}% (нормадан тыс {min}–{max}%)',
+    checkBgOk: 'Фон ашық түсті және біркелкі',
+    checkBgWarn: 'Фон ашық түсті және біркелкі болуы керек',
+    checkEyesOk: 'Көздер ашық',
+    checkEyesWarn: 'Көздер жабық',
+    checkMouthOk: 'Ауыз жабық',
+    checkMouthWarn: 'Ауыз ашық',
 
     // Manual checks
     manualGlasses: 'Көзәйнекте шағылысу жоқ',

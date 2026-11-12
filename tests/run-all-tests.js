@@ -185,7 +185,7 @@ async function runSelfieTests() {
 
     // Test C: Photo Checks
     const checks = runPhotoChecks(kzRes.canvas, landmarks, s.width, s.height, presets.kz_id, kzRes.headPct)
-    assert(checks.length === 5, `[${i + 1}] runPhotoChecks returned all 5 checks`)
+    assert(checks.length === 8, `[${i + 1}] runPhotoChecks returned all 8 checks`)
     assert(typeof checks[0].ok === 'boolean', `[${i + 1}] checks have valid boolean 'ok' field`)
     assert(typeof checks[0].message?.ru === 'string', `[${i + 1}] checks have valid 'message.ru' string`)
     console.log('')
@@ -195,6 +195,55 @@ async function runSelfieTests() {
   console.log('--- Testing exportToJpegLimit safety guards ---')
   const guardRes = await exportToJpegLimit(null, 30)
   assert(guardRes.success === false && guardRes.error === 'INVALID_CANVAS', 'exportToJpegLimit handles null canvas safely')
+
+  // Test E: Blendshapes Checks (Eyes & Mouth)
+  console.log('--- Testing Blendshapes Checks (Eyes & Mouth) ---')
+  const testCanvas = new MockCanvas(413, 531)
+  const testLandmarks = buildSelfieLandmarks({})
+
+  const blinkBlendshapes = [
+    { categoryName: 'eyeBlinkLeft', score: 0.75 },
+    { categoryName: 'eyeBlinkRight', score: 0.1 },
+    { categoryName: 'jawOpen', score: 0.05 },
+  ]
+  const blinkChecks = runPhotoChecks(testCanvas, testLandmarks, 1000, 1000, presets.kz_id, 75, blinkBlendshapes)
+  const eyesCheck = blinkChecks.find((c) => c.id === 'eyes')
+  assert(eyesCheck && eyesCheck.ok === false, 'Eyes closed blendshape correctly triggers warning')
+  assert(eyesCheck && eyesCheck.message.ru === 'Глаза закрыты', 'Eyes closed warning text in RU is correct')
+  assert(eyesCheck && eyesCheck.message.kz === 'Көздер жабық', 'Eyes closed warning text in KZ is correct')
+
+  const openMouthBlendshapes = [
+    { categoryName: 'eyeBlinkLeft', score: 0.1 },
+    { categoryName: 'eyeBlinkRight', score: 0.1 },
+    { categoryName: 'jawOpen', score: 0.45 },
+  ]
+  const mouthChecks = runPhotoChecks(testCanvas, testLandmarks, 1000, 1000, presets.kz_id, 75, openMouthBlendshapes)
+  const mouthCheck = mouthChecks.find((c) => c.id === 'mouth')
+  assert(mouthCheck && mouthCheck.ok === false, 'Open mouth blendshape correctly triggers warning')
+  assert(mouthCheck && mouthCheck.message.ru === 'Рот открыт', 'Open mouth warning text in RU is correct')
+  assert(mouthCheck && mouthCheck.message.kz === 'Ауыз ашық', 'Open mouth warning text in KZ is correct')
+
+  // Test F: Background Brightness & Uniformity Check
+  console.log('--- Testing Background Check ---')
+  const darkBgCanvas = new MockCanvas(413, 531)
+  darkBgCanvas._mockLuminance = 150 // Below 170 threshold
+  const darkBgChecks = runPhotoChecks(darkBgCanvas, testLandmarks, 1000, 1000, presets.kz_id, 75)
+  const bgCheckDark = darkBgChecks.find((c) => c.id === 'background')
+  assert(bgCheckDark && bgCheckDark.ok === false, 'Dark background (<170) triggers warning')
+  assert(bgCheckDark && bgCheckDark.message.ru === 'Фон должен быть светлым и однотонным', 'Dark background warning in RU is correct')
+  assert(bgCheckDark && bgCheckDark.message.kz === 'Фон ашық түсті және біркелкі болуы керек', 'Dark background warning in KZ is correct')
+
+  const lightBgCanvas = new MockCanvas(413, 531)
+  lightBgCanvas._mockLuminance = 210 // Well above 170 threshold
+  const lightBgChecks = runPhotoChecks(lightBgCanvas, testLandmarks, 1000, 1000, presets.kz_id, 75)
+  const bgCheckLight = lightBgChecks.find((c) => c.id === 'background')
+  assert(bgCheckLight && bgCheckLight.ok === true, 'Light uniform background (>=170) passes check')
+
+  // Test G: Export Byte Limit (target maxKb * 1000 - 1000 bytes)
+  console.log('--- Testing Export Byte Limit (29 000 bytes for 30 KB) ---')
+  const exportTargetRes = await exportToJpegLimit(lightBgCanvas, 30)
+  assert(exportTargetRes.success === true, 'Export succeeds for 30 KB')
+  assert(exportTargetRes.blob.size <= 29000, `Exported size ${exportTargetRes.blob.size} bytes is <= 29,000 bytes`)
 
   console.log('=================================================================')
   console.log(`📊 FINAL RESULTS: ${passedTests} / ${totalTests} PASSED (${failedTests} FAILED)`)

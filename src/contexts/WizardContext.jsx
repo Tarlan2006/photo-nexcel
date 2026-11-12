@@ -347,6 +347,7 @@ export function WizardProvider({ children }) {
             bitmap,
             objectUrl,
             landmarks: det.landmarks,
+            blendshapes: det.blendshapes || [],
           },
           cropStates: {
             kz_id: cropKz,
