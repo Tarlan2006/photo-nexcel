@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { backgroundColors } from '../../lib/editor/edit-state'
 import { suitStyles } from '../../lib/editor/suits'
-import { primaryButton, secondaryButton } from './EditorPreview'
+import { primaryButton, secondaryButton } from './EditorControls'
 
 const toneSliders = ['brightness', 'contrast', 'temperature', 'saturation']
 const filters = ['none', 'soft', 'sharp', 'mono']
@@ -44,17 +44,6 @@ function Range({ name, label, value, min, max, reset = 0, onChange, text }) {
   )
 }
 
-function Panel({ title, initialOpen, children }) {
-  return (
-    <details open={initialOpen} className="rounded-xl border border-grid-border bg-white">
-      <summary className="min-h-11 cursor-pointer rounded-lg px-4 py-3 font-heading font-extrabold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-accent">
-        {title}
-      </summary>
-      <div className="space-y-3 border-t border-grid-border p-4">{children}</div>
-    </details>
-  )
-}
-
 export function TonePanel({ edit, update, getSession, text }) {
   const [working, setWorking] = useState(false)
   const [message, setMessage] = useState(null)
@@ -80,7 +69,7 @@ export function TonePanel({ edit, update, getSession, text }) {
   }
 
   return (
-    <Panel title={text.tone}>
+    <div className="space-y-3">
       <p className="text-xs text-text-muted">{text.doubleClickReset}</p>
       {toneSliders.map((key) => (
         <Range
@@ -92,13 +81,13 @@ export function TonePanel({ edit, update, getSession, text }) {
       <p role="status" className={working || message ? 'text-sm text-text-muted' : 'sr-only'}>
         {working ? text.processing : message ? text[message] : ''}
       </p>
-    </Panel>
+    </div>
   )
 }
 
 export function FiltersPanel({ filter, update, text }) {
   return (
-    <Panel title={text.filters}>
+    <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {filters.map((choice) => (
           <button
@@ -113,31 +102,31 @@ export function FiltersPanel({ filter, update, text }) {
         ))}
       </div>
       {filter === 'mono' && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">{text.monoWarning}</p>}
-    </Panel>
+    </div>
   )
 }
 
 export function BackgroundPanel({
-  bg, update, startOutline, drawButton, draft, showMask, setShowMask, segmentation, originalBackgroundWarning, text,
-  brushAvailable, brushActive, brushButton, toggleBrush,
+  bg, update, startOutline, drawButton, showMask, setShowMask, segmentation, originalBackgroundWarning, text,
+  brushAvailable, brushButton, startBrush,
 }) {
   const change = (patch, group) => update((edit) => ({ ...edit, bg: { ...edit.bg, ...patch } }), group)
   const showUnreliable = bg.enabled && bg.method === 'auto' && segmentation.result?.reliable === false
 
   return (
-    <Panel title={text.background} initialOpen>
+    <div className="space-y-3">
       {originalBackgroundWarning && !bg.enabled && (
         <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">{text.backgroundSuggestion}</p>
       )}
       <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">
-        <input type="checkbox" className="size-5 accent-emerald-accent" checked={bg.enabled} onChange={(event) => change({ enabled: event.target.checked })} />
+        <input type="checkbox" className="size-5 shrink-0 accent-emerald-accent" checked={bg.enabled} onChange={(event) => change({ enabled: event.target.checked })} />
         {text.replaceBackground}
       </label>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          className={bg.enabled && bg.method === 'auto' && !draft ? primaryButton : secondaryButton}
-          aria-pressed={bg.enabled && bg.method === 'auto' && !draft}
+          className={bg.enabled && bg.method === 'auto' ? primaryButton : secondaryButton}
+          aria-pressed={bg.enabled && bg.method === 'auto'}
           onClick={() => change({ enabled: true, method: 'auto' })}
         >
           {text.automatic}
@@ -145,8 +134,8 @@ export function BackgroundPanel({
         <button
           ref={drawButton}
           type="button"
-          className={draft || (bg.enabled && bg.method === 'manual') ? primaryButton : secondaryButton}
-          aria-pressed={Boolean(draft) || (bg.enabled && bg.method === 'manual')}
+          className={bg.enabled && bg.method === 'manual' ? primaryButton : secondaryButton}
+          aria-pressed={bg.enabled && bg.method === 'manual'}
           onClick={startOutline}
         >
           {text.pencil}
@@ -155,15 +144,14 @@ export function BackgroundPanel({
           <button
             ref={brushButton}
             type="button"
-            className={brushActive ? primaryButton : secondaryButton}
-            aria-pressed={brushActive}
-            onClick={toggleBrush}
+            className={secondaryButton}
+            onClick={startBrush}
           >
             {text.brush}
           </button>
         )}
       </div>
-      {!draft && <p className="text-xs text-text-muted">{text.pencilHint}</p>}
+      <p className="text-xs text-text-muted">{text.pencilHint}</p>
       {showUnreliable && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">{text.unreliableMask}</p>}
 
       <div className="flex flex-wrap gap-2">
@@ -180,7 +168,7 @@ export function BackgroundPanel({
           </button>
         ))}
         <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
-          <input type="color" className="size-11 cursor-pointer rounded border border-grid-border bg-white p-1" value={bg.color} onChange={(event) => change({ color: event.target.value })} />
+          <input type="color" className="size-11 shrink-0 cursor-pointer rounded border border-grid-border bg-white p-1" value={bg.color} onChange={(event) => change({ color: event.target.value })} />
           {text.customColor}
         </label>
       </div>
@@ -189,12 +177,12 @@ export function BackgroundPanel({
           <Range name="feather" label={text.feather} min={0} max={5} value={bg.feather} reset={2} text={text} onChange={(feather, group) => change({ feather }, group)} />
           <Range name="edgeShift" label={text.edgeShift} min={-4} max={4} value={bg.shift} reset={-1} text={text} onChange={(shift, group) => change({ shift }, group)} />
           <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium">
-            <input type="checkbox" className="size-5 accent-emerald-accent" checked={showMask} onChange={(event) => setShowMask(event.target.checked)} />
+            <input type="checkbox" className="size-5 shrink-0 accent-emerald-accent" checked={showMask} onChange={(event) => setShowMask(event.target.checked)} />
             {text.showMask}
           </label>
         </>
       )}
-    </Panel>
+    </div>
   )
 }
 
@@ -202,7 +190,7 @@ export function SuitPanel({ suit, update, segmentation, text }) {
   const unavailable = segmentation.result?.suitSupported === false
   const change = (patch, group) => update((edit) => ({ ...edit, suit: { ...edit.suit, ...patch } }), group)
   return (
-    <Panel title={text.suit}>
+    <div className="space-y-3">
       <p className="text-sm text-text-muted">{text.suitHelp}</p>
       <div role="group" aria-label={text.suitGender} className="flex flex-wrap gap-2">
         {['male', 'female', null].map((gender) => (
@@ -243,6 +231,6 @@ export function SuitPanel({ suit, update, segmentation, text }) {
           )}
         </>
       )}
-    </Panel>
+    </div>
   )
 }

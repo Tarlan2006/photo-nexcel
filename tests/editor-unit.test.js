@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { translations } from '../src/i18n.js'
 import { stepCount } from '../src/steps.js'
 import { applyBrushStrokes } from '../src/lib/editor/brush.js'
+import { imagePoint, initialView, limitView, maxZoom, zoomView } from '../src/lib/editor/viewport.js'
 import {
   changeEditHistory, createEditHistory, hasClosedArea, initialEdit, recommendedBackground, redoEdit, undoEdit,
 } from '../src/lib/editor/edit-state.js'
@@ -11,6 +12,19 @@ import { estimateExposure, luminance, toneRows } from '../src/lib/editor/pixels.
 import { findSuitAnchors, suitPlacement } from '../src/lib/editor/suits.js'
 
 const rows = async (height, work) => work(0, height)
+
+test('pinch zoom and pan preserve the point beneath the gesture and keep the photo inside its viewport', () => {
+  const start = [0.4, 0.5]
+  const end = [0.55, 0.65]
+  const view = zoomView(initialView, 2, start, end)
+  assert.equal(view.scale, 2)
+  const [x, y] = imagePoint(end, view)
+  assert.ok(Math.abs(x - start[0]) < 1e-10)
+  assert.ok(Math.abs(y - start[1]) < 1e-10)
+  assert.deepEqual(zoomView(view, 0.25), initialView)
+  assert.equal(zoomView(view, 10).scale, maxZoom)
+  assert.deepEqual(limitView(2, 0.5, -5), { scale: 2, x: 0, y: -1 })
+})
 
 test('brush erases and restores alpha with soft edges and without gaps between points', async () => {
   const width = 80

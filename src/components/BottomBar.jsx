@@ -18,6 +18,7 @@ export default function BottomBar() {
 
   return (
     <aside
+      id="wizard-bottom-bar"
       aria-label={t.stepActions}
       className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-grid-border pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] px-6 shadow-sm"
     >

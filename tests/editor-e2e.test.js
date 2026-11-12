@@ -24,6 +24,7 @@ const chromePath = [
 const editorHeading = (page) => page.getByRole('heading', { name: editor.title, exact: true })
 const choose = (page, name) => page.getByRole('button', { name, exact: true })
 const next = (page) => choose(page, ru.btnNext)
+const editorStage = page => page.getByRole('combobox', { name: editor.stagePicker, exact: true })
 const original = (page) => page.getByRole('img', { name: editor.original, exact: true })
 const edited = (page) => page.getByRole('img', { name: editor.edited, exact: true })
 const detectResource = (path) => /face_landmarker|detector-|\/models\/|\/wasm\//.test(path)
@@ -276,7 +277,7 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
     await suite.test('tone, keyboard and double-click reset, undo/redo, monochrome and RU/KZ', { skip: noPortrait }, async () => {
       await withPage(async (page) => {
         await upload(page)
-        await page.locator('summary').filter({ hasText: editor.tone }).click()
+        await editorStage(page).selectOption('tone')
         const range = page.getByRole('slider', { name: editor.brightness, exact: true })
         const baseline = await canvasData(original(page), [0.57, 0.55, 20, 20])
         await range.focus()
@@ -295,7 +296,7 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
         assert.equal(await range.inputValue(), '30')
         await choose(page, editor.redo).click()
         assert.equal(await range.inputValue(), '0')
-        await page.locator('summary').filter({ hasText: editor.filters }).click()
+        await editorStage(page).selectOption('filters')
         await choose(page, editor.mono).click()
         await edited(page).waitFor()
         assert.ok(!(await next(page).isEnabled()))
@@ -439,7 +440,7 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
         await upload(page, await coloredPortrait(page))
         await choose(page, editor.automatic).click()
         await waitForPixel(page, [255, 255, 255])
-        await page.locator('summary').filter({ hasText: editor.filters }).click()
+        await editorStage(page).selectOption('filters')
         await choose(page, editor.soft).click()
         await next(page).click()
         await heading(page, ru.step3Title)
@@ -464,7 +465,7 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
     await suite.test('both suit styles preserve the face and can be removed', { skip: noAstronaut }, async () => {
       await withPage(async (page) => {
         await upload(page, astronaut)
-        await page.locator('summary').filter({ hasText: editor.suit }).click()
+        await editorStage(page).selectOption('suit')
         assert.equal(await choose(page, editor.dark).count(), 0)
         const faceBefore = await canvasData(original(page), [0.42, 0.22, 20, 20])
         const neckBefore = await canvasData(original(page), [0.42, 0.36, 20, 10])
@@ -522,7 +523,57 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
       }, { ...devices['Pixel 7'], viewport: { width: 390, height: 844 } })
     })
 
-    await suite.test('mobile brush erases, restores, undoes, and carries edge edits into JPEG export', { skip: noPortrait }, async () => {
+    await suite.test('phone and laptop keep the photo on the left and advance one settings stage at a time', { skip: noPortrait }, async () => {
+      for (const viewport of [{ width: 360, height: 740 }, { width: 1280, height: 720 }]) {
+        await withPage(async (page) => {
+          await upload(page)
+          const stage = editorStage(page)
+          const actions = page.getByRole('group', { name: editor.stagePicker, exact: true })
+          const done = () => actions.getByRole('button', { name: editor.stageDone, exact: true }).click()
+          const preview = await original(page).boundingBox()
+          const picker = await stage.boundingBox()
+          assert.ok(preview.x + preview.width <= picker.x)
+          assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), viewport.width)
+          const bottomBar = await page.locator('#wizard-bottom-bar').boundingBox()
+          const stageActions = await actions.boundingBox()
+          assert.ok(stageActions.y + stageActions.height <= bottomBar.y)
+          assert.ok(preview.y + preview.height <= bottomBar.y)
+
+          assert.equal(await stage.inputValue(), 'background')
+          assert.equal(await page.getByRole('slider', { name: editor.brightness }).count(), 0)
+          const beforeScroll = await original(page).boundingBox()
+          const scrollTop = await page.getByRole('region', { name: editor.background, exact: true }).evaluate(element => {
+            element.scrollTop = element.scrollHeight
+            return element.scrollTop
+          })
+          if (viewport.width === 360) assert.ok(scrollTop > 0)
+          assert.deepEqual(await original(page).boundingBox(), beforeScroll)
+          await choose(page, editor.gray).click()
+          await done()
+
+          assert.equal(await stage.inputValue(), 'tone')
+          assert.equal(await choose(page, editor.automatic).count(), 0)
+          await page.getByRole('slider', { name: editor.brightness }).press('ArrowRight')
+          await done()
+          assert.equal(await stage.inputValue(), 'filters')
+          assert.equal(await page.getByRole('slider', { name: editor.brightness }).count(), 0)
+          await choose(page, editor.soft).click()
+          await actions.getByRole('button', { name: editor.previousStage, exact: true }).click()
+          assert.equal(await page.getByRole('slider', { name: editor.brightness }).inputValue(), '1')
+          await stage.selectOption('background')
+          assert.equal(await choose(page, editor.gray).getAttribute('aria-pressed'), 'true')
+          await stage.selectOption('filters')
+          assert.equal(await choose(page, editor.soft).getAttribute('aria-pressed'), 'true')
+          await done()
+          assert.equal(await stage.inputValue(), 'suit')
+          await checkAxe(page)
+          await done()
+          await heading(page, ru.step3Title)
+        }, viewport.width === 360 ? { ...devices['Pixel 7'], viewport } : { viewport })
+      }
+    })
+
+    await suite.test('mobile pinch and pan leave no brush marks, and intentional strokes still reach JPEG', { skip: noPortrait }, async () => {
       await withPage(async (page, requests, context) => {
         await upload(page, await coloredPortrait(page))
         assert.equal(await choose(page, editor.brush).count(), 0)
@@ -538,9 +589,44 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
         const area = page.getByRole('group', { name: editor.brushCanvas })
         const tools = page.getByRole('group', { name: editor.brush, exact: true })
         const client = await context.newCDPSession(page)
+        const imageBytes = () => edited(page).evaluate(canvas => canvas.toDataURL())
+        const initial = await imageBytes()
+        await area.evaluate(element => element.scrollIntoView({ block: 'center' }))
+        const surface = await area.boundingBox()
+        const touch = (type, positions) => client.send('Input.dispatchTouchEvent', {
+          type,
+          touchPoints: positions.map(([id, x, y]) => ({ id, x: surface.x + x * surface.width, y: surface.y + y * surface.height })),
+        })
+        await touch('touchStart', [[1, 0.57, 0.52]])
+        await touch('touchMove', [[1, 0.54, 0.52]])
+        await touch('touchStart', [[1, 0.54, 0.52], [2, 0.81, 0.52]])
+        await touch('touchMove', [[1, 0.38, 0.52], [2, 0.95, 0.52]])
+        await page.waitForFunction(width => {
+          const image = document.querySelector('canvas[aria-label="Фото с правками"]')
+          return image?.getBoundingClientRect().width > width * 1.5
+        }, surface.width)
+        const zoomed = await edited(page).boundingBox()
+        await touch('touchMove', [[1, 0.32, 0.47], [2, 0.89, 0.47]])
+        await page.waitForFunction(({ x, y }) => {
+          const image = document.querySelector('canvas[aria-label="Фото с правками"]')
+          const rect = image?.getBoundingClientRect()
+          return rect && rect.left < x - 5 && rect.top < y - 5
+        }, zoomed)
+        const panned = await edited(page).boundingBox()
+        await touch('touchEnd', [[1, 0.32, 0.47]])
+        await touch('touchMove', [[2, 0.57, 0.47]])
+        await touch('touchEnd', [])
+        assert.equal(await area.locator('path').count(), 0)
+        assert.deepEqual(await edited(page).boundingBox(), panned)
+        assert.equal(await imageBytes(), initial)
+
         const paint = async ([x, y], finish = 'touchEnd') => {
           await area.evaluate(element => element.scrollIntoView({ block: 'center' }))
-          const box = await area.boundingBox()
+          const canvas = page.locator('canvas[aria-label="' + editor.original + '"]')
+          const box = await canvas.evaluate(element => {
+            const rect = element.getBoundingClientRect()
+            return { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
+          })
           for (const [index, offset] of [-0.02, 0, 0.02].entries()) {
             await client.send('Input.dispatchTouchEvent', {
               type: index ? 'touchMove' : 'touchStart',
@@ -555,6 +641,7 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
         await waitForPixel(page, [255, 255, 255], point)
         await tools.getByRole('button', { name: editor.undo, exact: true }).click()
         await waitForPixel(page, before, point)
+        assert.equal(await imageBytes(), initial)
         await tools.getByRole('button', { name: editor.redo, exact: true }).click()
         await waitForPixel(page, [255, 255, 255], point)
         await checkAxe(page)
@@ -606,7 +693,7 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
           if (cycle < 2 || cycle === 9) {
             await choose(page, editor.automatic).click()
           } else {
-            await page.locator('summary').filter({ hasText: editor.tone }).click()
+            await editorStage(page).selectOption('tone')
             await page.getByRole('slider', { name: editor.brightness }).press('ArrowRight')
           }
           await edited(page).waitFor()
