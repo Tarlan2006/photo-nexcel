@@ -79,6 +79,8 @@ curl -s -I -H "Accept-Encoding: gzip, br" https://photo.nexcel.kz/wasm/1.2.3/vis
 - `Content-Encoding: br` (или `gzip`)
 - `Cache-Control: public, max-age=31536000, immutable`
 
+Ответ HTML мастера использует `Cache-Control: no-transform`, чтобы Cloudflare не подставлял внешний скрипт Web Analytics. Кэширование и сжатие ресурсов настраиваются отдельно.
+
 ## 5. Редактор фото
 
 Модель [MediaPipe SelfieMulticlass 256×256](https://developers.google.com/edge/mediapipe/solutions/vision/image_segmenter#multi-class_selfie_segmentation_model) от Google хранится в `public/models/selfie-multiclass-v1.tflite` (16 371 837 байт, Apache 2.0). Она загружается при первом выборе автоматического фона или костюма. Для ручного контура модель не нужна. При обновлении модели меняйте имя файла, поскольку URL кэшируется с `immutable`.
