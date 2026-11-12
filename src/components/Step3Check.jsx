@@ -75,9 +75,9 @@ export default function Step3Check() {
     <div className="max-w-4xl mx-auto px-6 py-10 sm:py-14 pb-28">
       {/* Title & Subtitle */}
       <div className="text-center mb-8">
-        <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-text mb-2 tracking-tight">
+        <h1 tabIndex={-1} className="font-heading font-extrabold text-2xl sm:text-3xl text-text mb-2 tracking-tight">
           {t.step3Title}
-        </h2>
+        </h1>
         <p className="text-[#4B525D] text-sm sm:text-base max-w-lg mx-auto">
           {t.step3Subtitle}
         </p>
@@ -119,12 +119,7 @@ export default function Step3Check() {
             <div className={`relative rounded-lg overflow-hidden border ${isValidCrop ? 'border-border shadow-2xs' : 'border-amber-400 bg-amber-50'}`}>
               <canvas
                 ref={previewCanvasRef}
-                style={{
-                  maxHeight: '340px',
-                  width: 'auto',
-                  display: isValidCrop ? 'block' : 'none',
-                }}
-                className="bg-white block"
+                className={`max-h-[340px] max-w-full h-auto w-auto bg-white ${isValidCrop ? 'block' : 'hidden'}`}
               />
               {isValidCrop && (
                 <div className="absolute inset-0 pointer-events-none select-none">
@@ -185,7 +180,7 @@ export default function Step3Check() {
                 <button
                   type="button"
                   onClick={resetAdjustments}
-                  className="font-mono text-xs font-semibold text-accent hover:underline cursor-pointer"
+                  className="min-h-11 font-mono text-xs font-semibold text-accent hover:underline cursor-pointer"
                 >
                   {t.adjustReset}
                 </button>
@@ -210,9 +205,6 @@ export default function Step3Check() {
                 step="1"
                 value={scalePercent}
                 onChange={handleScaleChange}
-                aria-valuemin="-10"
-                aria-valuemax="10"
-                aria-valuenow={scalePercent}
                 aria-label={t.adjustScale}
                 className="w-full accent-accent cursor-pointer"
               />
@@ -236,9 +228,6 @@ export default function Step3Check() {
                 step="1"
                 value={shiftYPercent}
                 onChange={handleShiftYChange}
-                aria-valuemin="-10"
-                aria-valuemax="10"
-                aria-valuenow={shiftYPercent}
                 aria-label={t.adjustShiftY}
                 className="w-full accent-accent cursor-pointer"
               />
@@ -250,13 +239,13 @@ export default function Step3Check() {
         <div className="lg:col-span-6 space-y-5">
           {/* Automated Checks */}
           <div className="bg-card border border-border rounded-xl p-5 sm:p-6">
-            <h3 className="font-heading font-extrabold text-sm text-text mb-4 pb-2 border-b border-border/60">
+            <h2 className="font-heading font-extrabold text-sm text-text mb-4 pb-2 border-b border-border/60">
               {t.checksTitle}
-            </h3>
+            </h2>
 
             {checks.length === 0 ? (
               <p className="text-[#4B525D] text-xs">
-                {lang === 'ru' ? 'Выполняется проверка параметров...' : 'Параметрлер тексерілуде...'}
+                {t.checkingPhoto}
               </p>
             ) : (
               <ul className="space-y-2.5">
@@ -313,12 +302,12 @@ export default function Step3Check() {
 
           {/* Manual Visual Checklist */}
           <div className="bg-card border border-border rounded-xl p-5 sm:p-6">
-            <h3 className="font-heading font-extrabold text-sm text-text mb-4 pb-2 border-b border-border/60 flex items-center justify-between">
-              <span>{lang === 'ru' ? 'Визуальный контроль' : 'Көзбен тексеру'}</span>
+            <h2 className="font-heading font-extrabold text-sm text-text mb-4 pb-2 border-b border-border/60 flex items-center justify-between">
+              <span>{t.visualCheck}</span>
               <span className="font-mono text-xs text-[#4B525D] font-bold">
                 {t.checkStatusManual}
               </span>
-            </h3>
+            </h2>
 
             <ul className="space-y-2.5 text-xs">
               <li className="flex items-center gap-2 text-[#4B525D] font-medium">

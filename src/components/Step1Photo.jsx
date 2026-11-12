@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useLang } from '../contexts/LangContext'
 import { useWizard } from '../contexts/WizardContext'
 import CameraCapture from './CameraCapture'
+import { photoMimeTypes } from '../lib/photo'
 
 function TipIcon({ type }) {
   if (type === 'wall') {
@@ -60,7 +61,7 @@ function TipIcon({ type }) {
 
 export default function Step1Photo() {
   const { t } = useLang()
-  const { isProcessing, statusMessage, errorKey, handleFile, preloadDetector } = useWizard()
+  const { isProcessing, statusKey, errorKey, handleFile } = useWizard()
 
   const [isDragging, setIsDragging] = useState(false)
   const [tipsOpen, setTipsOpen] = useState(false)
@@ -74,8 +75,7 @@ export default function Step1Photo() {
 
   const onDragOver = (e) => {
     e.preventDefault()
-    setIsDragging(true)
-    preloadDetector()
+    if (!isProcessing) setIsDragging(true)
   }
 
   const onDragLeave = () => {
@@ -86,31 +86,22 @@ export default function Step1Photo() {
     e.preventDefault()
     setIsDragging(false)
     const file = e.dataTransfer.files?.[0]
-    if (file) {
-      handleFile(file)
-    }
+    if (!isProcessing) handleFile(file)
   }
 
   const onFileChange = (e) => {
     const file = e.target.files?.[0]
-    if (file) {
-      handleFile(file)
-    }
+    if (!isProcessing) handleFile(file)
     e.target.value = ''
   }
 
   const triggerInput = () => {
-    preloadDetector()
-    if (inputRef.current) {
-      inputRef.current.click()
-    }
+    if (!isProcessing) inputRef.current?.click()
   }
 
   const handleCameraClose = () => {
     setIsCameraOpen(false)
-    setTimeout(() => {
-      cameraBtnRef.current?.focus()
-    }, 50)
+    cameraBtnRef.current?.focus()
   }
 
   const handleCameraCapture = (file) => {
@@ -124,7 +115,7 @@ export default function Step1Photo() {
     <div className="max-w-2xl mx-auto px-6 py-10 sm:py-14">
       {/* Title & Subtitle */}
       <div className="text-center mb-8">
-        <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-text mb-2 tracking-tight">
+        <h1 tabIndex={-1} className="font-heading font-extrabold text-2xl sm:text-3xl text-text mb-2 tracking-tight">
           {t.step1Title}
         </h1>
         <p className="text-[#4B525D] text-sm sm:text-base max-w-lg mx-auto">
@@ -147,7 +138,7 @@ export default function Step1Photo() {
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept={photoMimeTypes.join(',')}
           className="hidden"
           onChange={onFileChange}
         />
@@ -174,6 +165,7 @@ export default function Step1Photo() {
           {hasCameraSupport && (
             <button
               ref={cameraBtnRef}
+              disabled={isProcessing}
               type="button"
               onClick={(e) => {
                 e.stopPropagation()
@@ -195,6 +187,7 @@ export default function Step1Photo() {
 
           <button
             type="button"
+            disabled={isProcessing}
             onClick={(e) => {
               e.stopPropagation()
               triggerInput()
@@ -256,7 +249,7 @@ export default function Step1Photo() {
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
-          <span className="text-sm font-semibold text-text">{statusMessage}</span>
+          <span className="text-sm font-semibold text-text">{t[statusKey]}</span>
         </div>
       )}
 
@@ -307,7 +300,7 @@ export default function Step1Photo() {
           onClick={() => setTipsOpen(!tipsOpen)}
           aria-expanded={tipsOpen}
           aria-controls="how-to-shoot-content"
-          className="w-full flex items-center justify-between p-4 text-left cursor-pointer hover:bg-bg/50 transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
+          className="w-full min-h-11 flex items-center justify-between p-4 text-left cursor-pointer hover:bg-bg/50 transition-colors"
         >
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs text-accent uppercase font-bold" aria-hidden="true">
@@ -335,8 +328,8 @@ export default function Step1Photo() {
           </svg>
         </button>
 
-        {tipsOpen && (
-          <div id="how-to-shoot-content" className="p-4 pt-1 border-t border-border/60 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div id="how-to-shoot-content" hidden={!tipsOpen}>
+          <div className="p-4 pt-1 border-t border-border/60 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {t.howToShootTips.map((tip) => (
               <div
                 key={tip.title}
@@ -344,24 +337,24 @@ export default function Step1Photo() {
               >
                 <TipIcon type={tip.icon} />
                 <div>
-                  <h4 className="font-heading font-extrabold text-xs text-text mb-0.5">
+                  <h2 className="font-heading font-extrabold text-xs text-text mb-0.5">
                     {tip.title}
-                  </h4>
+                  </h2>
                   <p className="text-[#4B525D] text-xs leading-relaxed">{tip.desc}</p>
                 </div>
               </div>
             ))}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Camera Capture Modal */}
-      <CameraCapture
-        isOpen={isCameraOpen}
-        onClose={handleCameraClose}
-        onCapture={handleCameraCapture}
-        onSelectFile={triggerInput}
-      />
+      {isCameraOpen && (
+        <CameraCapture
+          onClose={handleCameraClose}
+          onCapture={handleCameraCapture}
+          onSelectFile={triggerInput}
+        />
+      )}
     </div>
   )
 }

@@ -32,6 +32,7 @@ const iconMap = {
 }
 
 function MiniCanvasPreview({ cropRes, preset }) {
+  const { t } = useLang()
   const canvasRef = useRef(null)
 
   useEffect(() => {
@@ -54,7 +55,7 @@ function MiniCanvasPreview({ cropRes, preset }) {
           <circle cx="10" cy="14" r="0.75" fill="currentColor" />
         </svg>
         <span className="text-[11px] text-amber-950 leading-tight font-bold">
-          Вне кадра
+          {t.outOfFrame}
         </span>
       </div>
     )
@@ -86,10 +87,6 @@ export default function Step2Document() {
     goToStep,
   } = useWizard()
 
-  const handleCardClick = (presetId) => {
-    selectPreset(presetId)
-  }
-
   const handleSelectAndProceed = (presetId) => {
     selectPreset(presetId)
     goToStep(3)
@@ -99,16 +96,16 @@ export default function Step2Document() {
     <div className="max-w-3xl mx-auto px-6 py-10 sm:py-14 pb-28">
       {/* Title & Subtitle */}
       <div className="text-center mb-8">
-        <h2 className="font-heading font-extrabold text-2xl sm:text-3xl text-text mb-2 tracking-tight">
+        <h1 tabIndex={-1} className="font-heading font-extrabold text-2xl sm:text-3xl text-text mb-2 tracking-tight">
           {t.step2Title}
-        </h2>
+        </h1>
         <p className="text-[#4B525D] text-sm sm:text-base max-w-lg mx-auto">
           {t.step2Subtitle}
         </p>
       </div>
 
       {/* Preset Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5" role="radiogroup" aria-label={t.step2Title}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5" role="group" aria-label={t.step2Title}>
         {presetList.map((preset) => {
           const isSelected = selectedPresetId === preset.id
           const cropRes = cropStates[preset.id]
@@ -118,17 +115,7 @@ export default function Step2Document() {
           return (
             <div
               key={preset.id}
-              role="radio"
-              aria-checked={isSelected}
-              tabIndex={0}
-              onClick={() => handleCardClick(preset.id)}
-              onKeyDown={(e) => {
-                if (e.key === ' ' || e.key === 'Enter') {
-                  e.preventDefault()
-                  handleCardClick(preset.id)
-                }
-              }}
-              className={`bg-card border rounded-xl p-5 text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+              className={`bg-card border rounded-xl p-5 text-left transition-all relative flex flex-col justify-between ${
                 isSelected
                   ? 'border-accent ring-2 ring-accent/30 bg-accent/[0.01]'
                   : 'border-border hover:border-accent/50'
@@ -146,32 +133,27 @@ export default function Step2Document() {
                       <Icon />
                     </div>
                     <div>
-                      <h3 className="font-heading font-extrabold text-base text-text">
+                      <label htmlFor={preset.id} className="block cursor-pointer font-heading font-extrabold text-base text-text">
                         {preset.name[lang]}
-                      </h3>
-                      <p className="text-[#4B525D] text-xs font-mono">
-                        {preset.width} × {preset.height} px · {lang === 'ru' ? 'до' : 'дейін'} {preset.maxKb} КБ
+                      </label>
+                      <p className="text-muted text-xs font-mono">
+                        {t.dimensionsAndLimit.replace('{w}', preset.width).replace('{h}', preset.height).replace('{max}', preset.maxKb)}
                       </p>
                     </div>
                   </div>
 
-                  {/* Radio Indicator */}
-                  <div
-                    className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                      isSelected
-                        ? 'border-accent bg-accent'
-                        : 'border-[#9CA3AF] bg-white'
-                    }`}
-                    aria-hidden="true"
-                  >
-                    {isSelected && (
-                      <div className="w-2 h-2 rounded-full bg-white" />
-                    )}
-                  </div>
+                  <input
+                    type="radio"
+                    name="photo-document"
+                    id={preset.id}
+                    checked={isSelected}
+                    onChange={() => selectPreset(preset.id)}
+                    className="size-11 shrink-0 cursor-pointer accent-accent"
+                  />
                 </div>
 
                 {/* Body with Mini-Preview and Details */}
-                <div className="flex items-start gap-4 mb-4">
+                <div className="flex flex-col min-[420px]:flex-row items-start gap-4 mb-4">
                   <MiniCanvasPreview cropRes={cropRes} preset={preset} />
 
                   <div className="flex-1 min-w-0">
@@ -186,7 +168,7 @@ export default function Step2Document() {
                             e.stopPropagation()
                             retake()
                           }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white border border-amber-400 text-amber-950 text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer"
+                          className="inline-flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded bg-white border border-amber-400 text-amber-950 text-xs font-bold hover:bg-amber-100 transition-colors cursor-pointer"
                         >
                           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                             <path
@@ -203,10 +185,12 @@ export default function Step2Document() {
                     ) : (
                       <div className="mb-3">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-950 mb-2">
-                          ✓ {lang === 'ru' ? 'Кадр сформирован' : 'Кадр дайын'}
+                          ✓ {t.cropReady}
                         </span>
                         <p className="text-[#4B525D] text-xs font-medium">
-                          {lang === 'ru' ? 'Голова: примерно' : 'Бас: шамамен'} ~{cropRes?.headPct || 0}% ({lang === 'ru' ? 'норма' : 'норма'} {preset.headMinPct}–{preset.headMaxPct}%)
+                          {t.headEstimate
+                            .replace('{percent}', cropRes.headPct)
+                            .replace('{range}', [preset.headMinPct, preset.headMaxPct].join('–'))}
                         </p>
                       </div>
                     )}
@@ -232,13 +216,13 @@ export default function Step2Document() {
                     e.stopPropagation()
                     handleSelectAndProceed(preset.id)
                   }}
-                  className={`text-xs font-semibold px-4 py-2 rounded transition-colors cursor-pointer ${
+                  className={`min-h-11 text-xs font-semibold px-4 py-2 rounded transition-colors cursor-pointer ${
                     isSelected
                       ? 'bg-accent text-white hover:bg-accent-hover'
                       : 'border border-border text-text hover:border-accent hover:text-accent'
                   }`}
                 >
-                  {lang === 'ru' ? 'Выбрать и продолжить →' : 'Таңдап, жалғастыру →'}
+                  {t.selectAndContinue} →
                 </button>
               </div>
             </div>

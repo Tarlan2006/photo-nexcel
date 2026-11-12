@@ -1,230 +1,168 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useLang } from '../contexts/LangContext'
 
-export default function CameraCapture({ isOpen, onClose, onCapture, onSelectFile }) {
+export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
   const { t } = useLang()
-
   const videoRef = useRef(null)
-  const streamRef = useRef(null)
   const dialogRef = useRef(null)
-  const countdownTimerRef = useRef(null)
+  const closeRef = useRef(null)
+  const streamRef = useRef(null)
+  const generation = useRef(0)
 
   const [isLoading, setIsLoading] = useState(true)
-  const [errorType, setErrorType] = useState(null) // null | 'NotAllowedError' | 'NotFoundError' | 'NotReadableError' | 'Generic'
-  const [facingMode, setFacingMode] = useState('user')
-  const [hasMultipleCameras, setHasMultipleCameras] = useState(false)
+  const [errorType, setErrorType] = useState(null)
+  const [camera, setCamera] = useState(null)
+  const [nextCamera, setNextCamera] = useState(null)
+  const [mirrored, setMirrored] = useState(true)
   const [countdown, setCountdown] = useState(null)
-  const [isFlashing, setIsFlashing] = useState(false)
+  const [encoding, setEncoding] = useState(false)
 
-  // Stop media tracks safely
-  const stopStream = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => {
-        try {
-          track.stop()
-        } catch {
-          // ignore
-        }
-      })
-      streamRef.current = null
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
+  useEffect(() => {
+    const dialog = dialogRef.current
+    dialog.showModal()
+    closeRef.current.focus()
+    return () => dialog.close()
   }, [])
 
-  // Start camera stream
-  const startCamera = useCallback(
-    async (mode) => {
-      setIsLoading(true)
-      setErrorType(null)
-      stopStream()
+  useEffect(() => {
+    const id = ++generation.current
+    const video = videoRef.current
+    let stream
+    let track
+    let permission
+    const current = () => id === generation.current
+    const stop = () => {
+      track?.removeEventListener('ended', onEnded)
+      permission?.removeEventListener('change', onPermission)
+      stream?.getTracks().forEach((item) => item.stop())
+      streamRef.current = null
+      video.srcObject = null
+    }
+    const fail = (error) => {
+      if (!current()) return
+      generation.current++
+      stop()
+      setCountdown(null)
+      setEncoding(false)
+      setIsLoading(false)
+      setErrorType(error)
+      closeRef.current?.focus()
+    }
+    const onEnded = () => fail('NotReadableError')
+    const onPermission = () => {
+      if (permission.state === 'denied') fail('NotAllowedError')
+    }
 
-      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-        setIsLoading(false)
-        setErrorType('NotFoundError')
-        return
-      }
-
+    async function start() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: mode,
+            ...(camera ? { deviceId: { exact: camera } } : { facingMode: 'user' }),
             width: { ideal: 1920 },
             height: { ideal: 1080 },
           },
           audio: false,
         })
+        if (!current()) {
+          stream.getTracks().forEach((item) => item.stop())
+          return
+        }
 
+        track = stream.getVideoTracks()[0]
+        if (!track || track.readyState !== 'live') return onEnded()
+        track.addEventListener('ended', onEnded)
         streamRef.current = stream
+        video.srcObject = stream
+        await video.play()
+        if (!current()) return
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          try {
-            await videoRef.current.play()
-          } catch {
-            // ignore play errors if cancelled
-          }
-        }
-
-        // Check if device has multiple cameras
-        try {
-          const devices = await navigator.mediaDevices.enumerateDevices()
-          const videoInputs = devices.filter((d) => d.kind === 'videoinput')
-          setHasMultipleCameras(videoInputs.length > 1)
-        } catch {
-          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-          setHasMultipleCameras(isMobile)
-        }
-
+        const settings = track.getSettings()
+        setMirrored(settings.facingMode ? settings.facingMode === 'user' : !camera)
+        const devices = await navigator.mediaDevices.enumerateDevices().catch(() => [])
+        if (!current()) return
+        const activeDevice = settings.deviceId || camera || devices.find((device) => device.kind === 'videoinput')?.deviceId
+        setNextCamera(devices.find((device) =>
+          device.kind === 'videoinput' && device.deviceId && device.deviceId !== activeDevice
+        )?.deviceId ?? null)
         setIsLoading(false)
-      } catch (err) {
-        console.error('Camera stream error:', err)
-        setIsLoading(false)
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setErrorType('NotAllowedError')
-        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-          setErrorType('NotFoundError')
-        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-          setErrorType('NotReadableError')
-        } else {
-          setErrorType('Generic')
-        }
-      }
-    },
-    [stopStream]
-  )
 
-  // Handle open/close and cleanup
-  useEffect(() => {
-    if (isOpen) {
-      startCamera(facingMode)
-      // Focus the dialog container
-      setTimeout(() => {
-        dialogRef.current?.focus()
-      }, 50)
-    } else {
-      stopStream()
-      setCountdown(null)
-      if (countdownTimerRef.current) {
-        clearTimeout(countdownTimerRef.current)
+        permission = await navigator.permissions?.query({ name: 'camera' }).catch(() => null)
+        if (current() && permission) {
+          permission.addEventListener('change', onPermission)
+          onPermission()
+        }
+      } catch (error) {
+        fail(error.name)
       }
     }
 
+    start()
     return () => {
-      stopStream()
-      if (countdownTimerRef.current) {
-        clearTimeout(countdownTimerRef.current)
-      }
+      generation.current++
+      stop()
     }
-  }, [isOpen, facingMode, startCamera, stopStream])
+  }, [camera])
 
-  // Keydown handler: Escape to close, trap focus in dialog
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      handleClose()
-      return
+  useEffect(() => {
+    if (countdown === null) return
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+      return () => clearTimeout(timer)
     }
 
-    // Tab trap
-    if (e.key === 'Tab' && dialogRef.current) {
-      const focusables = dialogRef.current.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      )
-      if (focusables.length === 0) return
-
-      const first = focusables[0]
-      const last = focusables[focusables.length - 1]
-
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault()
-        first.focus()
-      }
-    }
-  }
-
-  const handleClose = () => {
-    stopStream()
     setCountdown(null)
+    setEncoding(true)
+    const id = generation.current
+    const video = videoRef.current
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+
+    const finish = (blob) => {
+      if (id !== generation.current) return
+      if (!blob) {
+        streamRef.current?.getTracks().forEach((track) => track.stop())
+        video.srcObject = null
+        setErrorType('NotReadableError')
+        setEncoding(false)
+        closeRef.current?.focus()
+        return
+      }
+      onCapture(new File([blob], 'selfie.jpg', { type: 'image/jpeg' }))
+    }
+
+    try {
+      canvas.getContext('2d').drawImage(video, 0, 0)
+      canvas.toBlob(finish, 'image/jpeg', 0.95)
+    } catch {
+      finish(null)
+    }
+  }, [countdown, onCapture])
+
+  const dismiss = () => {
+    dialogRef.current.close()
     onClose()
   }
 
   const toggleCamera = () => {
-    setFacingMode((prev) => (prev === 'user' ? 'environment' : 'user'))
+    setIsLoading(true)
+    setCamera(nextCamera)
+    closeRef.current?.focus()
   }
 
-  // Take photo from video frame at full resolution without CSS mirroring
-  const captureFrame = () => {
-    const video = videoRef.current
-    if (!video || !video.videoWidth || !video.videoHeight) return
-
-    // Trigger visual flash
-    setIsFlashing(true)
-    setTimeout(() => setIsFlashing(false), 120)
-
-    const canvas = document.createElement('canvas')
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    const ctx = canvas.getContext('2d')
-
-    // Direct draw at video resolution (without mirror)
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return
-        const file = new File([blob], `selfie-${Date.now()}.jpg`, {
-          type: 'image/jpeg',
-          lastModified: Date.now(),
-        })
-
-        stopStream()
-        onCapture(file)
-      },
-      'image/jpeg',
-      0.95
-    )
-  }
-
-  // Countdown timer: 3 -> 2 -> 1 -> capture
-  useEffect(() => {
-    if (countdown === null) return
-
-    if (countdown === 0) {
-      captureFrame()
-      setCountdown(null)
-      return
+  const handleKeyDown = (event) => {
+    if (event.key !== 'Tab') return
+    const buttons = dialogRef.current.querySelectorAll('button:not(:disabled)')
+    const first = buttons[0]
+    const last = buttons[buttons.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
     }
-
-    countdownTimerRef.current = setTimeout(() => {
-      setCountdown((prev) => (prev > 0 ? prev - 1 : 0))
-    }, 1000)
-
-    return () => {
-      if (countdownTimerRef.current) {
-        clearTimeout(countdownTimerRef.current)
-      }
-    }
-  }, [countdown])
-
-  const startCountdown = () => {
-    if (countdown !== null) return
-    setCountdown(3)
   }
-
-  const cancelCountdown = () => {
-    if (countdownTimerRef.current) {
-      clearTimeout(countdownTimerRef.current)
-      countdownTimerRef.current = null
-    }
-    setCountdown(null)
-  }
-
-  if (!isOpen) return null
 
   // Error content resolution
   const errorTitle =
@@ -251,21 +189,22 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onSelectFile
       : ''
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <dialog
       aria-labelledby="camera-modal-title"
       ref={dialogRef}
-      tabIndex={-1}
       onKeyDown={handleKeyDown}
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto outline-none"
+      onCancel={(event) => {
+        event.preventDefault()
+        dismiss()
+      }}
+      className="fixed inset-0 m-auto w-[calc(100%-1.5rem)] max-w-lg max-h-[calc(100dvh-1.5rem)] rounded-2xl bg-card text-text overflow-y-auto backdrop:bg-black/80 backdrop:backdrop-blur-xs"
     >
       {/* Screen reader live region for countdown */}
       <div className="sr-only" aria-live="assertive" aria-atomic="true">
         {countdownText}
       </div>
 
-      <div className="relative w-full max-w-lg bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/80 bg-bg/50">
           <div className="flex items-center gap-2">
@@ -294,9 +233,10 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onSelectFile
 
           <button
             type="button"
-            onClick={handleClose}
+            onClick={dismiss}
+            ref={closeRef}
             aria-label={t.cameraClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#4B525D] hover:text-text hover:bg-border/60 transition-colors cursor-pointer"
+            className="size-11 shrink-0 rounded-lg flex items-center justify-center text-[#4B525D] hover:text-text hover:bg-border/60 transition-colors cursor-pointer"
           >
             <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path
@@ -317,18 +257,10 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onSelectFile
             playsInline
             muted
             autoPlay
-            style={{
-              transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
-            }}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${
+            className={`w-full h-full object-cover transition-opacity duration-300 ${mirrored ? '-scale-x-100' : ''} ${
               isLoading || errorType ? 'opacity-0' : 'opacity-100'
             }`}
           />
-
-          {/* Flash animation */}
-          {isFlashing && (
-            <div className="absolute inset-0 bg-white z-30 pointer-events-none" />
-          )}
 
           {/* Loading state */}
           {isLoading && !errorType && (
@@ -355,7 +287,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onSelectFile
                 />
               </svg>
               <span className="text-xs font-mono font-medium tracking-wide">
-                {t.processingFace}
+                {t.cameraStarting}
               </span>
             </div>
           )}
@@ -364,7 +296,7 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onSelectFile
           {errorType && (
             <div
               role="alert"
-              className="absolute inset-0 p-6 flex flex-col items-center justify-center text-center bg-card text-text z-20"
+              className="absolute inset-0 p-6 grid place-items-center overflow-y-auto text-center bg-card text-text z-20"
             >
               <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-700 flex items-center justify-center mb-3">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -389,17 +321,17 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onSelectFile
                 <button
                   type="button"
                   onClick={() => {
-                    handleClose()
+                    dismiss()
                     onSelectFile?.()
                   }}
-                  className="flex-1 bg-accent hover:bg-accent-hover text-white text-xs sm:text-sm font-semibold py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
+                  className="flex-1 bg-accent hover:bg-accent-hover text-white text-xs sm:text-sm font-semibold min-h-11 py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
                 >
                   {t.btnChooseFile}
                 </button>
                 <button
                   type="button"
-                  onClick={handleClose}
-                  className="flex-1 border border-border text-text hover:bg-bg/60 text-xs sm:text-sm font-semibold py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
+                  onClick={dismiss}
+                  className="flex-1 border border-border text-text hover:bg-bg/60 text-xs sm:text-sm font-semibold min-h-11 py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
                 >
                   {t.cameraClose}
                 </button>
@@ -443,17 +375,17 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onSelectFile
 
         {/* Controls Footer */}
         {!errorType && (
-          <div className="p-4 sm:p-5 bg-card border-t border-border/80 flex items-center justify-between gap-4">
+          <div className="p-4 sm:p-5 bg-card border-t border-border/80 flex items-center justify-between gap-2 sm:gap-4">
             {/* Camera switch button (visible if > 1 camera) */}
             <div className="w-12 flex justify-start">
-              {hasMultipleCameras && (
+              {nextCamera && (
                 <button
                   type="button"
                   onClick={toggleCamera}
-                  disabled={isLoading || countdown !== null}
+                  disabled={isLoading || encoding || countdown !== null}
                   title={t.cameraSwitch}
                   aria-label={t.cameraSwitch}
-                  className="w-10 h-10 rounded-full border border-border bg-bg hover:bg-border/60 text-text flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+                  className="size-11 rounded-full border border-border bg-bg hover:bg-border/60 text-text flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
                 >
                   <svg
                     width="18"
@@ -477,8 +409,8 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onSelectFile
               {countdown !== null ? (
                 <button
                   type="button"
-                  onClick={cancelCountdown}
-                  className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white font-heading font-bold text-sm px-6 py-2.5 rounded-full transition-colors cursor-pointer shadow-md"
+                  onClick={() => setCountdown(null)}
+                  className="inline-flex items-center gap-2 bg-amber-800 hover:bg-amber-900 text-white font-heading font-bold text-sm min-h-11 px-4 py-2.5 rounded-full transition-colors cursor-pointer shadow-md"
                 >
                   <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                     <path
@@ -493,12 +425,12 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onSelectFile
               ) : (
                 <button
                   type="button"
-                  onClick={startCountdown}
-                  disabled={isLoading}
-                  className="group inline-flex items-center gap-2.5 bg-accent hover:bg-accent-hover text-white font-heading font-extrabold text-sm sm:text-base px-7 py-3 rounded-full transition-all shadow-md hover:shadow-lg active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+                  onClick={() => setCountdown(3)}
+                  disabled={isLoading || encoding}
+                  className="group inline-flex items-center gap-2.5 bg-accent hover:bg-accent-hover text-white font-heading font-extrabold text-sm sm:text-base px-3 sm:px-7 min-h-11 py-3 rounded-full transition-all shadow-md hover:shadow-lg active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
                 >
                   <span className="w-3.5 h-3.5 rounded-full bg-white group-hover:scale-110 transition-transform" />
-                  <span>{t.cameraShoot} (3 сек)</span>
+                  <span>{t.cameraShoot}</span>
                 </button>
               )}
             </div>
@@ -508,12 +440,12 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onSelectFile
               <button
                 type="button"
                 onClick={() => {
-                  handleClose()
+                  dismiss()
                   onSelectFile?.()
                 }}
                 title={t.btnChooseFile}
                 aria-label={t.btnChooseFile}
-                className="w-10 h-10 rounded-full border border-border bg-bg hover:bg-border/60 text-[#4B525D] hover:text-text flex items-center justify-center transition-colors cursor-pointer"
+                className="size-11 rounded-full border border-border bg-bg hover:bg-border/60 text-[#4B525D] hover:text-text flex items-center justify-center transition-colors cursor-pointer"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path
@@ -535,6 +467,6 @@ export default function CameraCapture({ isOpen, onClose, onCapture, onSelectFile
           </div>
         )}
       </div>
-    </div>
+    </dialog>
   )
 }

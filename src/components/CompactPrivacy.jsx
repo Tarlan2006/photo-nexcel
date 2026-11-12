@@ -4,7 +4,7 @@ export default function CompactPrivacy() {
   const { t } = useLang()
 
   return (
-    <section id="privacy" className="py-6 border-t border-border bg-bg/50">
+    <section aria-label={t.compactPrivacyText} id="privacy" className="py-6 border-t border-border bg-bg/50">
       <div className="max-w-2xl mx-auto px-6">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-3 text-xs sm:text-sm text-[#4B525D] text-center">
           <div className="flex items-center gap-2">

@@ -71,6 +71,15 @@
 }
 
 @layer base {
+  html {
+    scroll-padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  :where(a, button, input):focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
   body {
     font-family: var(--font-body);
     background-color: var(--color-bg);

@@ -1,73 +1,50 @@
 import { FilesetResolver, FaceLandmarker } from '@mediapipe/tasks-vision'
 
-let landmarkerInstance = null
-let initPromise = null
+let initPromise
 
-export async function getFaceLandmarker() {
-  if (landmarkerInstance) {
-    return landmarkerInstance
-  }
-  if (initPromise) {
-    return initPromise
-  }
-
-  initPromise = (async () => {
-    // FilesetResolver loads vision_wasm_internal.js & vision_wasm_internal.wasm from /wasm
-    const vision = await FilesetResolver.forVisionTasks('/wasm')
-
-    landmarkerInstance = await FaceLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath: '/face_landmarker.task',
-      },
+function getFaceLandmarker() {
+  initPromise ??= FilesetResolver.forVisionTasks('/wasm/1.2.3')
+    .then((vision) => FaceLandmarker.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: '/face_landmarker.task' },
       runningMode: 'IMAGE',
       numFaces: 2,
       outputFaceBlendshapes: true,
+    }))
+    .catch((error) => {
+      initPromise = null
+      throw error
     })
-
-    return landmarkerInstance
-  })()
-
   return initPromise
 }
 
-export async function detectFaceInBitmap(bitmap) {
+export async function detectFaceInBitmap(bitmap, cancelled) {
   const landmarker = await getFaceLandmarker()
+  if (cancelled()) return null
 
-  const origW = bitmap.width
-  const origH = bitmap.height
-  const maxDim = Math.max(origW, origH)
-
-  let inputSource = bitmap
-
-  // Downsample to max 1600px for detection
-  if (maxDim > 1600) {
-    const scale = 1600 / maxDim
-    const detectW = Math.round(origW * scale)
-    const detectH = Math.round(origH * scale)
-
+  let input = bitmap
+  const maxSide = Math.max(bitmap.width, bitmap.height)
+  if (maxSide > 1600) {
     const canvas = document.createElement('canvas')
-    canvas.width = detectW
-    canvas.height = detectH
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(bitmap, 0, 0, detectW, detectH)
-    inputSource = canvas
+    canvas.width = Math.max(1, Math.round(bitmap.width * 1600 / maxSide))
+    canvas.height = Math.max(1, Math.round(bitmap.height * 1600 / maxSide))
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    input = canvas
   }
 
-  const result = landmarker.detect(inputSource)
-
-  if (!result.faceLandmarks || result.faceLandmarks.length === 0) {
-    return { success: false, error: 'NO_FACE' }
-  }
-
-  if (result.faceLandmarks.length > 1) {
-    return { success: false, error: 'MULTIPLE_FACES', count: result.faceLandmarks.length }
-  }
-
+  const { faceLandmarks, faceBlendshapes } = landmarker.detect(input)
+  if (!faceLandmarks?.length) return { success: false, error: 'NO_FACE' }
+  if (faceLandmarks.length > 1) return { success: false, error: 'MULTIPLE_FACES' }
+  const landmarks = faceLandmarks[0]
+  const forehead = landmarks[10]
+  const chin = landmarks[152]
+  const faceHeight = Math.hypot(
+    (chin.x - forehead.x) * bitmap.width,
+    (chin.y - forehead.y) * bitmap.height
+  )
+  if (faceHeight < Math.max(60, maxSide * 0.1)) return { success: false, error: 'SMALL_FACE' }
   return {
     success: true,
-    landmarks: result.faceLandmarks[0],
-    blendshapes: result.faceBlendshapes?.[0]?.categories || [],
-    originalWidth: origW,
-    originalHeight: origH,
+    landmarks,
+    blendshapes: faceBlendshapes?.[0]?.categories || [],
   }
 }

@@ -5,6 +5,22 @@ export const translations = {
     altLang: 'KZ',
     altLangFull: 'Қазақша',
 
+    stepNavigation: 'Навигация по шагам',
+    stepProgress: 'Шаг {step} из 4',
+    cameraStarting: 'Подключение камеры…',
+    errUploadTooLarge: 'Выберите фото размером не более 50 МБ.',
+    outOfFrame: 'Вне кадра',
+    cropReady: 'Кадр сформирован',
+    headEstimate: 'Голова: примерно {percent}% (норма {range}%)',
+    selectAndContinue: 'Выбрать и продолжить',
+    dimensionsAndLimit: '{w} × {h} px · до {max} КБ',
+    jpegFormat: 'Формат: JPEG · без водяных знаков',
+    exportPreparing: 'Подготовка JPEG…',
+    exportFailedTitle: 'Не удалось подготовить JPEG',
+    visualCheck: 'Визуальный контроль',
+    checkingPhoto: 'Выполняется проверка параметров…',
+    checkUnavailable: 'Автоматическая проверка изображения недоступна.',
+    errSmallFace: 'Лицо слишком маленькое. Подойдите ближе или обрежьте фото перед загрузкой.',
     // Header
     headerBack: 'nexcel.kz',
 
@@ -31,7 +47,7 @@ export const translations = {
     cameraModalTitle: 'Съёмка с камеры',
     cameraClose: 'Закрыть',
     cameraSwitch: 'Сменить камеру',
-    cameraShoot: 'Снять',
+    cameraShoot: 'Снять через 3 с',
     cameraCancelCountdown: 'Отмена',
     cameraCountdown: 'Снимок через {sec}...',
     cameraGuideOval: 'Поместите лицо в овал, глаза — по линии',
@@ -106,7 +122,7 @@ export const translations = {
     uploadDrag: 'Перетащите фото сюда',
     uploadOr: 'или',
     uploadBtn: 'Выбрать файл',
-    uploadHint: 'JPG, PNG или фото с телефона',
+    uploadHint: 'JPG, PNG, WebP · до 50 МБ',
 
     // Processing & Errors
     processingModel: 'Загрузка модели ИИ...',
@@ -199,6 +215,23 @@ export const translations = {
     altLang: 'RU',
     altLangFull: 'Русский',
 
+    stepNavigation: 'Қадамдар бойынша өту',
+    stepProgress: '4 қадамның {step}-қадамы',
+    cameraStarting: 'Камера қосылып жатыр…',
+    errUploadTooLarge: 'Көлемі 50 МБ-тан аспайтын фотоны таңдаңыз.',
+    outOfFrame: 'Кадрдан тыс',
+    cropReady: 'Кадр дайын',
+    headEstimate: 'Бас: шамамен {percent}% (қалыпты аралық {range}%)',
+    selectAndContinue: 'Таңдап, жалғастыру',
+    dimensionsAndLimit: '{w} × {h} px · {max} КБ-қа дейін',
+    jpegFormat: 'Пішімі: JPEG · сутаңбасыз',
+    exportPreparing: 'JPEG дайындалып жатыр…',
+    exportFailedTitle: 'JPEG файлын дайындау мүмкін болмады',
+    visualCheck: 'Көзбен тексеру',
+    checkingPhoto: 'Параметрлер тексеріліп жатыр…',
+    checkUnavailable: 'Фотоны автоматты түрде тексеру мүмкін болмады.',
+    errSmallFace: 'Бет тым кішкентай. Жақындап түсіріңіз немесе жүктемес бұрын фотоны қиыңыз.',
+
     headerBack: 'nexcel.kz',
 
     // Wizard Steps
@@ -224,7 +257,7 @@ export const translations = {
     cameraModalTitle: 'Камерамен түсіру',
     cameraClose: 'Жабу',
     cameraSwitch: 'Камераны ауыстыру',
-    cameraShoot: 'Түсіру',
+    cameraShoot: '3 с кейін түсіру',
     cameraCancelCountdown: 'Болдырмау',
     cameraCountdown: 'Түсіруге {sec} сек...',
     cameraGuideOval: 'Бетті овалға, көзді сызыққа сәйкестендіріңіз',
@@ -298,7 +331,7 @@ export const translations = {
     uploadDrag: 'Фотоны осында сүйреңіз',
     uploadOr: 'немесе',
     uploadBtn: 'Файл таңдау',
-    uploadHint: 'JPG, PNG немесе телефоннан фото',
+    uploadHint: 'JPG, PNG, WebP · 50 МБ-қа дейін',
 
     // Processing & Errors
     processingModel: 'ЖИ моделі жүктелуде...',

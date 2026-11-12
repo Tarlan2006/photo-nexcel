@@ -71,7 +71,7 @@ npx wrangler pages deploy dist --project-name=photo-nexcel
 curl -s -I https://photo.nexcel.kz/
 
 # Проверка сжатия Brotli / Gzip для Wasm (14.6 МБ сжимается до ~4.1 МБ)
-curl -s -I -H "Accept-Encoding: gzip, br" https://photo.nexcel.kz/wasm/vision_wasm_internal.wasm
+curl -s -I -H "Accept-Encoding: gzip, br" https://photo.nexcel.kz/wasm/1.2.3/vision_wasm_internal.wasm
 ```
 
 В ответе для wasm-файла должны присутствовать:

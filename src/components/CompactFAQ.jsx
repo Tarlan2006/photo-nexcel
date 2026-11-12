@@ -14,7 +14,7 @@ function FAQItem({ q, a, index }) {
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-controls={answerId}
-        className="w-full flex items-center justify-between py-3.5 text-left cursor-pointer group focus:outline-none focus:ring-2 focus:ring-accent rounded-sm"
+        className="w-full flex items-center justify-between py-3.5 text-left cursor-pointer group rounded-sm"
       >
         <span className="font-heading font-extrabold text-sm sm:text-base pr-4 text-text group-hover:text-accent transition-colors">
           {q}
@@ -38,7 +38,7 @@ function FAQItem({ q, a, index }) {
       </button>
       <div
         id={answerId}
-        role="region"
+        hidden={!open}
         aria-labelledby={questionId}
         className={`overflow-hidden transition-all duration-300 ${
           open ? 'max-h-40 pb-3.5' : 'max-h-0'
@@ -62,9 +62,9 @@ export default function CompactFAQ() {
           </span>
         </div>
 
-        <h3 className="font-heading font-extrabold text-xl sm:text-2xl mb-6 text-text">
+        <h2 className="font-heading font-extrabold text-xl sm:text-2xl mb-6 text-text">
           {t.faqTitle}
-        </h3>
+        </h2>
 
         <div className="border-t border-border/70 bg-card rounded-xl border p-4 sm:p-5">
           {t.faqs.map((item, i) => (

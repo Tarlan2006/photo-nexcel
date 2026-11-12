@@ -21,7 +21,7 @@ export default function StepIndicator() {
   }
 
   return (
-    <nav aria-label="Шаги / Қадамдар" className="w-full bg-card border-b border-border py-3 px-4">
+    <nav aria-label={t.stepNavigation} className="w-full bg-card border-b border-border py-1 px-3 sm:py-3 sm:px-4">
       <ol className="max-w-2xl mx-auto flex items-center justify-between text-xs sm:text-sm list-none p-0 m-0">
         {steps.map((s, index) => {
           const isActive = s.num === step
@@ -29,13 +29,13 @@ export default function StepIndicator() {
           const isAccessible = s.num < step || (s.num === 2 && Boolean(originalImage))
 
           return (
-            <li key={s.num} className="flex items-center">
+            <li key={s.num} className="flex min-w-0 items-center">
               <button
                 type="button"
                 onClick={() => isAccessible && handleStepClick(s.num)}
                 disabled={!isAccessible}
                 aria-current={isActive ? 'step' : undefined}
-                className={`flex items-center gap-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-accent rounded-sm ${
+                className={`flex min-h-11 min-w-11 items-center gap-1 sm:gap-1.5 transition-colors rounded-sm ${
                   isAccessible ? 'cursor-pointer' : 'cursor-default'
                 } ${
                   isActive
@@ -46,7 +46,7 @@ export default function StepIndicator() {
                 }`}
               >
                 <span
-                  className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-mono font-bold transition-colors ${
+                  className={`inline-flex items-center justify-center size-5 shrink-0 rounded-full text-xs font-mono font-bold transition-colors ${
                     isActive
                       ? 'bg-accent text-white'
                       : isDone
@@ -68,11 +68,11 @@ export default function StepIndicator() {
                     s.num
                   )}
                 </span>
-                <span className="truncate">{s.label}</span>
+                <span className="break-words text-left">{s.label}</span>
               </button>
 
               {index < steps.length - 1 && (
-                <span className="mx-2 sm:mx-3 text-[#9CA3AF] font-bold select-none" aria-hidden="true">
+                <span className="mx-1 sm:mx-3 text-[#9CA3AF] font-bold select-none" aria-hidden="true">
                   ·
                 </span>
               )}

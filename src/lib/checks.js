@@ -245,8 +245,9 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct,
         }
       }
     }
-  } catch (err) {
-    console.warn('Checks image analysis error:', err)
+  } catch {
+    brightnessOk = sharpnessOk = bgOk = false
+    brightnessKey = sharpnessKey = bgKey = 'checkUnavailable'
   }
 
   checks.push({
