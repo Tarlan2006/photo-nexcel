@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useLang } from '../contexts/LangContext'
 import { useWizard } from '../contexts/WizardContext'
+import CameraCapture from './CameraCapture'
 
 function TipIcon({ type }) {
   if (type === 'wall') {
@@ -63,7 +64,13 @@ export default function Step1Photo() {
 
   const [isDragging, setIsDragging] = useState(false)
   const [tipsOpen, setTipsOpen] = useState(false)
+  const [isCameraOpen, setIsCameraOpen] = useState(false)
+
   const inputRef = useRef(null)
+  const cameraBtnRef = useRef(null)
+
+  const hasCameraSupport =
+    typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia)
 
   const onDragOver = (e) => {
     e.preventDefault()
@@ -97,6 +104,18 @@ export default function Step1Photo() {
     if (inputRef.current) {
       inputRef.current.click()
     }
+  }
+
+  const handleCameraClose = () => {
+    setIsCameraOpen(false)
+    setTimeout(() => {
+      cameraBtnRef.current?.focus()
+    }, 50)
+  }
+
+  const handleCameraCapture = (file) => {
+    setIsCameraOpen(false)
+    handleFile(file)
   }
 
   const resolvedErrorMessage = errorKey ? t[errorKey] || errorKey : null
@@ -151,24 +170,59 @@ export default function Step1Photo() {
           </svg>
         </div>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            triggerInput()
-          }}
-          className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white text-sm font-medium px-6 py-3 rounded transition-colors shadow-sm mb-3 cursor-pointer"
-        >
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path
-              d="M3 6C3 4.89543 3.89543 4 5 4H6.5L7.8 2.5H12.2L13.5 4H15C16.1046 4 17 4.89543 17 6V15C17 16.1046 16.1046 17 15 17H5C3.89543 17 3 16.1046 3 15V6Z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-            <circle cx="10" cy="10.5" r="3" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
-          <span>{t.btnShootOrUpload}</span>
-        </button>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
+          {hasCameraSupport && (
+            <button
+              ref={cameraBtnRef}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsCameraOpen(true)
+              }}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-white text-sm font-semibold px-5 py-3 rounded-lg transition-colors shadow-sm cursor-pointer"
+            >
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path
+                  d="M3 6C3 4.89543 3.89543 4 5 4H6.5L7.8 2.5H12.2L13.5 4H15C16.1046 4 17 4.89543 17 6V15C17 16.1046 16.1046 17 15 17H5C3.89543 17 3 16.1046 3 15V6Z"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                />
+                <circle cx="10" cy="10.5" r="3" stroke="currentColor" strokeWidth="1.6" />
+              </svg>
+              <span>{t.btnShootCamera}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              triggerInput()
+            }}
+            className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 text-sm font-semibold px-5 py-3 rounded-lg transition-colors shadow-2xs cursor-pointer ${
+              hasCameraSupport
+                ? 'bg-white hover:bg-bg/80 text-text border border-border hover:border-accent/60'
+                : 'bg-accent hover:bg-accent-hover text-white shadow-sm'
+            }`}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M12 16V8M12 8L9 11M12 8L15 11"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M3 15C3 17.8284 3 19.2426 3.87868 20.1213C4.75736 21 6.17157 21 9 21H15C17.8284 21 19.2426 21 20.1213 20.1213C21 19.2426 21 17.8284 21 15"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+            <span>{t.btnChooseFile}</span>
+          </button>
+        </div>
 
         <p className="text-[#4B525D] text-xs sm:text-sm mb-1">{t.uploadOr} {t.uploadDrag.toLowerCase()}</p>
         <p className="font-mono text-xs text-[#4B525D]">{t.uploadHint}</p>
@@ -300,6 +354,14 @@ export default function Step1Photo() {
           </div>
         )}
       </div>
+
+      {/* Camera Capture Modal */}
+      <CameraCapture
+        isOpen={isCameraOpen}
+        onClose={handleCameraClose}
+        onCapture={handleCameraCapture}
+        onSelectFile={triggerInput}
+      />
     </div>
   )
 }

@@ -23,7 +23,27 @@ export const translations = {
     step1Title: 'Фото на удостоверение РК и Green Card',
     step1Subtitle: 'Сделайте селфи или выберите фото. Подгоним размер и кадр под требования',
     btnShootOrUpload: 'Снять или выбрать фото',
+    btnShootCamera: 'Снять на камеру',
+    btnChooseFile: 'Выбрать файл',
     tipsToggle: 'Как сделать правильное фото',
+
+    // Camera Capture Modal
+    cameraModalTitle: 'Съёмка с камеры',
+    cameraClose: 'Закрыть',
+    cameraSwitch: 'Сменить камеру',
+    cameraShoot: 'Снять',
+    cameraCancelCountdown: 'Отмена',
+    cameraCountdown: 'Снимок через {sec}...',
+    cameraGuideOval: 'Поместите лицо в овал, глаза — по линии',
+    cameraEyeLine: 'Линия глаз',
+    cameraErrNotAllowedTitle: 'Доступ к камере запрещён',
+    cameraErrNotAllowedDesc: 'Разрешите доступ к камере в настройках браузера или выберите готовое фото.',
+    cameraErrNotFoundTitle: 'Камера не найдена',
+    cameraErrNotFoundDesc: 'Камера не обнаружена на устройстве. Подключите камеру или выберите файл.',
+    cameraErrNotReadableTitle: 'Камера недоступна',
+    cameraErrNotReadableDesc: 'Камера занята другим приложением. Закройте другие программы или выберите файл.',
+    cameraErrGenericTitle: 'Ошибка камеры',
+    cameraErrGenericDesc: 'Не удалось включить камеру. Попробуйте выбрать фото с устройства.',
 
     // Step 2
     step2Title: 'Выберите документ',
@@ -46,6 +66,7 @@ export const translations = {
 
     // Compact Privacy
     compactPrivacyText: 'Фото обрабатывается на вашем устройстве и никуда не отправляется',
+    compactPrivacyCamera: 'Видео с камеры не записывается и никуда не отправляется',
 
     // How to shoot tips
     howToShootLabel: '[ КАК СНЯТЬ ]',
@@ -193,7 +214,27 @@ export const translations = {
     step1Title: 'ҚР жеке куәлігі және Green Card фотосы',
     step1Subtitle: 'Селфи түсіріңіз немесе фото таңдаңыз. Өлшем мен кадрды талаптарға сай реттейміз',
     btnShootOrUpload: 'Фото түсіру немесе таңдау',
+    btnShootCamera: 'Камерамен түсіру',
+    btnChooseFile: 'Файлды таңдау',
     tipsToggle: 'Дұрыс фотоны қалай түсіру керек',
+
+    // Camera Capture Modal
+    cameraModalTitle: 'Камерамен түсіру',
+    cameraClose: 'Жабу',
+    cameraSwitch: 'Камераны ауыстыру',
+    cameraShoot: 'Түсіру',
+    cameraCancelCountdown: 'Болдырмау',
+    cameraCountdown: 'Түсіруге {sec} сек...',
+    cameraGuideOval: 'Бетті овалға, көзді сызыққа сәйкестендіріңіз',
+    cameraEyeLine: 'Көз сызығы',
+    cameraErrNotAllowedTitle: 'Камераға рұқсат берілмеген',
+    cameraErrNotAllowedDesc: 'Браузер баптауларында камераға рұқсат беріңіз немесе дайын фотоны таңдаңыз.',
+    cameraErrNotFoundTitle: 'Камера табылмады',
+    cameraErrNotFoundDesc: 'Құрылғыңызда камера табылмады. Камераны қосыңыз немесе файлды таңдаңыз.',
+    cameraErrNotReadableTitle: 'Камера қолжетімсіз',
+    cameraErrNotReadableDesc: 'Камера басқа қолданбада қолданылуда. Басқа қолданбаларды жабыңыз немесе файлды таңдаңыз.',
+    cameraErrGenericTitle: 'Камера қатесі',
+    cameraErrGenericDesc: 'Камераны қосу мүмкін болмады. Құрылғыдан фото таңдап көріңіз.',
 
     // Step 2
     step2Title: 'Құжатты таңдаңыз',
@@ -216,6 +257,7 @@ export const translations = {
 
     // Compact Privacy
     compactPrivacyText: 'Фото сіздің құрылғыңызда өңделеді және ешқайда жіберілмейді',
+    compactPrivacyCamera: 'Камерадағы бейне жазылмайды және ешқайда жіберілмейді',
 
     // How to shoot tips
     howToShootLabel: '[ ҚАЛАЙ ТҮСІРУ КЕРЕК ]',
