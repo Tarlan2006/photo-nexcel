@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLang } from '../contexts/LangContext'
 import { useWizard } from '../contexts/WizardContext'
 import { hasClosedArea, hasPhotoEdits } from '../lib/editor/edit-state'
@@ -23,7 +23,7 @@ export default function Step2Editor() {
   const [compare, setCompare] = useState({ holding: false, split: false, splitPosition: 50 })
   const title = useRef(null)
   const workspace = useRef(null)
-  const stageSelect = useRef(null)
+  const stageButtons = useRef({})
   const stageBody = useRef(null)
   const drawButton = useRef(null)
   const brushButton = useRef(null)
@@ -44,7 +44,7 @@ export default function Step2Editor() {
     const measure = () => {
       const bottom = bottomBar?.getBoundingClientRect().top ?? window.innerHeight
       const top = element.getBoundingClientRect().top + window.scrollY
-      element.style.setProperty('--editor-room', Math.max(240, Math.floor(bottom - top - 8)) + 'px')
+      element.style.setProperty('--editor-room', Math.max(340, Math.floor(bottom - top - 8)) + 'px')
     }
     const observer = new ResizeObserver(measure)
     observer.observe(title.current.parentElement)
@@ -91,7 +91,7 @@ export default function Step2Editor() {
   const changeView = useCallback((view) => changeBrush({ view }), [changeBrush])
 
   const focusControl = (target) => {
-    requestAnimationFrame(() => (target.current ?? stageSelect.current)?.focus())
+    requestAnimationFrame(() => (target.current ?? stageButtons.current.background)?.focus())
   }
 
   const selectStage = (nextStage) => {
@@ -100,7 +100,7 @@ export default function Step2Editor() {
     setOutlineDraft(null)
     setShowMask(false)
     changeCompare({ holding: false })
-    stageSelect.current?.focus({ preventScroll: true })
+    stageButtons.current[nextStage]?.focus({ preventScroll: true })
   }
 
   const closeOutline = () => {
@@ -151,6 +151,67 @@ export default function Step2Editor() {
     canRedo: Boolean(editHistory.future.length),
   }
 
+  const panel = (
+    <>
+      {drawing ? (
+        <OutlineControls draft={outlineDraft} setDraft={setOutlineDraft} applyOutline={applyOutline} cancelOutline={closeOutline} text={text} />
+      ) : brushing ? (
+        <BrushControls brush={brushTool} text={text} />
+      ) : (
+        <>
+          {stage === 'background' && (
+            <BackgroundPanel
+              bg={edit.bg}
+              update={updateEditor}
+              startOutline={() => {
+                changeCompare({ holding: false })
+                setOutlineDraft({ points: [], cursor: null })
+              }}
+              drawButton={drawButton}
+              showMask={showMask}
+              setShowMask={setShowMask}
+              brushAvailable={canBrush}
+              brushButton={brushButton}
+              startBrush={() => {
+                changeCompare({ holding: false })
+                setBrush({ mode: 'erase', size: 4, original: false, pan: false, view: initialView })
+              }}
+              segmentation={segmentation}
+              originalBackgroundWarning={originalBackgroundWarning}
+              text={text}
+            />
+          )}
+          {stage === 'tone' && <TonePanel edit={edit} update={updateEditor} getSession={getEditorSession} text={text} />}
+          {stage === 'filters' && <FiltersPanel filter={edit.filter} update={updateEditor} text={text} />}
+          {stage === 'suit' && <SuitPanel suit={edit.suit} update={updateEditor} segmentation={segmentation} text={text} />}
+
+          <PreviewControls compare={compare} changeCompare={changeCompare} disabled={!hasPhotoEdits(previewEdit) || showMask} text={text} />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={secondaryButton} disabled={!editHistory.past.length} onClick={undoEditor}>{text.undo}</button>
+            <button type="button" className={secondaryButton} disabled={!editHistory.future.length} onClick={redoEditor}>{text.redo}</button>
+            <button type="button" className={secondaryButton} onClick={reset}>{text.reset}</button>
+            <button type="button" className={secondaryButton} onClick={() => finishEditor(true)}>{text.skip}</button>
+          </div>
+        </>
+      )}
+
+      {needsModel && segmentation.status === 'loading' && (
+        <div role="status" className="rounded-lg border border-grid-border bg-white p-2 text-sm text-text-muted">
+          <p>{text.modelLoading}</p>
+          <progress aria-label={text.modelLoading} className="mt-2 block w-full accent-emerald-accent" />
+        </div>
+      )}
+      {needsModel && segmentation.status === 'error' && (
+        <div className="rounded-lg bg-amber-50 p-2 text-sm text-amber-950">
+          <p role="alert">{text.modelError}</p>
+          <button type="button" className={secondaryButton + ' mt-2'} onClick={ensureSegmentation}>{text.retry}</button>
+        </div>
+      )}
+      {editorBusy && <p role="status" className="text-sm text-text-muted">{text.processing}</p>}
+      {editorError && <p role="alert" className="rounded-lg bg-amber-50 p-2 text-sm text-amber-950">{text[editorError]}</p>}
+    </>
+  )
+
   return (
     <div className="mx-auto max-w-6xl px-2 py-4 sm:px-6 sm:py-6">
       <div className="mb-3 text-center sm:mb-5">
@@ -181,83 +242,45 @@ export default function Step2Editor() {
             role={brushing ? 'group' : undefined}
             aria-label={brushing ? text.brush : undefined}
           >
-            <div className="shrink-0 border-b border-grid-border p-2 sm:p-3">
-              <label className="flex min-w-0 flex-col gap-1 text-xs font-semibold text-text-muted">
-                <span>{text.stageCount.replace('{current}', stageIndex + 1).replace('{total}', stages.length)}</span>
-                <select
-                  ref={stageSelect}
-                  value={stage}
-                  aria-label={text.stagePicker}
-                  onChange={event => selectStage(event.target.value)}
-                  className="min-h-11 w-full min-w-0 rounded-lg border border-grid-border bg-paper px-2 text-sm font-semibold text-text-main focus-visible:outline-2 focus-visible:outline-emerald-accent"
-                >
-                  {stages.map(key => <option key={key} value={key}>{text[key]}</option>)}
-                </select>
-              </label>
-            </div>
-            <div ref={stageBody} role="region" aria-label={text[stage]} tabIndex={0} className="min-h-0 space-y-3 overflow-y-auto overscroll-contain p-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-accent sm:p-4">
-              {drawing ? (
-                <OutlineControls draft={outlineDraft} setDraft={setOutlineDraft} applyOutline={applyOutline} cancelOutline={closeOutline} text={text} />
-              ) : brushing ? (
-                <BrushControls brush={brushTool} text={text} />
-              ) : (
-                <>
-                  {stage === 'background' && (
-                    <BackgroundPanel
-                      bg={edit.bg}
-                      update={updateEditor}
-                      startOutline={() => {
-                        changeCompare({ holding: false })
-                        setOutlineDraft({ points: [], cursor: null })
-                      }}
-                      drawButton={drawButton}
-                      showMask={showMask}
-                      setShowMask={setShowMask}
-                      brushAvailable={canBrush}
-                      brushButton={brushButton}
-                      startBrush={() => {
-                        changeCompare({ holding: false })
-                        setBrush({ mode: 'erase', size: 4, original: false, pan: false, view: initialView })
-                      }}
-                      segmentation={segmentation}
-                      originalBackgroundWarning={originalBackgroundWarning}
-                      text={text}
-                    />
-                  )}
-                  {stage === 'tone' && <TonePanel edit={edit} update={updateEditor} getSession={getEditorSession} text={text} />}
-                  {stage === 'filters' && <FiltersPanel filter={edit.filter} update={updateEditor} text={text} />}
-                  {stage === 'suit' && <SuitPanel suit={edit.suit} update={updateEditor} segmentation={segmentation} text={text} />}
-
-                  <PreviewControls compare={compare} changeCompare={changeCompare} disabled={!hasPhotoEdits(previewEdit) || showMask} text={text} />
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" className={secondaryButton} disabled={!editHistory.past.length} onClick={undoEditor}>{text.undo}</button>
-                    <button type="button" className={secondaryButton} disabled={!editHistory.future.length} onClick={redoEditor}>{text.redo}</button>
-                    <button type="button" className={secondaryButton} onClick={reset}>{text.reset}</button>
-                    <button type="button" className={secondaryButton} onClick={() => finishEditor(true)}>{text.skip}</button>
+            {stages.map(key => {
+              const expanded = key === stage
+              const headingId = `editor-heading-${key}`
+              const panelId = `editor-panel-${key}`
+              return (
+                <Fragment key={key}>
+                  <h2 className="shrink-0 border-t border-grid-border first:border-t-0">
+                    <button
+                      ref={element => { stageButtons.current[key] = element }}
+                      id={headingId}
+                      type="button"
+                      aria-expanded={expanded}
+                      aria-controls={panelId}
+                      onClick={() => selectStage(expanded ? null : key)}
+                      className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm font-semibold leading-tight hover:bg-paper focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-accent sm:px-4"
+                    >
+                      <span aria-hidden="true" className={'shrink-0 text-[0.625rem] ' + (expanded ? 'rotate-90' : '')}>▶</span>
+                      {text[key]}
+                    </button>
+                  </h2>
+                  <div
+                    id={panelId}
+                    ref={expanded ? stageBody : undefined}
+                    role="region"
+                    aria-labelledby={headingId}
+                    hidden={!expanded}
+                    tabIndex={expanded ? 0 : undefined}
+                    className="min-h-0 space-y-3 overflow-y-auto overscroll-contain border-t border-grid-border p-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-accent sm:p-4"
+                  >
+                    {expanded && panel}
                   </div>
-                </>
-              )}
-
-              {needsModel && segmentation.status === 'loading' && (
-                <div role="status" className="rounded-lg border border-grid-border bg-white p-2 text-sm text-text-muted">
-                  <p>{text.modelLoading}</p>
-                  <progress aria-label={text.modelLoading} className="mt-2 block w-full accent-emerald-accent" />
-                </div>
-              )}
-              {needsModel && segmentation.status === 'error' && (
-                <div className="rounded-lg bg-amber-50 p-2 text-sm text-amber-950">
-                  <p role="alert">{text.modelError}</p>
-                  <button type="button" className={secondaryButton + ' mt-2'} onClick={ensureSegmentation}>{text.retry}</button>
-                </div>
-              )}
-              {editorBusy && <p role="status" className="text-sm text-text-muted">{text.processing}</p>}
-              {editorError && <p role="alert" className="rounded-lg bg-amber-50 p-2 text-sm text-amber-950">{text[editorError]}</p>}
-            </div>
+                </Fragment>
+              )
+            })}
             {brushing ? (
               <div className="shrink-0 border-t border-grid-border p-2 sm:p-3">
                 <button type="button" className={primaryButton} onClick={closeBrush}>{text.brushDone}</button>
               </div>
-            ) : !drawing && (
+            ) : stage && !drawing && (
               <div className="flex shrink-0 flex-wrap justify-between gap-1 border-t border-grid-border p-2 sm:gap-2 sm:p-3" role="group" aria-label={text.stagePicker}>
                 {stageIndex > 0 && (
                   <button type="button" className={secondaryButton} onClick={() => selectStage(stages[stageIndex - 1])}>{text.previousStage}</button>
