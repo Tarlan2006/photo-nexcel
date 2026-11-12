@@ -8,9 +8,9 @@
 
 ### Шаг 1. Создание репозитория и пуш
 ```bash
-git branch -M main
+git branch -M master
 git remote add origin https://github.com/<ваш-аккаунт>/photo-nexcel.git
-git push -u origin main
+git push -u origin master
 ```
 
 ### Шаг 2. Подключение в Cloudflare Pages
@@ -18,7 +18,7 @@ git push -u origin main
 2. Нажмите **Connect to Git** и выберите репозиторий `photo-nexcel`.
 3. Задайте параметры сборки:
    - **Project name:** `photo-nexcel`
-   - **Production branch:** `main`
+   - **Production branch:** `master`
    - **Framework preset:** `Vite`
    - **Build command:** `npm run build`
    - **Build output directory:** `dist`
@@ -78,3 +78,9 @@ curl -s -I -H "Accept-Encoding: gzip, br" https://photo.nexcel.kz/wasm/1.2.3/vis
 - `Content-Type: application/wasm`
 - `Content-Encoding: br` (или `gzip`)
 - `Cache-Control: public, max-age=31536000, immutable`
+
+## 5. Редактор фото
+
+Модель [MediaPipe SelfieMulticlass 256×256](https://developers.google.com/edge/mediapipe/solutions/vision/image_segmenter#multi-class_selfie_segmentation_model) от Google хранится в `public/models/selfie-multiclass-v1.tflite` (16 371 837 байт, Apache 2.0). Она загружается при первом выборе автоматического фона или костюма. Для ручного контура модель не нужна. При обновлении модели меняйте имя файла, поскольку URL кэшируется с `immutable`.
+
+`npm test` запускает юнит-тесты и проверку production-сборки в Chromium. Для браузерных тестов установите Chromium через `npx playwright install chromium` или задайте `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` для установленного Chrome. Тесты с фото используют локальные файлы из `tests/fixtures/`, исключённые из Git. При отсутствии файла соответствующая проверка пропускается. Исходники для локального прогона: [portrait.jpg](https://raw.githubusercontent.com/opencv/opencv/master/samples/data/lena.jpg) и [astronaut.png](https://raw.githubusercontent.com/scikit-image/scikit-image/v0.25.2/skimage/data/astronaut.png).
