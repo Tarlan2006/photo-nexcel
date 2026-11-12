@@ -58,18 +58,18 @@ export default function Step4Done() {
     <div className="max-w-2xl mx-auto px-6 py-10 sm:py-14 pb-28 text-center">
       {/* Title & Subtitle */}
       <div className="mb-8">
-        <h1 tabIndex={-1} className="font-heading font-extrabold text-2xl sm:text-3xl text-text mb-2 tracking-tight">
+        <h1 tabIndex={-1} className="font-heading font-extrabold text-2xl sm:text-3xl text-text-main mb-2 tracking-tight">
           {encoded?.success ? t.step4Title : failed ? t.exportFailedTitle : t.exportPreparing}
         </h1>
         {encoded?.success && (
-          <p className="text-muted text-sm sm:text-base max-w-md mx-auto">{t.step4Subtitle}</p>
+          <p className="text-text-muted text-sm sm:text-base max-w-md mx-auto">{t.step4Subtitle}</p>
         )}
       </div>
 
       {/* Preview Card */}
-      <div className="max-w-full bg-card border border-border rounded-xl p-4 sm:p-8 mb-8 inline-block shadow-2xs">
+      <div className="max-w-full bg-white border border-grid-border rounded-xl p-4 sm:p-8 mb-8 inline-block shadow-2xs">
         <div className="flex justify-center mb-4">
-          <div className="min-w-0 rounded-lg overflow-hidden border border-border/80 bg-white">
+          <div className="min-w-0 rounded-lg overflow-hidden border border-grid-border/80 bg-white">
             <canvas
               ref={previewCanvasRef}
               width={width}
@@ -79,12 +79,12 @@ export default function Step4Done() {
           </div>
         </div>
 
-        <p className="font-heading font-extrabold text-sm text-text mb-1">
+        <p className="font-heading font-extrabold text-sm text-text-main mb-1">
           {selectedPreset.name[lang]}
         </p>
 
         {/* Info on px & KB */}
-        <p className="font-mono text-xs text-[#4B525D] font-semibold">
+        <p className="font-mono text-xs text-text-muted font-semibold">
           {formattedInfo}
         </p>
       </div>
@@ -106,7 +106,7 @@ export default function Step4Done() {
           type="button"
           onClick={handleDownload}
           disabled={!encoded?.success}
-          className="inline-flex items-center gap-2 bg-accent hover:bg-accent-hover text-white text-base font-semibold px-8 py-3.5 rounded transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+          className="inline-flex items-center gap-2 bg-emerald-accent hover:bg-emerald-accent-hover text-white text-base font-semibold px-8 py-3.5 rounded transition-colors shadow-sm cursor-pointer disabled:opacity-50"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
             <path d="M10 3V13M10 13L6 9M10 13L14 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -115,17 +115,17 @@ export default function Step4Done() {
           <span>{t.btnDownloadJpeg}</span>
         </button>
 
-        <p className="mt-2 text-[#4B525D] text-xs font-medium">
+        <p className="mt-2 text-text-muted text-xs font-medium">
           {t.jpegFormat}
         </p>
       </div>
 
       {/* Secondary Actions: Other Document & New Photo */}
-      <div className="flex flex-wrap items-center justify-center gap-3 pt-6 border-t border-border/60">
+      <div className="flex flex-wrap items-center justify-center gap-3 pt-6 border-t border-grid-border/60">
         <button
           type="button"
           onClick={() => goToStep(2)}
-          className="inline-flex min-h-11 items-center gap-1.5 px-4 py-2.5 rounded border border-border bg-card text-text font-semibold text-xs sm:text-sm hover:border-accent hover:text-accent transition-colors cursor-pointer"
+          className="inline-flex min-h-11 items-center gap-1.5 px-4 py-2.5 rounded border border-grid-border bg-white text-text-main font-semibold text-xs sm:text-sm hover:border-emerald-accent hover:text-emerald-accent transition-colors cursor-pointer"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <rect x="2" y="3" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
@@ -137,7 +137,7 @@ export default function Step4Done() {
         <button
           type="button"
           onClick={retake}
-          className="inline-flex min-h-11 items-center gap-1.5 px-4 py-2.5 rounded border border-border bg-card text-text font-semibold text-xs sm:text-sm hover:bg-bg transition-colors cursor-pointer"
+          className="inline-flex min-h-11 items-center gap-1.5 px-4 py-2.5 rounded border border-grid-border bg-white text-text-main font-semibold text-xs sm:text-sm hover:bg-paper transition-colors cursor-pointer"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M2 8C2 4.68629 4.68629 2 8 2C10.0526 2 11.8703 3.03057 12.9649 4.60742M14 8C14 11.3137 11.3137 14 8 14C5.94744 14 4.12968 12.9694 3.03507 11.3926" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

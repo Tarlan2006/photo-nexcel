@@ -78,13 +78,13 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
 
         const settings = track.getSettings()
         setMirrored(settings.facingMode ? settings.facingMode === 'user' : !camera)
+        setIsLoading(false)
         const devices = await navigator.mediaDevices.enumerateDevices().catch(() => [])
         if (!current()) return
         const activeDevice = settings.deviceId || camera || devices.find((device) => device.kind === 'videoinput')?.deviceId
         setNextCamera(devices.find((device) =>
           device.kind === 'videoinput' && device.deviceId && device.deviceId !== activeDevice
         )?.deviceId ?? null)
-        setIsLoading(false)
 
         permission = await navigator.permissions?.query({ name: 'camera' }).catch(() => null)
         if (current() && permission) {
@@ -197,7 +197,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
         event.preventDefault()
         dismiss()
       }}
-      className="fixed inset-0 m-auto w-[calc(100%-1.5rem)] max-w-lg max-h-[calc(100dvh-1.5rem)] rounded-2xl bg-card text-text overflow-y-auto backdrop:bg-black/80 backdrop:backdrop-blur-xs"
+      className="fixed inset-0 m-auto w-[calc(100%-1.5rem)] max-w-lg max-h-[calc(100dvh-1.5rem)] rounded-2xl bg-white text-text-main overflow-y-auto backdrop:bg-black/80 backdrop:backdrop-blur-xs"
     >
       {/* Screen reader live region for countdown */}
       <div className="sr-only" aria-live="assertive" aria-atomic="true">
@@ -206,14 +206,14 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
 
       <div className="flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/80 bg-bg/50">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-grid-border/80 bg-paper/50">
           <div className="flex items-center gap-2">
             <svg
               width="18"
               height="18"
               viewBox="0 0 20 20"
               fill="none"
-              className="text-accent"
+              className="text-emerald-accent"
               aria-hidden="true"
             >
               <path
@@ -225,7 +225,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
             </svg>
             <h2
               id="camera-modal-title"
-              className="font-heading font-extrabold text-sm sm:text-base text-text"
+              className="font-heading font-extrabold text-sm sm:text-base text-text-main"
             >
               {t.cameraModalTitle}
             </h2>
@@ -236,7 +236,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
             onClick={dismiss}
             ref={closeRef}
             aria-label={t.cameraClose}
-            className="size-11 shrink-0 rounded-lg flex items-center justify-center text-[#4B525D] hover:text-text hover:bg-border/60 transition-colors cursor-pointer"
+            className="size-11 shrink-0 rounded-lg flex items-center justify-center text-text-muted hover:text-text-main hover:bg-grid-border/60 transition-colors cursor-pointer"
           >
             <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path
@@ -266,7 +266,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
           {isLoading && !errorType && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white bg-black/90 z-10">
               <svg
-                className="animate-spin h-8 w-8 text-accent"
+                className="animate-spin h-8 w-8 text-emerald-accent"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -296,7 +296,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
           {errorType && (
             <div
               role="alert"
-              className="absolute inset-0 p-6 grid place-items-center overflow-y-auto text-center bg-card text-text z-20"
+              className="absolute inset-0 p-6 grid place-items-center overflow-y-auto text-center bg-white text-text-main z-20"
             >
               <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-700 flex items-center justify-center mb-3">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -310,10 +310,10 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
                 </svg>
               </div>
 
-              <h3 className="font-heading font-extrabold text-base text-text mb-1">
+              <h3 className="font-heading font-extrabold text-base text-text-main mb-1">
                 {errorTitle}
               </h3>
-              <p className="text-xs sm:text-sm text-[#4B525D] max-w-sm mb-6 leading-relaxed">
+              <p className="text-xs sm:text-sm text-text-muted max-w-sm mb-6 leading-relaxed">
                 {errorDesc}
               </p>
 
@@ -324,14 +324,14 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
                     dismiss()
                     onSelectFile?.()
                   }}
-                  className="flex-1 bg-accent hover:bg-accent-hover text-white text-xs sm:text-sm font-semibold min-h-11 py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
+                  className="flex-1 bg-emerald-accent hover:bg-emerald-accent-hover text-white text-xs sm:text-sm font-semibold min-h-11 py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
                 >
                   {t.btnChooseFile}
                 </button>
                 <button
                   type="button"
                   onClick={dismiss}
-                  className="flex-1 border border-border text-text hover:bg-bg/60 text-xs sm:text-sm font-semibold min-h-11 py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
+                  className="flex-1 border border-grid-border text-text-main hover:bg-paper/60 text-xs sm:text-sm font-semibold min-h-11 py-2.5 px-4 rounded-lg transition-colors cursor-pointer"
                 >
                   {t.cameraClose}
                 </button>
@@ -366,7 +366,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
           {/* Countdown display over video */}
           {countdown !== null && countdown > 0 && (
             <div className="absolute inset-0 bg-black/40 backdrop-blur-2xs flex items-center justify-center z-20">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-accent text-white flex items-center justify-center font-heading font-extrabold text-5xl sm:text-6xl shadow-2xl animate-pulse">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-emerald-accent text-white flex items-center justify-center font-heading font-extrabold text-5xl sm:text-6xl shadow-2xl animate-pulse">
                 {countdown}
               </div>
             </div>
@@ -375,7 +375,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
 
         {/* Controls Footer */}
         {!errorType && (
-          <div className="p-4 sm:p-5 bg-card border-t border-border/80 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="p-4 sm:p-5 bg-white border-t border-grid-border/80 flex items-center justify-between gap-2 sm:gap-4">
             {/* Camera switch button (visible if > 1 camera) */}
             <div className="w-12 flex justify-start">
               {nextCamera && (
@@ -385,7 +385,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
                   disabled={isLoading || encoding || countdown !== null}
                   title={t.cameraSwitch}
                   aria-label={t.cameraSwitch}
-                  className="size-11 rounded-full border border-border bg-bg hover:bg-border/60 text-text flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
+                  className="size-11 rounded-full border border-grid-border bg-paper hover:bg-grid-border/60 text-text-main flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40"
                 >
                   <svg
                     width="18"
@@ -427,7 +427,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
                   type="button"
                   onClick={() => setCountdown(3)}
                   disabled={isLoading || encoding}
-                  className="group inline-flex items-center gap-2.5 bg-accent hover:bg-accent-hover text-white font-heading font-extrabold text-sm sm:text-base px-3 sm:px-7 min-h-11 py-3 rounded-full transition-all shadow-md hover:shadow-lg active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+                  className="group inline-flex items-center gap-2.5 bg-emerald-accent hover:bg-emerald-accent-hover text-white font-heading font-extrabold text-sm sm:text-base px-3 sm:px-7 min-h-11 py-3 rounded-full transition-all shadow-md hover:shadow-lg active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
                 >
                   <span className="w-3.5 h-3.5 rounded-full bg-white group-hover:scale-110 transition-transform" />
                   <span>{t.cameraShoot}</span>
@@ -445,7 +445,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
                 }}
                 title={t.btnChooseFile}
                 aria-label={t.btnChooseFile}
-                className="size-11 rounded-full border border-border bg-bg hover:bg-border/60 text-[#4B525D] hover:text-text flex items-center justify-center transition-colors cursor-pointer"
+                className="size-11 rounded-full border border-grid-border bg-paper hover:bg-grid-border/60 text-text-muted hover:text-text-main flex items-center justify-center transition-colors cursor-pointer"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path
@@ -466,7 +466,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
             </div>
           </div>
         )}
-        <p className="px-4 py-3 text-center text-xs text-muted">{t.cameraPrivacy}</p>
+        <p className="px-4 py-3 text-center text-xs text-text-muted">{t.cameraPrivacy}</p>
       </div>
     </dialog>
   )

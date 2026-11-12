@@ -65,7 +65,7 @@ function MiniCanvasPreview({ cropRes, preset }) {
 
   return (
     <div
-      className={`rounded-lg overflow-hidden border border-border/80 bg-white shadow-2xs shrink-0 flex items-center justify-center ${
+      className={`rounded-lg overflow-hidden border border-grid-border/80 bg-white shadow-2xs shrink-0 flex items-center justify-center ${
         isKz ? 'w-24 h-31 sm:w-28 sm:h-36' : 'w-28 h-28 sm:w-32 sm:h-32'
       }`}
     >
@@ -96,10 +96,10 @@ export default function Step2Document() {
     <div className="max-w-3xl mx-auto px-6 py-10 sm:py-14 pb-28">
       {/* Title & Subtitle */}
       <div className="text-center mb-8">
-        <h1 tabIndex={-1} className="font-heading font-extrabold text-2xl sm:text-3xl text-text mb-2 tracking-tight">
+        <h1 tabIndex={-1} className="font-heading font-extrabold text-2xl sm:text-3xl text-text-main mb-2 tracking-tight">
           {t.step2Title}
         </h1>
-        <p className="text-[#4B525D] text-sm sm:text-base max-w-lg mx-auto">
+        <p className="text-text-muted text-sm sm:text-base max-w-lg mx-auto">
           {t.step2Subtitle}
         </p>
       </div>
@@ -115,28 +115,28 @@ export default function Step2Document() {
           return (
             <div
               key={preset.id}
-              className={`bg-card border rounded-xl p-5 text-left transition-all relative flex flex-col justify-between ${
+              className={`bg-white border rounded-xl p-5 text-left transition-all relative flex flex-col justify-between ${
                 isSelected
-                  ? 'border-accent ring-2 ring-accent/30 bg-accent/[0.01]'
-                  : 'border-border hover:border-accent/50'
+                  ? 'border-emerald-accent ring-2 ring-emerald-accent/30 bg-emerald-accent/[0.01]'
+                  : 'border-grid-border hover:border-emerald-accent/50'
               }`}
             >
               <div>
                 {/* Header of Card */}
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-grid-border/60">
                   <div className="flex items-center gap-2.5">
                     <div
                       className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                        isSelected ? 'bg-accent/10 text-accent' : 'bg-bg text-[#4B525D]'
+                        isSelected ? 'bg-emerald-accent/10 text-emerald-accent' : 'bg-paper text-text-muted'
                       }`}
                     >
                       <Icon />
                     </div>
                     <div>
-                      <label htmlFor={preset.id} className="block cursor-pointer font-heading font-extrabold text-base text-text">
+                      <label htmlFor={preset.id} className="block cursor-pointer font-heading font-extrabold text-base text-text-main">
                         {preset.name[lang]}
                       </label>
-                      <p className="text-muted text-xs font-mono">
+                      <p className="text-text-muted text-xs font-mono">
                         {t.dimensionsAndLimit.replace('{w}', preset.width).replace('{h}', preset.height).replace('{max}', preset.maxKb)}
                       </p>
                     </div>
@@ -148,7 +148,7 @@ export default function Step2Document() {
                     id={preset.id}
                     checked={isSelected}
                     onChange={() => selectPreset(preset.id)}
-                    className="size-11 shrink-0 cursor-pointer accent-accent"
+                    className="relative size-11 shrink-0 cursor-pointer appearance-none rounded before:absolute before:inset-3 before:rounded-full before:border before:border-slate-400 checked:before:border-emerald-accent checked:before:bg-emerald-accent checked:after:absolute checked:after:inset-[18px] checked:after:rounded-full checked:after:bg-white"
                   />
                 </div>
 
@@ -187,7 +187,7 @@ export default function Step2Document() {
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-950 mb-2">
                           ✓ {t.cropReady}
                         </span>
-                        <p className="text-[#4B525D] text-xs font-medium">
+                        <p className="text-text-muted text-xs font-medium">
                           {t.headEstimate
                             .replace('{percent}', cropRes.headPct)
                             .replace('{range}', [preset.headMinPct, preset.headMaxPct].join('–'))}
@@ -196,10 +196,10 @@ export default function Step2Document() {
                     )}
 
                     {/* Requirements summary */}
-                    <ul className="space-y-1 text-[#4B525D] text-xs">
+                    <ul className="space-y-1 text-text-muted text-xs">
                       {preset.rules[lang].slice(0, 2).map((rule, idx) => (
                         <li key={idx} className="flex items-start gap-1 font-medium">
-                          <span className="text-accent shrink-0 font-bold">·</span>
+                          <span className="text-emerald-accent shrink-0 font-bold">·</span>
                           <span>{rule}</span>
                         </li>
                       ))}
@@ -209,7 +209,7 @@ export default function Step2Document() {
               </div>
 
               {/* Action Button inside card */}
-              <div className="pt-3 border-t border-border/40 flex justify-end">
+              <div className="pt-3 border-t border-grid-border/40 flex justify-end">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -218,8 +218,8 @@ export default function Step2Document() {
                   }}
                   className={`min-h-11 text-xs font-semibold px-4 py-2 rounded transition-colors cursor-pointer ${
                     isSelected
-                      ? 'bg-accent text-white hover:bg-accent-hover'
-                      : 'border border-border text-text hover:border-accent hover:text-accent'
+                      ? 'bg-emerald-accent text-white hover:bg-emerald-accent-hover'
+                      : 'border border-grid-border text-text-main hover:border-emerald-accent hover:text-emerald-accent'
                   }`}
                 >
                   {t.selectAndContinue} →

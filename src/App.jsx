@@ -23,12 +23,12 @@ function WizardContent() {
   }, [step])
 
   return (
-    <div className="min-h-screen bg-bg text-text flex flex-col justify-between">
-      <div>
-        <Header />
+    <div className="min-h-screen bg-paper text-text-main flex flex-col justify-between">
+      <Header />
+      <div className="pt-16">
         <StepIndicator />
 
-        <main ref={mainRef} className="min-h-[500px]">
+        <main id="wizard-main" tabIndex={-1} ref={mainRef} className="min-h-[500px]">
           {step === 1 && <Step1Photo />}
           {step === 2 && <Step2Document />}
           {step === 3 && <Step3Check />}

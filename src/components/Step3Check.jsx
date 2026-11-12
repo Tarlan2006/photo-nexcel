@@ -75,22 +75,22 @@ export default function Step3Check() {
     <div className="max-w-4xl mx-auto px-6 py-10 sm:py-14 pb-28">
       {/* Title & Subtitle */}
       <div className="text-center mb-8">
-        <h1 tabIndex={-1} className="font-heading font-extrabold text-2xl sm:text-3xl text-text mb-2 tracking-tight">
+        <h1 tabIndex={-1} className="font-heading font-extrabold text-2xl sm:text-3xl text-text-main mb-2 tracking-tight">
           {t.step3Title}
         </h1>
-        <p className="text-[#4B525D] text-sm sm:text-base max-w-lg mx-auto">
+        <p className="text-text-muted text-sm sm:text-base max-w-lg mx-auto">
           {t.step3Subtitle}
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Canvas Preview + Sliders */}
-        <div className="lg:col-span-6 bg-card border border-border rounded-xl p-5 sm:p-6">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/60">
-            <span className="font-heading font-extrabold text-sm text-text">
+        <div className="lg:col-span-6 bg-white border border-grid-border rounded-xl p-5 sm:p-6">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-grid-border/60">
+            <span className="font-heading font-extrabold text-sm text-text-main">
               {selectedPreset.name[lang]}
             </span>
-            <span className="font-mono text-xs text-[#4B525D] font-medium">
+            <span className="font-mono text-xs text-text-muted font-medium">
               {selectedPreset.width} × {selectedPreset.height} px
             </span>
           </div>
@@ -116,7 +116,7 @@ export default function Step3Check() {
 
           {/* Canvas Container */}
           <div className="flex flex-col items-center mb-6">
-            <div className={`relative rounded-lg overflow-hidden border ${isValidCrop ? 'border-border shadow-2xs' : 'border-amber-400 bg-amber-50'}`}>
+            <div className={`relative rounded-lg overflow-hidden border ${isValidCrop ? 'border-grid-border shadow-2xs' : 'border-amber-400 bg-amber-50'}`}>
               <canvas
                 ref={previewCanvasRef}
                 className={`max-h-[340px] max-w-full h-auto w-auto bg-white ${isValidCrop ? 'block' : 'hidden'}`}
@@ -164,23 +164,23 @@ export default function Step3Check() {
               )}
             </div>
             {isValidCrop && (
-              <p className="text-xs text-[#4B525D] text-center mt-2.5 font-medium max-w-xs">
+              <p className="text-xs text-text-muted text-center mt-2.5 font-medium max-w-xs">
                 {t.guideCorridor}
               </p>
             )}
           </div>
 
           {/* Sliders with accessible labels */}
-          <div className="pt-4 border-t border-border/60 space-y-4">
+          <div className="pt-4 border-t border-grid-border/60 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="font-heading font-extrabold text-xs uppercase tracking-wider text-[#4B525D]">
+              <span className="font-heading font-extrabold text-xs uppercase tracking-wider text-text-muted">
                 {t.adjustTitle}
               </span>
               {hasAdjustments && (
                 <button
                   type="button"
                   onClick={resetAdjustments}
-                  className="min-h-11 font-mono text-xs font-semibold text-accent hover:underline cursor-pointer"
+                  className="min-h-11 font-mono text-xs font-semibold text-emerald-accent hover:underline cursor-pointer"
                 >
                   {t.adjustReset}
                 </button>
@@ -190,10 +190,10 @@ export default function Step3Check() {
             {/* Scale Slider */}
             <div>
               <div className="flex justify-between text-xs mb-1.5">
-                <label htmlFor="scale-slider" className="text-text font-semibold cursor-pointer">
+                <label htmlFor="scale-slider" className="text-text-main font-semibold cursor-pointer">
                   {t.adjustScale}
                 </label>
-                <span className="font-mono text-[#4B525D] font-bold">
+                <span className="font-mono text-text-muted font-bold">
                   {scalePercent > 0 ? `+${scalePercent}%` : `${scalePercent}%`}
                 </span>
               </div>
@@ -206,17 +206,17 @@ export default function Step3Check() {
                 value={scalePercent}
                 onChange={handleScaleChange}
                 aria-label={t.adjustScale}
-                className="w-full accent-accent cursor-pointer"
+                className="min-h-11 w-full cursor-pointer accent-emerald-accent lg:min-h-6"
               />
             </div>
 
             {/* Shift Y Slider */}
             <div>
               <div className="flex justify-between text-xs mb-1.5">
-                <label htmlFor="shifty-slider" className="text-text font-semibold cursor-pointer">
+                <label htmlFor="shifty-slider" className="text-text-main font-semibold cursor-pointer">
                   {t.adjustShiftY}
                 </label>
-                <span className="font-mono text-[#4B525D] font-bold">
+                <span className="font-mono text-text-muted font-bold">
                   {shiftYPercent > 0 ? `+${shiftYPercent}%` : `${shiftYPercent}%`}
                 </span>
               </div>
@@ -229,7 +229,7 @@ export default function Step3Check() {
                 value={shiftYPercent}
                 onChange={handleShiftYChange}
                 aria-label={t.adjustShiftY}
-                className="w-full accent-accent cursor-pointer"
+                className="min-h-11 w-full cursor-pointer accent-emerald-accent lg:min-h-6"
               />
             </div>
           </div>
@@ -238,13 +238,13 @@ export default function Step3Check() {
         {/* Right Column: Automated & Manual Checks */}
         <div className="lg:col-span-6 space-y-5">
           {/* Automated Checks */}
-          <div className="bg-card border border-border rounded-xl p-5 sm:p-6">
-            <h2 className="font-heading font-extrabold text-sm text-text mb-4 pb-2 border-b border-border/60">
+          <div className="bg-white border border-grid-border rounded-xl p-5 sm:p-6">
+            <h2 className="font-heading font-extrabold text-sm text-text-main mb-4 pb-2 border-b border-grid-border/60">
               {t.checksTitle}
             </h2>
 
             {checks.length === 0 ? (
-              <p className="text-[#4B525D] text-xs">
+              <p className="text-text-muted text-xs">
                 {t.checkingPhoto}
               </p>
             ) : (
@@ -254,7 +254,7 @@ export default function Step3Check() {
                   return (
                     <li
                       key={chk.id}
-                      className="flex items-start justify-between gap-3 text-xs pb-2 border-b border-border/40 last:border-b-0 last:pb-0"
+                      className="flex items-start justify-between gap-3 text-xs pb-2 border-b border-grid-border/40 last:border-b-0 last:pb-0"
                     >
                       <div className="flex items-start gap-2">
                         <span className="mt-0.5 shrink-0" aria-hidden="true">
@@ -277,7 +277,7 @@ export default function Step3Check() {
                             </svg>
                           )}
                         </span>
-                        <span className={isNeutral || chk.ok ? 'text-text font-medium' : 'text-amber-950 font-bold'}>
+                        <span className={isNeutral || chk.ok ? 'text-text-main font-medium' : 'text-amber-950 font-bold'}>
                           {chk.message?.[lang] || t[chk.key] || chk.id}
                         </span>
                       </div>
@@ -301,29 +301,29 @@ export default function Step3Check() {
           </div>
 
           {/* Manual Visual Checklist */}
-          <div className="bg-card border border-border rounded-xl p-5 sm:p-6">
-            <h2 className="font-heading font-extrabold text-sm text-text mb-4 pb-2 border-b border-border/60 flex items-center justify-between">
+          <div className="bg-white border border-grid-border rounded-xl p-5 sm:p-6">
+            <h2 className="font-heading font-extrabold text-sm text-text-main mb-4 pb-2 border-b border-grid-border/60 flex items-center justify-between">
               <span>{t.visualCheck}</span>
-              <span className="font-mono text-xs text-[#4B525D] font-bold">
+              <span className="font-mono text-xs text-text-muted font-bold">
                 {t.checkStatusManual}
               </span>
             </h2>
 
             <ul className="space-y-2.5 text-xs">
-              <li className="flex items-center gap-2 text-[#4B525D] font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" aria-hidden="true" />
+              <li className="flex items-center gap-2 text-text-muted font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-accent shrink-0" aria-hidden="true" />
                 <span>{t.manualGlasses}</span>
               </li>
-              <li className="flex items-center gap-2 text-[#4B525D] font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" aria-hidden="true" />
+              <li className="flex items-center gap-2 text-text-muted font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-accent shrink-0" aria-hidden="true" />
                 <span>{t.manualMouth}</span>
               </li>
-              <li className="flex items-center gap-2 text-[#4B525D] font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" aria-hidden="true" />
+              <li className="flex items-center gap-2 text-text-muted font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-accent shrink-0" aria-hidden="true" />
                 <span>{t.manualShadows}</span>
               </li>
-              <li className="flex items-center gap-2 text-[#4B525D] font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" aria-hidden="true" />
+              <li className="flex items-center gap-2 text-text-muted font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-accent shrink-0" aria-hidden="true" />
                 <span>{t.manualBg}</span>
               </li>
             </ul>

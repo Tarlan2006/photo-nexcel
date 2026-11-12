@@ -24,14 +24,14 @@ export default function BottomBar() {
   return (
     <aside
       aria-label={t.stepNavigation}
-      className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] px-6 shadow-sm"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-grid-border pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] px-6 shadow-sm"
     >
       <div className="max-w-xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
         {/* Back Button */}
         <button
           type="button"
           onClick={goBack}
-          className="min-h-[44px] min-w-[44px] inline-flex items-center gap-1.5 px-4 py-2.5 rounded border border-border text-text font-semibold text-sm hover:bg-bg hover:border-text/30 transition-colors cursor-pointer"
+          className="min-h-[44px] min-w-[44px] inline-flex items-center gap-1.5 px-4 py-2.5 rounded border border-grid-border text-text-main font-semibold text-sm hover:bg-paper hover:border-text-main/30 transition-colors cursor-pointer"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path
@@ -46,8 +46,9 @@ export default function BottomBar() {
         </button>
 
         {/* Step progress label for mobile */}
-        <span className="font-mono text-xs text-[#4B525D] font-bold" aria-label={t.stepProgress.replace('{step}', step)}>
-          {step} / 4
+        <span className="font-mono text-xs text-text-muted font-bold">
+          <span aria-hidden="true">{step} / 4</span>
+          <span className="sr-only">{t.stepProgress.replace('{step}', step)}</span>
         </span>
 
         {/* Next Button (for steps 2 and 3) */}
@@ -58,8 +59,8 @@ export default function BottomBar() {
             disabled={isNextDisabled}
             className={`min-h-[44px] min-w-[44px] inline-flex items-center gap-1.5 px-3 sm:px-6 py-2.5 rounded font-semibold text-sm transition-colors ${
               isNextDisabled
-                ? 'bg-[#E5E7EB] text-[#6B7280] cursor-not-allowed'
-                : 'bg-accent hover:bg-accent-hover text-white cursor-pointer shadow-2xs'
+                ? 'bg-grid-border text-text-muted cursor-not-allowed'
+                : 'bg-emerald-accent hover:bg-emerald-accent-hover text-white cursor-pointer shadow-2xs'
             }`}
           >
             <span>{t.btnNext}</span>
