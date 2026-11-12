@@ -20,5 +20,8 @@ playwright-report/
 *.png
 *.gif
 !public/apple-touch-icon.png
+!public/favicon.png
+!public/icon-192.png
+!public/icon-512.png
 !public/logo-1024.png
 !public/og-image.png
