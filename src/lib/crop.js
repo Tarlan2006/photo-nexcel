@@ -29,9 +29,10 @@ function isInside(x, y, w, h) {
  * @param {Array} landmarks - 468/478 normalized landmarks from MediaPipe
  * @param {Object} preset - Document preset from presets.js
  * @param {Object} adjustments - { scaleOffset: number (-0.10 to 0.10), offsetY: number (-0.10 to 0.10) }
+ * @param {HTMLCanvasElement|null} backgroundMatte - Optional grayscale person mask in source proportions
  * @returns {Object}
  */
-export function cropFace(source, landmarks, preset, adjustments = {}) {
+export function cropFace(source, landmarks, preset, adjustments = {}, backgroundMatte = null) {
   const origW = source.width
   const origH = source.height
   const targetW = preset.width
@@ -157,30 +158,25 @@ export function cropFace(source, landmarks, preset, adjustments = {}) {
   }
 
   // 6. Draw on canvas
-  const canvas = document.createElement('canvas')
-  if (canvas.width !== targetW || canvas.height !== targetH) {
+  function drawAligned(image) {
+    const canvas = document.createElement('canvas')
     canvas.width = targetW
     canvas.height = targetH
+    const ctx = canvas.getContext('2d')
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.translate(canvasEyeMidX, canvasEyeMidY)
+    ctx.scale(s, s)
+    ctx.rotate(-angle)
+    ctx.translate(-cx, -cy)
+    ctx.drawImage(image, 0, 0, origW, origH)
+    return canvas
   }
-  const ctx = canvas.getContext('2d')
-
-  ctx.imageSmoothingEnabled = true
-  ctx.imageSmoothingQuality = 'high'
-
-  ctx.clearRect(0, 0, targetW, targetH)
-
-  ctx.save()
-  ctx.translate(canvasEyeMidX, canvasEyeMidY)
-  ctx.scale(s, s)
-  ctx.rotate(-angle)
-  ctx.translate(-cx, -cy)
-
-  ctx.drawImage(source, 0, 0)
-  ctx.restore()
 
   return {
     success: true,
-    canvas,
+    canvas: drawAligned(source),
+    backgroundMatte: backgroundMatte ? drawAligned(backgroundMatte) : null,
     width: targetW,
     height: targetH,
     headPct,

@@ -46,9 +46,10 @@ function formatMessage(key, params = {}) {
  * @param {Object} preset - Selected document preset
  * @param {number} headPct - Actual percentage of head in canvas
  * @param {Array} blendshapes - Face blendshapes categories from MediaPipe
+ * @param {HTMLCanvasElement|null} backgroundMatte - Cropped grayscale person mask, if background replacement was applied
  * @returns {Array<Object>} List of checks with { id, ok: boolean, status: 'ok'|'warn', key, message: { ru, kz } }
  */
-export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct, blendshapes = []) {
+export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct, blendshapes = [], backgroundMatte = null) {
   const checks = []
 
   // Safeguard: validate landmarks
@@ -207,7 +208,8 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct,
         }
       }
 
-      // B. Background check: 8% top strip (full width) + 8% side strips (upper 55% of height)
+      // Check only the replaced background when a matte is available. For an
+      // unedited image, sample the top and upper side strips as before.
       const leftW = Math.max(1, Math.round(w * 0.08))
       const rightX = w - leftW
       const topH = Math.max(1, Math.round(h * 0.08))
@@ -215,17 +217,19 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct,
 
       const fullImgData = ctx.getImageData(0, 0, w, h)
       const fullData = fullImgData.data
+      const matte = backgroundMatte?.getContext('2d').getImageData(0, 0, w, h).data
 
       let bgLumaSum = 0
       let bgLumaSqSum = 0
       let bgPixelCount = 0
 
-      for (let y = 0; y < h; y++) {
+      for (let y = 0; y < Math.max(topH, sideH); y++) {
         for (let x = 0; x < w; x++) {
           const isTopStrip = y < topH
           const isSideStrip = y < sideH && (x < leftW || x >= rightX)
-          if (isTopStrip || isSideStrip) {
-            const idx = (y * w + x) * 4
+          const idx = (y * w + x) * 4
+          const isBackground = matte ? matte[idx] <= 12 && matte[idx + 3] === 255 : isTopStrip || isSideStrip
+          if (isBackground) {
             const lum = 0.299 * fullData[idx] + 0.587 * fullData[idx + 1] + 0.114 * fullData[idx + 2]
             bgLumaSum += lum
             bgLumaSqSum += lum * lum
@@ -234,7 +238,10 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct,
         }
       }
 
-      if (bgPixelCount > 0) {
+      if (matte && bgPixelCount < w * h * 0.025) {
+        bgOk = false
+        bgKey = 'checkBgWarn'
+      } else if (bgPixelCount > 0) {
         const bgMean = bgLumaSum / bgPixelCount
         const bgVariance = Math.max(0, bgLumaSqSum / bgPixelCount - bgMean * bgMean)
         const bgStdDev = Math.sqrt(bgVariance)

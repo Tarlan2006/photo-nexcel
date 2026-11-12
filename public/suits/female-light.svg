@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="432" viewBox="0 0 1000 720">
+  <defs>
+    <linearGradient id="jacket" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#c6b6ae"/>
+      <stop offset="1" stop-color="#9d8980"/>
+    </linearGradient>
+  </defs>
+  <path fill="#fffaf7" d="M372 79 403 15q97 131 194 0l31 64-60 274-68 64-68-64Z"/>
+  <path fill="url(#jacket)" d="M0 720V335Q4 240 104 191L334 87 403 23l97 379 97-379 69 64 230 104q100 49 104 144v385Z"/>
+  <path fill="#b09c92" d="m334 87 69-64 97 379-196-226 70 7-63-53Zm332 0-69-64-97 379 196-226-70 7 63-53Z"/>
+  <path fill="none" stroke="#9d8980" stroke-width="8" opacity=".45" d="M500 403v317M191 402l-41 318m659-318 41 318m-217-370 124 5"/>
+  <path d="M424 118q76 70 152 0" fill="none" stroke="#f0e2db" stroke-width="5" opacity=".7"/>
+  <circle cx="529" cy="512" r="10" fill="#795f53"/>
+  <circle cx="529" cy="608" r="10" fill="#795f53"/>
+</svg>
