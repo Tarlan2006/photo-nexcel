@@ -12,27 +12,19 @@ export default function StepIndicator() {
     { num: 4, label: t.stepLabel4 },
   ]
 
-  const handleStepClick = (targetNum) => {
-    if (targetNum < step) {
-      goToStep(targetNum)
-    } else if (targetNum === 2 && originalImage && step === 1) {
-      goToStep(2)
-    }
-  }
-
   return (
     <nav aria-label={t.stepNavigation} className="w-full bg-card border-b border-border py-1 px-3 sm:py-3 sm:px-4">
       <ol className="max-w-2xl mx-auto flex items-center justify-between text-xs sm:text-sm list-none p-0 m-0">
         {steps.map((s, index) => {
           const isActive = s.num === step
           const isDone = s.num < step
-          const isAccessible = s.num < step || (s.num === 2 && Boolean(originalImage))
+          const isAccessible = !isActive && (isDone || (s.num === 2 && Boolean(originalImage)))
 
           return (
             <li key={s.num} className="flex min-w-0 items-center">
               <button
                 type="button"
-                onClick={() => isAccessible && handleStepClick(s.num)}
+                onClick={() => goToStep(s.num)}
                 disabled={!isAccessible}
                 aria-current={isActive ? 'step' : undefined}
                 className={`flex min-h-11 min-w-11 items-center gap-1 sm:gap-1.5 transition-colors rounded-sm ${

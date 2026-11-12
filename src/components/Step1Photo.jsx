@@ -220,6 +220,7 @@ export default function Step1Photo() {
         <p className="text-[#4B525D] text-xs sm:text-sm mb-1">{t.uploadOr} {t.uploadDrag.toLowerCase()}</p>
         <p className="font-mono text-xs text-[#4B525D]">{t.uploadHint}</p>
       </div>
+      <p className="mt-3 text-center text-xs text-muted">{t.photoPrivacy}</p>
 
       {/* Processing Status Spinner */}
       {isProcessing && (
@@ -279,11 +280,6 @@ export default function Step1Photo() {
           </svg>
           <div className="text-sm">
             <p className="font-bold text-amber-950 mb-0.5">{resolvedErrorMessage}</p>
-            {errorKey === 'errOutOfBounds' && (
-              <p className="text-xs text-amber-900 font-medium">
-                {t.errOutOfBoundsHint}
-              </p>
-            )}
             {errorKey === 'errNoFace' && (
               <p className="text-xs text-amber-900 font-medium">
                 {t.errNoFaceHint}

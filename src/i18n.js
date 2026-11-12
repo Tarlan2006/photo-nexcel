@@ -1,9 +1,5 @@
 export const translations = {
   ru: {
-    lang: 'RU',
-    langFull: 'Русский',
-    altLang: 'KZ',
-    altLangFull: 'Қазақша',
 
     stepNavigation: 'Навигация по шагам',
     stepProgress: 'Шаг {step} из 4',
@@ -21,8 +17,6 @@ export const translations = {
     checkingPhoto: 'Выполняется проверка параметров…',
     checkUnavailable: 'Автоматическая проверка изображения недоступна.',
     errSmallFace: 'Лицо слишком маленькое. Подойдите ближе или обрежьте фото перед загрузкой.',
-    // Header
-    headerBack: 'nexcel.kz',
 
     // Wizard Steps
     stepLabel1: 'Фото',
@@ -38,7 +32,6 @@ export const translations = {
     // Step 1
     step1Title: 'Фото на удостоверение РК и Green Card',
     step1Subtitle: 'Сделайте селфи или выберите фото. Подгоним размер и кадр под требования',
-    btnShootOrUpload: 'Снять или выбрать фото',
     btnShootCamera: 'Снять на камеру',
     btnChooseFile: 'Выбрать файл',
     tipsToggle: 'Как сделать правильное фото',
@@ -71,7 +64,6 @@ export const translations = {
     step3Subtitle: 'Убедитесь, что лицо в кадре, или отрегулируйте ползунками',
     guideCorridor: 'Голова (макушка — подбородок) должна быть внутри коридора',
     guideChin: 'Подбородок',
-    guideHeadTop: 'Макушка (норма)',
 
     // Step 4
     step4Title: 'Фото готово к скачиванию',
@@ -80,13 +72,11 @@ export const translations = {
     btnOtherDoc: 'Другой документ',
     btnNewPhoto: 'Новое фото',
 
-    // Compact Privacy
-    compactPrivacyText: 'Фото обрабатывается на вашем устройстве и никуда не отправляется',
-    compactPrivacyCamera: 'Видео с камеры не записывается и никуда не отправляется',
+    // Privacy
+    photoPrivacy: 'Фото обрабатывается на вашем устройстве и никуда не отправляется',
+    cameraPrivacy: 'Видео с камеры не записывается и никуда не отправляется',
 
     // How to shoot tips
-    howToShootLabel: '[ КАК СНЯТЬ ]',
-    howToShootTitle: 'Как сделать правильное фото',
     howToShootTips: [
       {
         title: 'Светлая стена',
@@ -116,18 +106,13 @@ export const translations = {
     ],
 
     // Upload
-    uploadLabel: '[ ЗАГРУЗКА ]',
-    uploadTitle: 'Загрузите ваше фото',
-    uploadSubtitle: 'Перетащите файл или нажмите для выбора. Поддерживаются JPG, PNG или фото с телефона.',
     uploadDrag: 'Перетащите фото сюда',
     uploadOr: 'или',
-    uploadBtn: 'Выбрать файл',
     uploadHint: 'JPG, PNG, WebP · до 50 МБ',
 
     // Processing & Errors
     processingModel: 'Загрузка модели ИИ...',
     processingFace: 'Поиск лица и кадрирование...',
-    downloading: 'Подготовка и сжатие файла...',
     errNoFace: 'Лицо не обнаружено. Пожалуйста, загрузите чёткое фото лица анфас.',
     errNoFaceHint: 'Лицо должно занимать большую часть кадра: подойдите ближе или обрежьте фото, свет — спереди.',
     errMultipleFaces: 'Обнаружено несколько лиц. На фото должен быть только один человек.',
@@ -138,12 +123,6 @@ export const translations = {
     errFileTooLarge: 'Файл превышает лимит {max} КБ даже при сжатии. Попробуйте фото с меньшим количеством шумов.',
 
     // Result & Adjustments
-    resultLabel: '[ РЕЗУЛЬТАТ ]',
-    resultTitle: 'Ваше фото готово',
-    resultSubtitle: 'Скачайте в нужном формате — для печати или электронной подачи.',
-    resultDownload: 'Скачать фото',
-    resultRetry: 'Загрузить другое',
-    resultSize: 'Размер',
     adjustTitle: 'Ручная подстройка',
     adjustScale: 'Масштаб',
     adjustShiftY: 'По вертикали',
@@ -165,8 +144,6 @@ export const translations = {
     checkBrightnessBright: 'Лицо пересвечено, уменьшите свет',
     checkSharpnessOk: 'Резкость и четкость в норме',
     checkSharpnessWarn: 'Возможно, фото размыто или не в фокусе',
-    checkHeadOk: 'Размер головы: примерно {pct}% кадра (норма {min}–{max}%)',
-    checkHeadWarn: 'Размер головы: примерно {pct}% кадра (вне нормы {min}–{max}%)',
     checkHeadNeutral: 'Размер головы: примерно {pct}% — проверьте по направляющим',
     checkBgOk: 'Фон светлый и однотонный',
     checkBgWarn: 'Фон должен быть светлым и однотонным',
@@ -182,26 +159,6 @@ export const translations = {
     manualBg: 'Светлый однотонный фон',
 
     // FAQ
-    faqLabel: '[ ЧАСТЫЕ ВОПРОСЫ ]',
-    faqTitle: 'Ответы на вопросы',
-    faqs: [
-      {
-        q: 'Фото примут в ЦОНе?',
-        a: 'Подгоним размер и кадр под требования. Окончательное решение о приёмке принимает eGov или госдеп США.',
-      },
-      {
-        q: 'Сколько это стоит?',
-        a: 'Сервис полностью бесплатный.',
-      },
-      {
-        q: 'Какие фото подходят для загрузки?',
-        a: 'Любое чёткое фото лица анфас. Подойдёт даже селфи на телефон.',
-      },
-      {
-        q: 'Мои фото хранятся у вас?',
-        a: 'Нет. Фото обрабатывается на вашем устройстве и никуда не отправляется.',
-      },
-    ],
 
     // Footer
     footerProduct: '© 2026 Nexcel. Все права защищены.',
@@ -210,10 +167,6 @@ export const translations = {
   },
 
   kz: {
-    lang: 'KZ',
-    langFull: 'Қазақша',
-    altLang: 'RU',
-    altLangFull: 'Русский',
 
     stepNavigation: 'Қадамдар бойынша өту',
     stepProgress: '4 қадамның {step}-қадамы',
@@ -232,8 +185,6 @@ export const translations = {
     checkUnavailable: 'Фотоны автоматты түрде тексеру мүмкін болмады.',
     errSmallFace: 'Бет тым кішкентай. Жақындап түсіріңіз немесе жүктемес бұрын фотоны қиыңыз.',
 
-    headerBack: 'nexcel.kz',
-
     // Wizard Steps
     stepLabel1: 'Фото',
     stepLabel2: 'Құжат',
@@ -248,7 +199,6 @@ export const translations = {
     // Step 1
     step1Title: 'ҚР жеке куәлігі және Green Card фотосы',
     step1Subtitle: 'Селфи түсіріңіз немесе фото таңдаңыз. Өлшем мен кадрды талаптарға сай реттейміз',
-    btnShootOrUpload: 'Фото түсіру немесе таңдау',
     btnShootCamera: 'Камерамен түсіру',
     btnChooseFile: 'Файлды таңдау',
     tipsToggle: 'Дұрыс фотоны қалай түсіру керек',
@@ -281,7 +231,6 @@ export const translations = {
     step3Subtitle: 'Беттің дұрыс орналасқанына көз жеткізіңіз немесе сырғытпалармен реттеңіз',
     guideCorridor: 'Бас (төбесі — иегі) дәліздің ішінде болуы керек',
     guideChin: 'Иек',
-    guideHeadTop: 'Төбесі (норма)',
 
     // Step 4
     step4Title: 'Фото жүктеп алуға дайын',
@@ -290,13 +239,11 @@ export const translations = {
     btnOtherDoc: 'Басқа құжат',
     btnNewPhoto: 'Жаңа фото',
 
-    // Compact Privacy
-    compactPrivacyText: 'Фото сіздің құрылғыңызда өңделеді және ешқайда жіберілмейді',
-    compactPrivacyCamera: 'Камерадағы бейне жазылмайды және ешқайда жіберілмейді',
+    // Privacy
+    photoPrivacy: 'Фото сіздің құрылғыңызда өңделеді және ешқайда жіберілмейді',
+    cameraPrivacy: 'Камерадағы бейне жазылмайды және ешқайда жіберілмейді',
 
     // How to shoot tips
-    howToShootLabel: '[ ҚАЛАЙ ТҮСІРУ КЕРЕК ]',
-    howToShootTitle: 'Дұрыс фотоны қалай түсіру керек',
     howToShootTips: [
       {
         title: 'Ашық қабырға',
@@ -325,18 +272,13 @@ export const translations = {
       },
     ],
 
-    uploadLabel: '[ ЖҮКТЕУ ]',
-    uploadTitle: 'Фотоңызды жүктеңіз',
-    uploadSubtitle: 'Файлды сүйреп әкеліңіз немесе таңдау үшін басыңыз. JPG, PNG немесе телефоннан фото.',
     uploadDrag: 'Фотоны осында сүйреңіз',
     uploadOr: 'немесе',
-    uploadBtn: 'Файл таңдау',
     uploadHint: 'JPG, PNG, WebP · 50 МБ-қа дейін',
 
     // Processing & Errors
     processingModel: 'ЖИ моделі жүктелуде...',
     processingFace: 'Бетті анықтау және кадрлау...',
-    downloading: 'Файлды дайындау және сығу...',
     errNoFace: 'Бет анықталмады. Бетті анық көрсететін фото жүктеңіз.',
     errNoFaceHint: 'Бет кадрдың негізгі бөлігін алуы тиіс: жақынырақ тұрыңыз немесе фотоны қиыңыз, жарық — алдынан.',
     errMultipleFaces: 'Бірнеше адам табылды. Фотода тек бір адам болуы керек.',
@@ -347,12 +289,6 @@ export const translations = {
     errFileTooLarge: 'Файл сығудан кейін де {max} КБ лимитінен асып тұр. Фон біркелкі фотоны байқап көріңіз.',
 
     // Result & Adjustments
-    resultLabel: '[ НӘТИЖЕ ]',
-    resultTitle: 'Фотоңыз дайын',
-    resultSubtitle: 'Қажетті форматта жүктеп алыңыз — басып шығару немесе электронды тапсыру үшін.',
-    resultDownload: 'Фотоны жүктеу',
-    resultRetry: 'Басқа фото жүктеу',
-    resultSize: 'Өлшемі',
     adjustTitle: 'Қолмен баптау',
     adjustScale: 'Масштаб',
     adjustShiftY: 'Тігінен',
@@ -374,8 +310,6 @@ export const translations = {
     checkBrightnessBright: 'Бет тым жарық, жарықты азайтыңыз',
     checkSharpnessOk: 'Анықтылығы жақсы',
     checkSharpnessWarn: 'Фото бұлыңғыр болуы мүмкін',
-    checkHeadOk: 'Бас өлшемі: шамамен кадрдың {pct}% (норма {min}–{max}%)',
-    checkHeadWarn: 'Бас өлшемі: шамамен кадрдың {pct}% (нормадан тыс {min}–{max}%)',
     checkHeadNeutral: 'Бас өлшемі: шамамен {pct}% — бағыттауыштар бойынша тексеріңіз',
     checkBgOk: 'Фон ашық түсті және біркелкі',
     checkBgWarn: 'Фон ашық түсті және біркелкі болуы керек',
@@ -389,27 +323,6 @@ export const translations = {
     manualMouth: 'Ауыз жабық, бейтарап көрініс',
     manualShadows: 'Бетте және фонда көлеңке жоқ',
     manualBg: 'Ашық түсті біркелкі фон',
-
-    faqLabel: '[ ЖИІ ҚОЙЫЛАТЫН СҰРАҚТАР ]',
-    faqTitle: 'Сұрақтарға жауаптар',
-    faqs: [
-      {
-        q: 'Фотоны ХҚО-да қабылдай ма?',
-        a: 'Өлшем мен кадрды талаптарға сай реттейміз. Түпкілікті шешімді eGov немесе АҚШ мемдепі қабылдайды.',
-      },
-      {
-        q: 'Бұл қанша тұрады?',
-        a: 'Сервис толығымен тегін.',
-      },
-      {
-        q: 'Қандай фото жүктеуге болады?',
-        a: 'Бетті анық көрсететін кез келген фото. Тіпті телефонмен түсірілген селфи де жарайды.',
-      },
-      {
-        q: 'Менің фотоларым сақтала ма?',
-        a: 'Жоқ. Фото сіздің құрылғыңызда өңделеді және ешқайда жіберілмейді.',
-      },
-    ],
 
     footerProduct: '© 2026 Nexcel. Барлық құқықтар қорғалған.',
     footerPrivacy: 'Құпиялылық және қауіпсіздік',

@@ -29,10 +29,9 @@ function isInside(x, y, w, h) {
  * @param {Array} landmarks - 468/478 normalized landmarks from MediaPipe
  * @param {Object} preset - Document preset from presets.js
  * @param {Object} adjustments - { scaleOffset: number (-0.10 to 0.10), offsetY: number (-0.10 to 0.10) }
- * @param {HTMLCanvasElement|null} targetCanvas - Canvas to render to (if null, a new one is created)
  * @returns {Object}
  */
-export function cropFace(source, landmarks, preset, adjustments = {}, targetCanvas = null) {
+export function cropFace(source, landmarks, preset, adjustments = {}) {
   const origW = source.width
   const origH = source.height
   const targetW = preset.width
@@ -158,7 +157,7 @@ export function cropFace(source, landmarks, preset, adjustments = {}, targetCanv
   }
 
   // 6. Draw on canvas
-  const canvas = targetCanvas || document.createElement('canvas')
+  const canvas = document.createElement('canvas')
   if (canvas.width !== targetW || canvas.height !== targetH) {
     canvas.width = targetW
     canvas.height = targetH

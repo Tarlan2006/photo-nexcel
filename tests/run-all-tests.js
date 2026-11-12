@@ -1,5 +1,5 @@
 import { cropFace, HEAD_TOP_FACTOR } from '../src/lib/crop.js'
-import { runPhotoChecks, THRESHOLDS } from '../src/lib/checks.js'
+import { runPhotoChecks } from '../src/lib/checks.js'
 import { exportToJpegLimit } from '../src/lib/export.js'
 import { presets } from '../src/presets.js'
 
@@ -77,7 +77,7 @@ function assert(condition, message) {
 }
 
 console.log('=================================================================')
-console.log('🧪 TEST SUITE: Real Phone Selfie Validation & Geometry Tests')
+console.log('🧪 TEST SUITE: Synthetic Photo Geometry and JPEG Tests')
 console.log(`   HEAD_TOP_FACTOR = ${HEAD_TOP_FACTOR}`)
 console.log('=================================================================\n')
 
@@ -109,7 +109,7 @@ function buildSelfieLandmarks({
   return landmarks
 }
 
-// 6 Real Phone Selfie Test Profiles
+// Six synthetic landmark profiles
 const selfies = [
   {
     name: 'Selfie 1: iPhone 14 Pro Standard (3024x4032, neutral angle)',

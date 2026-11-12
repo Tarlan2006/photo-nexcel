@@ -8,8 +8,6 @@ import Step2Document from './components/Step2Document'
 import Step3Check from './components/Step3Check'
 import Step4Done from './components/Step4Done'
 import BottomBar from './components/BottomBar'
-import CompactFAQ from './components/CompactFAQ'
-import CompactPrivacy from './components/CompactPrivacy'
 import Footer from './components/Footer'
 
 function WizardContent() {
@@ -35,8 +33,6 @@ function WizardContent() {
           {step === 2 && <Step2Document />}
           {step === 3 && <Step3Check />}
           {step === 4 && <Step4Done />}
-          <CompactFAQ />
-          <CompactPrivacy />
         </main>
       </div>
 

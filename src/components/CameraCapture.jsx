@@ -466,6 +466,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
             </div>
           </div>
         )}
+        <p className="px-4 py-3 text-center text-xs text-muted">{t.cameraPrivacy}</p>
       </div>
     </dialog>
   )

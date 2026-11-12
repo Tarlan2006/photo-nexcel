@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { translations } from '../i18n'
 
-export const LangContext = createContext(null)
+const LangContext = createContext(null)
 
 const STORAGE_KEY = 'photo_nexcel_lang'
 
@@ -43,10 +43,6 @@ export function LangProvider({ children }) {
     }
   }
 
-  const toggleLang = () => {
-    setLang(lang === 'ru' ? 'kz' : 'ru')
-  }
-
   // Update html lang attribute
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -55,7 +51,7 @@ export function LangProvider({ children }) {
   }, [lang])
 
   return (
-    <LangContext.Provider value={{ lang, setLang, toggleLang, t }}>
+    <LangContext.Provider value={{ lang, setLang, t }}>
       {children}
     </LangContext.Provider>
   )

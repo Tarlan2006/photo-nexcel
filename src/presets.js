@@ -5,11 +5,8 @@ export const presets = {
     width: 413,
     height: 531,
     maxKb: 30,
-    format: 'jpeg',
     headMinPct: 70,
     headMaxPct: 80,
-    background: 'light-gray',
-    allowBgReplace: false,
     rules: {
       ru: [
         'Размер головы 70–80 % высоты кадра',
@@ -24,7 +21,6 @@ export const presets = {
         'Бет алдынан, бейтарап көрініс',
       ],
     },
-    checkedAt: '2026-11-11',
   },
   dv: {
     id: 'dv',
@@ -32,11 +28,8 @@ export const presets = {
     width: 600,
     height: 600,
     maxKb: 240,
-    format: 'jpeg',
     headMinPct: 50,
     headMaxPct: 69,
-    background: 'white',
-    allowBgReplace: false,
     rules: {
       ru: [
         'Размер головы 50–69 % высоты кадра',
@@ -51,7 +44,6 @@ export const presets = {
         'Бет алдынан',
       ],
     },
-    checkedAt: '2026-11-11',
   },
 }
 
