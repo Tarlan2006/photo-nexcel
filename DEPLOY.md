@@ -1,6 +1,6 @@
 # Деплой photo.nexcel.kz на Cloudflare Pages
 
-Проект настроен для статического хостинга на **Cloudflare Pages**. Все заголовки безопасности, CSP и SPA-роутинг сконфигурированы в `public/_headers` и `public/_redirects`.
+Проект полностью настроен для статического хостинга на **Cloudflare Pages**. Все заголовки безопасности, CSP и SPA-роутинг сконфигурированы в `public/_headers` и `public/_redirects`.
 
 ---
 
@@ -8,9 +8,6 @@
 
 ### Шаг 1. Создание репозитория и пуш
 ```bash
-git init
-git add .
-git commit -m "feat: initial photo.nexcel.kz"
 git branch -M main
 git remote add origin https://github.com/<ваш-аккаунт>/photo-nexcel.git
 git push -u origin main
@@ -33,10 +30,13 @@ git push -u origin main
 ## 2. Альтернатива: Деплой через Cloudflare Wrangler CLI
 
 ```bash
-# Локальная сборка
+# Тесты перед деплоем
+npm test
+
+# Сборка
 npm run build
 
-# Деплой напрямую в Pages
+# Деплой напрямую в Cloudflare Pages
 npx wrangler pages deploy dist --project-name=photo-nexcel
 ```
 
@@ -62,12 +62,19 @@ npx wrangler pages deploy dist --project-name=photo-nexcel
 
 ---
 
-## 4. Заголовки безопасности и CSP
+## 4. Проверка сжатия Wasm и заголовков после деплоя
 
-Файл `public/_headers` автоматически копируется в `dist/_headers` при сборке и применяет:
-- **Content-Security-Policy (CSP):**
-  - Разрешает выполнение локального WebAssembly (`wasm-unsafe-eval`).
-  - Локальные скрипты, шрифты и стили без сторонних CDN.
-  - Обработка изображений в `blob:` и `data:`.
-- **Защита от встраивания:** `X-Frame-Options: DENY`, `frame-ancestors 'none'`.
-- **Долговечное кэширование:** для статических шрифтов, wasm и модели `max-age=31536000, immutable`.
+После публикации проверьте ответ Cloudflare через curl:
+
+```bash
+# Проверка заголовков безопасности (CSP, HSTS, Permissions-Policy)
+curl -s -I https://photo.nexcel.kz/
+
+# Проверка сжатия Brotli / Gzip для Wasm (14.6 МБ сжимается до ~4.1 МБ)
+curl -s -I -H "Accept-Encoding: gzip, br" https://photo.nexcel.kz/wasm/vision_wasm_internal.wasm
+```
+
+В ответе для wasm-файла должны присутствовать:
+- `Content-Type: application/wasm`
+- `Content-Encoding: br` (или `gzip`)
+- `Cache-Control: public, max-age=31536000, immutable`
