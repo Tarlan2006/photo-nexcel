@@ -61,11 +61,18 @@ export default function Header() {
       <div className="relative mx-auto flex h-full max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:gap-2 lg:px-8 xl:gap-5">
         <div className="flex shrink-0 items-center gap-3">
           <a href={siteHome} className="flex min-h-11 items-center gap-2 rounded sm:gap-3">
-            <span className="grid size-8 shrink-0 place-items-center rounded bg-dark-bg text-white shadow-sm sm:size-9" aria-hidden="true">
+            <span className="size-8 shrink-0 sm:size-9" aria-hidden="true">
               {logoFailed ? (
-                <span className="font-heading text-base font-extrabold">N</span>
+                <span className="grid size-full place-items-center rounded bg-dark-bg font-heading text-base font-extrabold text-white shadow-sm">N</span>
               ) : (
-                <img src="/logo.svg" alt="" width="24" height="24" className="size-5 sm:size-6" onError={() => setLogoFailed(true)} />
+                <img
+                  src="/logo-1024.png"
+                  alt=""
+                  width="36"
+                  height="36"
+                  className="size-full object-contain drop-shadow-xs"
+                  onError={() => setLogoFailed(true)}
+                />
               )}
             </span>
             <span className="flex flex-col leading-tight">
