@@ -162,6 +162,10 @@ async function runSelfieTests() {
     assert(kzRes.success === true, `[${i + 1}] kz_id: cropFace succeeded`)
     assert(kzRes.width === 413 && kzRes.height === 531, `[${i + 1}] kz_id: dimensions 413x531 px`)
     assert(
+      typeof kzRes.chinY === 'number' && typeof kzRes.chinPct === 'number',
+      `[${i + 1}] kz_id: real chin position returned (${kzRes.chinPct}%)`
+    )
+    assert(
       kzRes.headPct >= presets.kz_id.headMinPct && kzRes.headPct <= presets.kz_id.headMaxPct,
       `[${i + 1}] kz_id: headPct ${kzRes.headPct}% is within standard [${presets.kz_id.headMinPct}%, ${presets.kz_id.headMaxPct}%]`
     )
@@ -174,6 +178,10 @@ async function runSelfieTests() {
     const dvRes = cropFace(source, landmarks, presets.dv, { scaleOffset: 0, offsetY: 0 })
     assert(dvRes.success === true, `[${i + 1}] dv: cropFace succeeded (valid frame)`)
     assert(dvRes.width === 600 && dvRes.height === 600, `[${i + 1}] dv: dimensions 600x600 px`)
+    assert(
+      typeof dvRes.chinY === 'number' && typeof dvRes.chinPct === 'number',
+      `[${i + 1}] dv: real chin position returned (${dvRes.chinPct}%)`
+    )
     assert(
       dvRes.headPct >= presets.dv.headMinPct && dvRes.headPct <= presets.dv.headMaxPct,
       `[${i + 1}] dv: headPct ${dvRes.headPct}% is within standard [${presets.dv.headMinPct}%, ${presets.dv.headMaxPct}%]`
@@ -188,6 +196,12 @@ async function runSelfieTests() {
     assert(checks.length === 8, `[${i + 1}] runPhotoChecks returned all 8 checks`)
     assert(typeof checks[0].ok === 'boolean', `[${i + 1}] checks have valid boolean 'ok' field`)
     assert(typeof checks[0].message?.ru === 'string', `[${i + 1}] checks have valid 'message.ru' string`)
+    const headCheck = checks.find((c) => c.id === 'headProportion')
+    assert(headCheck && headCheck.status === 'neutral', `[${i + 1}] headProportion check is neutral`)
+    assert(
+      headCheck && headCheck.message.ru.includes('проверьте по направляющим'),
+      `[${i + 1}] headProportion mentions guidelines in RU`
+    )
     console.log('')
   }
 
@@ -244,6 +258,38 @@ async function runSelfieTests() {
   const exportTargetRes = await exportToJpegLimit(lightBgCanvas, 30)
   assert(exportTargetRes.success === true, 'Export succeeds for 30 KB')
   assert(exportTargetRes.blob.size <= 29000, `Exported size ${exportTargetRes.blob.size} bytes is <= 29,000 bytes`)
+
+  // Test H: Background Side Strips (Upper 55% only)
+  console.log('--- Testing Background Side Strips (Upper 55% only) ---')
+  class MockCanvasUpperLight extends MockCanvas {
+    constructor() {
+      super(413, 531)
+    }
+    getContext() {
+      return {
+        ...super.getContext(),
+        getImageData: (x, y, w, h) => {
+          const data = new Uint8ClampedArray(w * h * 4)
+          for (let row = 0; row < h; row++) {
+            // Upper 55% is light background (220), lower 45% is dark clothes (50)
+            const lum = row < Math.round(h * 0.55) ? 220 : 50
+            for (let col = 0; col < w; col++) {
+              const idx = (row * w + col) * 4
+              data[idx] = lum
+              data[idx + 1] = lum
+              data[idx + 2] = lum
+              data[idx + 3] = 255
+            }
+          }
+          return { data, width: w, height: h }
+        },
+      }
+    }
+  }
+  const upperLightCanvas = new MockCanvasUpperLight()
+  const upperBgChecks = runPhotoChecks(upperLightCanvas, testLandmarks, 1000, 1000, presets.kz_id, 75)
+  const upperBgCheck = upperBgChecks.find((c) => c.id === 'background')
+  assert(upperBgCheck && upperBgCheck.ok === true, 'Dark clothing in lower 45% does not trigger background warning')
 
   console.log('=================================================================')
   console.log(`📊 FINAL RESULTS: ${passedTests} / ${totalTests} PASSED (${failedTests} FAILED)`)

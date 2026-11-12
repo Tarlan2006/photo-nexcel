@@ -141,11 +141,17 @@ export function cropFace(source, landmarks, preset, adjustments = {}, targetCanv
 
   const outOfBounds = corners.some((pt) => !isInside(pt.x, pt.y, origW, origH))
 
+  // Real position of point 152 (chin) in final canvas coordinates
+  const chinCanvasY = canvasEyeMidY + (chinRot.y - cy) * s
+  const chinPct = Math.round(((chinCanvasY / targetH) * 100) * 10) / 10
+
   if (outOfBounds) {
     return {
       success: false,
       error: 'OUT_OF_BOUNDS',
       headPct,
+      chinY: chinCanvasY,
+      chinPct,
       width: targetW,
       height: targetH,
     }
@@ -179,5 +185,7 @@ export function cropFace(source, landmarks, preset, adjustments = {}, targetCanv
     width: targetW,
     height: targetH,
     headPct,
+    chinY: chinCanvasY,
+    chinPct,
   }
 }

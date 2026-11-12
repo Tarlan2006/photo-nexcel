@@ -207,10 +207,11 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct,
         }
       }
 
-      // B. Background check: 8% strips on left, right, and top edges
+      // B. Background check: 8% top strip (full width) + 8% side strips (upper 55% of height)
       const leftW = Math.max(1, Math.round(w * 0.08))
       const rightX = w - leftW
       const topH = Math.max(1, Math.round(h * 0.08))
+      const sideH = Math.round(h * 0.55)
 
       const fullImgData = ctx.getImageData(0, 0, w, h)
       const fullData = fullImgData.data
@@ -221,7 +222,9 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct,
 
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
-          if (y < topH || x < leftW || x >= rightX) {
+          const isTopStrip = y < topH
+          const isSideStrip = y < sideH && (x < leftW || x >= rightX)
+          if (isTopStrip || isSideStrip) {
             const idx = (y * w + x) * 4
             const lum = 0.299 * fullData[idx] + 0.587 * fullData[idx + 1] + 0.114 * fullData[idx + 2]
             bgLumaSum += lum
@@ -270,19 +273,16 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct,
     message: formatMessage(bgKey),
   })
 
-  // 5. Head proportion in final frame (marked as approximately)
-  const inRange = headPct >= preset.headMinPct && headPct <= preset.headMaxPct
-  const headKey = inRange ? 'checkHeadOk' : 'checkHeadWarn'
+  // 5. Head proportion in final frame (neutral guideline check)
+  const headKey = 'checkHeadNeutral'
   const headParams = {
     pct: headPct,
-    min: preset.headMinPct,
-    max: preset.headMaxPct,
   }
 
   checks.push({
     id: 'headProportion',
-    ok: inRange,
-    status: inRange ? 'ok' : 'warn',
+    ok: true,
+    status: 'neutral',
     key: headKey,
     params: headParams,
     message: formatMessage(headKey, headParams),

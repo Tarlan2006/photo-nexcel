@@ -60,9 +60,14 @@ export default function Step3Check() {
   const shiftYPercent = Math.round((adjustments.offsetY || 0) * 100)
   const hasAdjustments = scalePercent !== 0 || shiftYPercent !== 0
 
-  // Nominal guidelines calculation
+  // Real chin position of point 152 (from cropFace)
   const midHeadPct = (selectedPreset.headMinPct + selectedPreset.headMaxPct) / 2 / 100
-  const chinPercentFromTop = (0.4 * (1 - midHeadPct) + midHeadPct) * 100
+  const nominalChinPct = (0.4 * (1 - midHeadPct) + midHeadPct) * 100
+  const chinPercentFromTop =
+    typeof activeCropState?.chinPct === 'number'
+      ? activeCropState.chinPct
+      : nominalChinPct
+
   const corridorTopMaxPct = chinPercentFromTop - selectedPreset.headMaxPct
   const corridorTopMinPct = chinPercentFromTop - selectedPreset.headMinPct
 
@@ -255,42 +260,53 @@ export default function Step3Check() {
               </p>
             ) : (
               <ul className="space-y-2.5">
-                {checks.map((chk) => (
-                  <li
-                    key={chk.id}
-                    className="flex items-start justify-between gap-3 text-xs pb-2 border-b border-border/40 last:border-b-0 last:pb-0"
-                  >
-                    <div className="flex items-start gap-2">
-                      <span className="mt-0.5 shrink-0" aria-hidden="true">
-                        {chk.ok ? (
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-emerald-700">
-                            <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.8" />
-                            <path d="M5 8L7 10L11 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        ) : (
-                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-amber-700">
-                            <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.8" />
-                            <line x1="8" y1="5" x2="8" y2="8.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                            <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
-                          </svg>
-                        )}
-                      </span>
-                      <span className={chk.ok ? 'text-text font-medium' : 'text-amber-950 font-bold'}>
-                        {chk.message?.[lang] || t[chk.key] || chk.id}
-                      </span>
-                    </div>
-
-                    <span
-                      className={`font-mono text-[11px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                        chk.ok
-                          ? 'bg-emerald-100 text-emerald-950'
-                          : 'bg-amber-100 text-amber-950'
-                      }`}
+                {checks.map((chk) => {
+                  const isNeutral = chk.id === 'headProportion' || chk.status === 'neutral'
+                  return (
+                    <li
+                      key={chk.id}
+                      className="flex items-start justify-between gap-3 text-xs pb-2 border-b border-border/40 last:border-b-0 last:pb-0"
                     >
-                      {chk.ok ? t.checkStatusOk : t.checkStatusWarn}
-                    </span>
-                  </li>
-                ))}
+                      <div className="flex items-start gap-2">
+                        <span className="mt-0.5 shrink-0" aria-hidden="true">
+                          {isNeutral ? (
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-sky-600">
+                              <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.8" />
+                              <line x1="8" y1="7" x2="8" y2="11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                              <circle cx="8" cy="4.5" r="0.75" fill="currentColor" />
+                            </svg>
+                          ) : chk.ok ? (
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-emerald-700">
+                              <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.8" />
+                              <path d="M5 8L7 10L11 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          ) : (
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="text-amber-700">
+                              <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.8" />
+                              <line x1="8" y1="5" x2="8" y2="8.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                              <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
+                            </svg>
+                          )}
+                        </span>
+                        <span className={isNeutral || chk.ok ? 'text-text font-medium' : 'text-amber-950 font-bold'}>
+                          {chk.message?.[lang] || t[chk.key] || chk.id}
+                        </span>
+                      </div>
+
+                      <span
+                        className={`font-mono text-[11px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                          isNeutral
+                            ? 'bg-sky-50 text-sky-900 border border-sky-200'
+                            : chk.ok
+                            ? 'bg-emerald-100 text-emerald-950'
+                            : 'bg-amber-100 text-amber-950'
+                        }`}
+                      >
+                        {isNeutral ? t.checkStatusGuide : chk.ok ? t.checkStatusOk : t.checkStatusWarn}
+                      </span>
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </div>
