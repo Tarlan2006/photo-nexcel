@@ -25,4 +25,5 @@ playwright-report/
 !public/icon-512.png
 !public/logo-1024.png
 !public/og-image.png
+!src/assets/logo-96.png
 tests/fixtures/

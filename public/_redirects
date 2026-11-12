@@ -1,1 +1,2 @@
 # Static single-page wizard: no catch-all rewrite so nonexistent URLs return 404
+/index.html / 301

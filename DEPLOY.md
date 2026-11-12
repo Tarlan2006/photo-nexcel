@@ -71,7 +71,8 @@ npx wrangler pages deploy dist --project-name=photo-nexcel
 curl -s -I https://photo.nexcel.kz/
 
 # Проверка сжатия Brotli / Gzip для Wasm (14.6 МБ сжимается до ~4.1 МБ)
-curl -s -I -H "Accept-Encoding: gzip, br" https://photo.nexcel.kz/wasm/1.2.3/vision_wasm_internal.wasm
+vision_version=$(node -p "require('./node_modules/@mediapipe/tasks-vision/package.json').version")
+curl -s -I -H "Accept-Encoding: gzip, br" "https://photo.nexcel.kz/wasm/$vision_version/vision_wasm_internal.wasm"
 ```
 
 В ответе для wasm-файла должны присутствовать:
@@ -80,6 +81,10 @@ curl -s -I -H "Accept-Encoding: gzip, br" https://photo.nexcel.kz/wasm/1.2.3/vis
 - `Cache-Control: public, max-age=31536000, immutable`
 
 Ответ HTML мастера использует `Cache-Control: no-transform`, чтобы Cloudflare не подставлял внешний скрипт Web Analytics. Кэширование и сжатие ресурсов настраиваются отдельно.
+
+Vite берёт загрузчик и бинарник WASM из установленной версии `@mediapipe/tasks-vision` и публикует их по `/wasm/<версия>/`. Для распознавания лица браузеру нужна поддержка WebAssembly SIMD. Для автоматического фона и костюма также требуется WebGL 2.
+
+Проверьте контактные данные в `public/.well-known/security.txt` до даты `Expires` и обновите срок действия.
 
 ## 5. Редактор фото
 

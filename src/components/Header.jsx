@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import headerLogo from '../assets/logo-96.png?url&no-inline'
 import { useLang } from '../contexts/LangContext'
 import { companyPages, email, phone, servicePages, siteHome, siteLinks, whatsAppUrl } from '../siteLinks'
 import SiteIcon from './SiteIcon'
@@ -66,7 +67,7 @@ export default function Header() {
                 <span className="grid size-full place-items-center rounded bg-dark-bg font-heading text-base font-extrabold text-white shadow-sm">N</span>
               ) : (
                 <img
-                  src="/logo-1024.png"
+                  src={headerLogo}
                   alt=""
                   width="36"
                   height="36"

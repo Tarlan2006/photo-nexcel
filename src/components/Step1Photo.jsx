@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { useLang } from '../contexts/LangContext'
 import { useWizard } from '../contexts/WizardContext'
 import CameraCapture from './CameraCapture'
-import { photoMimeTypes } from '../lib/photo'
+import { photoMimeTypes, supportsWasmSimd } from '../lib/photo'
 
 function TipIcon({ type }) {
   if (type === 'wall') {
@@ -66,6 +66,8 @@ export default function Step1Photo() {
   const [isDragging, setIsDragging] = useState(false)
   const [tipsOpen, setTipsOpen] = useState(false)
   const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const [simdSupported] = useState(supportsWasmSimd)
+  const canChoosePhoto = simdSupported && !isProcessing
 
   const inputRef = useRef(null)
   const cameraBtnRef = useRef(null)
@@ -75,7 +77,7 @@ export default function Step1Photo() {
 
   const onDragOver = (e) => {
     e.preventDefault()
-    if (!isProcessing) setIsDragging(true)
+    if (canChoosePhoto) setIsDragging(true)
   }
 
   const onDragLeave = () => {
@@ -86,17 +88,17 @@ export default function Step1Photo() {
     e.preventDefault()
     setIsDragging(false)
     const file = e.dataTransfer.files?.[0]
-    if (!isProcessing) handleFile(file)
+    if (canChoosePhoto) handleFile(file)
   }
 
   const onFileChange = (e) => {
     const file = e.target.files?.[0]
-    if (!isProcessing) handleFile(file)
+    if (canChoosePhoto) handleFile(file)
     e.target.value = ''
   }
 
   const triggerInput = () => {
-    if (!isProcessing) inputRef.current?.click()
+    if (canChoosePhoto) inputRef.current?.click()
   }
 
   const handleCameraClose = () => {
@@ -129,7 +131,7 @@ export default function Step1Photo() {
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         onClick={triggerInput}
-        className={`bg-white border-2 border-dashed rounded-xl p-8 sm:p-12 text-center cursor-pointer transition-all ${
+        className={`bg-white border-2 border-dashed rounded-xl p-8 sm:p-12 text-center transition-all ${canChoosePhoto ? 'cursor-pointer' : 'cursor-not-allowed'} ${
           isDragging
             ? 'border-emerald-accent bg-emerald-accent/5'
             : 'border-grid-border hover:border-emerald-accent/50'
@@ -138,6 +140,8 @@ export default function Step1Photo() {
         <input
           ref={inputRef}
           type="file"
+          aria-label={t.choosePhotoLabel}
+          disabled={!canChoosePhoto}
           accept={photoMimeTypes.join(',')}
           className="hidden"
           onChange={onFileChange}
@@ -165,7 +169,7 @@ export default function Step1Photo() {
           {hasCameraSupport && (
             <button
               ref={cameraBtnRef}
-              disabled={isProcessing}
+              disabled={!canChoosePhoto}
               type="button"
               onClick={(e) => {
                 e.stopPropagation()
@@ -187,7 +191,7 @@ export default function Step1Photo() {
 
           <button
             type="button"
-            disabled={isProcessing}
+            disabled={!canChoosePhoto}
             onClick={(e) => {
               e.stopPropagation()
               triggerInput()
@@ -221,6 +225,11 @@ export default function Step1Photo() {
         <p className="font-mono text-xs text-text-muted">{t.uploadHint}</p>
       </div>
       <p className="mt-3 text-center text-xs text-text-muted">{t.photoPrivacy}</p>
+      {!simdSupported && (
+        <p role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          {t.browserRequiresSimd}
+        </p>
+      )}
 
       {/* Processing Status Spinner */}
       {isProcessing && (

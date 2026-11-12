@@ -11,7 +11,7 @@ export async function segmentPortrait(input, createCanvas) {
   let task
   let result
   try {
-    const vision = await FilesetResolver.forVisionTasks('/wasm/1.2.3')
+    const vision = await FilesetResolver.forVisionTasks(__MEDIAPIPE_WASM_PATH__)
     task = await ImageSegmenter.createFromOptions(vision, {
       canvas: webglCanvas,
       baseOptions: { modelAssetPath: modelPath, delegate: 'CPU' },

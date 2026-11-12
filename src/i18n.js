@@ -32,6 +32,8 @@ export const translations = {
     step1Subtitle: 'Сделайте селфи или выберите фото. Подгоним размер и кадр под требования',
     btnShootCamera: 'Снять на камеру',
     btnChooseFile: 'Выбрать файл',
+    choosePhotoLabel: 'Выбрать фото',
+    browserRequiresSimd: 'Для распознавания лица нужен браузер с поддержкой WebAssembly SIMD. Обновите браузер или откройте сайт на другом устройстве.',
     tipsToggle: 'Как сделать правильное фото',
 
     // Camera Capture Modal
@@ -328,6 +330,8 @@ export const translations = {
     step1Subtitle: 'Селфи түсіріңіз немесе фото таңдаңыз. Өлшем мен кадрды талаптарға сай реттейміз',
     btnShootCamera: 'Камерамен түсіру',
     btnChooseFile: 'Файлды таңдау',
+    choosePhotoLabel: 'Фотоны таңдау',
+    browserRequiresSimd: 'Бетті тану үшін WebAssembly SIMD қолдайтын браузер қажет. Браузерді жаңартыңыз немесе сайтты басқа құрылғыдан ашыңыз.',
     tipsToggle: 'Дұрыс фотоны қалай түсіру керек',
 
     // Camera Capture Modal

@@ -3,7 +3,7 @@ import { FilesetResolver, FaceLandmarker } from '@mediapipe/tasks-vision'
 let initPromise
 
 function getFaceLandmarker() {
-  initPromise ??= FilesetResolver.forVisionTasks('/wasm/1.2.3')
+  initPromise ??= FilesetResolver.forVisionTasks(__MEDIAPIPE_WASM_PATH__)
     .then((vision) => FaceLandmarker.createFromOptions(vision, {
       baseOptions: { modelAssetPath: '/face_landmarker.task' },
       runningMode: 'IMAGE',

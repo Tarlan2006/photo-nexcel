@@ -225,6 +225,10 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
     await suite.test('five steps are visible, model is lazy, and fake camera stops on Escape', async () => {
       await withPage(async (page, requests) => {
         await heading(page, ru.step1Title)
+        assert.equal(await page.locator('input[type=file]').getAttribute('aria-label'), ru.choosePhotoLabel)
+        await page.waitForFunction(() => document.querySelector('header img')?.naturalWidth === 96)
+        assert.ok(requests.some(request => /\/assets\/logo-96-[\w-]+\.png$/.test(request.url)))
+        assert.ok(!requests.some(request => request.url.endsWith('/logo-1024.png')))
         const nav = page.getByRole('navigation', { name: ru.stepNavigation })
         assert.deepEqual((await nav.getByRole('button').allTextContents()).map(text => text.replace(/^\d/, '')), ru.stepLabels)
         assert.ok(!requests.some(request => detectResource(request.url)))
@@ -243,6 +247,24 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
         await page.getByRole('dialog').waitFor({ state: 'hidden' })
         await page.waitForFunction(() => cameraTracks.every(track => track.readyState === 'ended'))
       }, { viewport: { width: 390, height: 844 } })
+    })
+
+    await suite.test('browsers without Wasm SIMD show localized requirements without loading the model', async () => {
+      await withPage(async (page, requests) => {
+        await page.addInitScript(() => { WebAssembly.validate = () => false })
+        await page.reload()
+        const warning = page.getByRole('alert')
+        await warning.waitFor()
+        assert.equal(await warning.textContent(), ru.browserRequiresSimd)
+        assert.ok(await choose(page, ru.btnChooseFile).isDisabled())
+        assert.ok(await choose(page, ru.btnShootCamera).isDisabled())
+
+        await choose(page, 'KZ').click()
+        assert.equal(await warning.textContent(), translations.kz.browserRequiresSimd)
+        assert.equal(await page.locator('input[type=file]').getAttribute('aria-label'), translations.kz.choosePhotoLabel)
+        assert.ok(!requests.some(request => detectResource(request.url)))
+        await checkAxe(page)
+      })
     })
 
     const noPortrait = !existsSync(portrait) && 'tests/fixtures/portrait.jpg отсутствует'
