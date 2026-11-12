@@ -1,9 +1,11 @@
+import DocumentEditNotice from './DocumentEditNotice'
+import { steps } from '../steps'
 import { useState, useRef, useEffect } from 'react'
 import { useLang } from '../contexts/LangContext'
 import { useWizard } from '../contexts/WizardContext'
 import { exportToJpegLimit } from '../lib/export'
 
-export default function Step4Done() {
+export default function Step5Done() {
   const { t, lang } = useLang()
   const { selectedPreset, activeCropState, goToStep, retake } = useWizard()
   const [result, setResult] = useState(null)
@@ -59,12 +61,14 @@ export default function Step4Done() {
       {/* Title & Subtitle */}
       <div className="mb-8">
         <h1 tabIndex={-1} className="font-heading font-extrabold text-2xl sm:text-3xl text-text-main mb-2 tracking-tight">
-          {encoded?.success ? t.step4Title : failed ? t.exportFailedTitle : t.exportPreparing}
+          {encoded?.success ? t.step5Title : failed ? t.exportFailedTitle : t.exportPreparing}
         </h1>
         {encoded?.success && (
-          <p className="text-text-muted text-sm sm:text-base max-w-md mx-auto">{t.step4Subtitle}</p>
+          <p className="text-text-muted text-sm sm:text-base max-w-md mx-auto">{t.step5Subtitle}</p>
         )}
       </div>
+
+      <DocumentEditNotice />
 
       {/* Preview Card */}
       <div className="max-w-full bg-white border border-grid-border rounded-xl p-4 sm:p-8 mb-8 inline-block shadow-2xs">
@@ -124,7 +128,7 @@ export default function Step4Done() {
       <div className="flex flex-wrap items-center justify-center gap-3 pt-6 border-t border-grid-border/60">
         <button
           type="button"
-          onClick={() => goToStep(2)}
+          onClick={() => goToStep(steps.DOCUMENT)}
           className="inline-flex min-h-11 items-center gap-1.5 px-4 py-2.5 rounded border border-grid-border bg-white text-text-main font-semibold text-xs sm:text-sm hover:border-emerald-accent hover:text-emerald-accent transition-colors cursor-pointer"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">

@@ -1,3 +1,6 @@
+import { recommendedBackground } from '../lib/editor/edit-state'
+import DocumentEditNotice from './DocumentEditNotice'
+import { steps } from '../steps'
 import { useEffect, useRef } from 'react'
 import { useLang } from '../contexts/LangContext'
 import { useWizard } from '../contexts/WizardContext'
@@ -77,19 +80,25 @@ function MiniCanvasPreview({ cropRes, preset }) {
   )
 }
 
-export default function Step2Document() {
+export default function Step3Document() {
   const { t, lang } = useLang()
   const {
     selectedPresetId,
     selectPreset,
     cropStates,
+    appliedEdit,
+    editorBusy,
+    editorError,
+    suggestBackground,
     retake,
     goToStep,
   } = useWizard()
 
+  const recommendation = recommendedBackground[selectedPresetId]
+
   const handleSelectAndProceed = (presetId) => {
     selectPreset(presetId)
-    goToStep(3)
+    goToStep(steps.CHECK)
   }
 
   return (
@@ -97,15 +106,32 @@ export default function Step2Document() {
       {/* Title & Subtitle */}
       <div className="text-center mb-8">
         <h1 tabIndex={-1} className="font-heading font-extrabold text-2xl sm:text-3xl text-text-main mb-2 tracking-tight">
-          {t.step2Title}
+          {t.step3Title}
         </h1>
         <p className="text-text-muted text-sm sm:text-base max-w-lg mx-auto">
-          {t.step2Subtitle}
+          {t.step3Subtitle}
         </p>
       </div>
 
+      <DocumentEditNotice />
+      {appliedEdit.bg.enabled && appliedEdit.bg.color !== recommendation && (
+        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-grid-border bg-white p-3 text-sm">
+          <p>{t.editor.suggestColor.replace('{color}', (selectedPresetId === 'dv' ? t.editor.white : t.editor.gray).toLowerCase())}</p>
+          <button
+            type="button"
+            disabled={editorBusy}
+            className="min-h-11 rounded-lg border border-grid-border px-3 text-sm font-semibold text-emerald-accent hover:border-emerald-accent disabled:opacity-50"
+            onClick={suggestBackground}
+          >
+            {t.editor.applyColor}
+          </button>
+        </div>
+      )}
+      {editorBusy && <p role="status" className="mb-3 text-sm text-text-muted">{t.editor.processing}</p>}
+      {editorError && <p role="alert" className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-950">{t.editor[editorError]}</p>}
+
       {/* Preset Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5" role="group" aria-label={t.step2Title}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5" role="group" aria-label={t.step3Title}>
         {presetList.map((preset) => {
           const isSelected = selectedPresetId === preset.id
           const cropRes = cropStates[preset.id]
@@ -147,6 +173,7 @@ export default function Step2Document() {
                     name="photo-document"
                     id={preset.id}
                     checked={isSelected}
+                    disabled={editorBusy}
                     onChange={() => selectPreset(preset.id)}
                     className="relative size-11 shrink-0 cursor-pointer appearance-none rounded before:absolute before:inset-3 before:rounded-full before:border before:border-slate-400 checked:before:border-emerald-accent checked:before:bg-emerald-accent checked:after:absolute checked:after:inset-[18px] checked:after:rounded-full checked:after:bg-white"
                   />
@@ -212,6 +239,7 @@ export default function Step2Document() {
               <div className="pt-3 border-t border-grid-border/40 flex justify-end">
                 <button
                   type="button"
+                  disabled={editorBusy}
                   onClick={(e) => {
                     e.stopPropagation()
                     handleSelectAndProceed(preset.id)

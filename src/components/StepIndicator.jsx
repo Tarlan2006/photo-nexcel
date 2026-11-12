@@ -1,73 +1,40 @@
 import { useLang } from '../contexts/LangContext'
 import { useWizard } from '../contexts/WizardContext'
+import { steps } from '../steps'
 
 export default function StepIndicator() {
   const { t } = useLang()
   const { step, goToStep, originalImage } = useWizard()
 
-  const steps = [
-    { num: 1, label: t.stepLabel1 },
-    { num: 2, label: t.stepLabel2 },
-    { num: 3, label: t.stepLabel3 },
-    { num: 4, label: t.stepLabel4 },
-  ]
-
   return (
-    <nav aria-label={t.stepNavigation} className="w-full bg-white border-b border-grid-border py-1 px-3 sm:py-3 sm:px-4">
-      <ol className="max-w-2xl mx-auto flex items-center justify-between text-xs sm:text-sm list-none p-0 m-0">
-        {steps.map((s, index) => {
-          const isActive = s.num === step
-          const isDone = s.num < step
-          const isAccessible = !isActive && (isDone || (s.num === 2 && Boolean(originalImage)))
-
+    <nav aria-label={t.stepNavigation} className="w-full border-b border-grid-border bg-white px-2 py-1 sm:px-4 sm:py-3">
+      <ol className="mx-auto grid max-w-3xl grid-cols-5 gap-1 text-[10px] sm:gap-3 sm:text-sm">
+        {t.stepLabels.map((label, index) => {
+          const number = index + 1
+          const active = number === step
+          const done = number < step
+          const accessible = !active && (done || (number === steps.EDITOR && Boolean(originalImage)))
           return (
-            <li key={s.num} className="flex min-w-0 items-center">
+            <li key={number} className="min-w-0">
               <button
                 type="button"
-                onClick={() => goToStep(s.num)}
-                disabled={!isAccessible}
-                aria-current={isActive ? 'step' : undefined}
-                className={`flex min-h-11 min-w-11 items-center gap-1 sm:gap-1.5 transition-colors rounded-sm ${
-                  isAccessible ? 'cursor-pointer' : 'cursor-default'
-                } ${
-                  isActive
-                    ? 'font-heading font-extrabold text-emerald-accent'
-                    : isDone
-                    ? 'font-medium text-text-main hover:text-emerald-accent'
-                    : 'text-text-muted'
-                }`}
+                onClick={() => goToStep(number)}
+                disabled={!accessible}
+                aria-current={active ? 'step' : undefined}
+                className={`flex min-h-11 w-full flex-col items-center justify-center gap-0.5 rounded-sm px-0.5 sm:flex-row sm:gap-2 ${
+                  active ? 'font-heading font-extrabold text-emerald-accent' : 'text-text-muted'
+                } ${accessible ? 'cursor-pointer hover:text-emerald-accent' : ''}`}
               >
                 <span
-                  className={`inline-flex items-center justify-center size-5 shrink-0 rounded-full text-xs font-mono font-bold transition-colors ${
-                    isActive
-                      ? 'bg-emerald-accent text-white'
-                      : isDone
-                      ? 'bg-text-main/10 text-text-main'
-                      : 'bg-grid-border text-text-main'
+                  aria-hidden="true"
+                  className={`grid size-5 shrink-0 place-items-center rounded-full font-mono text-xs font-bold ${
+                    active ? 'bg-emerald-accent text-white' : 'bg-grid-border text-text-main'
                   }`}
                 >
-                  {isDone ? (
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                      <path
-                        d="M2 5L4 7L8 3"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  ) : (
-                    s.num
-                  )}
+                  {done ? '✓' : number}
                 </span>
-                <span className="break-words text-left">{s.label}</span>
+                {label}
               </button>
-
-              {index < steps.length - 1 && (
-                <span className="mx-1 sm:mx-3 text-slate-400 font-bold select-none" aria-hidden="true">
-                  ·
-                </span>
-              )}
             </li>
           )
         })}

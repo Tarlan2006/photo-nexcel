@@ -1,17 +1,21 @@
-import { useEffect, useRef } from 'react'
-import { LangProvider } from './contexts/LangContext'
+import { lazy, Suspense, useEffect, useRef } from 'react'
+import { LangProvider, useLang } from './contexts/LangContext'
 import { WizardProvider, useWizard } from './contexts/WizardContext'
 import Header from './components/Header'
 import StepIndicator from './components/StepIndicator'
 import Step1Photo from './components/Step1Photo'
-import Step2Document from './components/Step2Document'
-import Step3Check from './components/Step3Check'
-import Step4Done from './components/Step4Done'
+import Step3Document from './components/Step3Document'
+import Step4Check from './components/Step4Check'
+import Step5Done from './components/Step5Done'
 import BottomBar from './components/BottomBar'
 import Footer from './components/Footer'
+import { steps } from './steps'
+
+const Step2Editor = lazy(() => import('./components/Step2Editor'))
 
 function WizardContent() {
   const { step } = useWizard()
+  const { t } = useLang()
   const mainRef = useRef(null)
   const lastStep = useRef(step)
 
@@ -29,14 +33,19 @@ function WizardContent() {
         <StepIndicator />
 
         <main id="wizard-main" tabIndex={-1} ref={mainRef} className="min-h-[500px]">
-          {step === 1 && <Step1Photo />}
-          {step === 2 && <Step2Document />}
-          {step === 3 && <Step3Check />}
-          {step === 4 && <Step4Done />}
+          {step === steps.PHOTO && <Step1Photo />}
+          {step === steps.EDITOR && (
+            <Suspense fallback={<p role="status" className="p-8 text-center">{t.editor.processing}</p>}>
+              <Step2Editor />
+            </Suspense>
+          )}
+          {step === steps.DOCUMENT && <Step3Document />}
+          {step === steps.CHECK && <Step4Check />}
+          {step === steps.DONE && <Step5Done />}
         </main>
       </div>
 
-      <div className={step > 1 ? 'pb-[calc(5rem+env(safe-area-inset-bottom,0px))]' : ''}>
+      <div className={step > steps.PHOTO ? 'pb-[calc(5rem+env(safe-area-inset-bottom,0px))]' : ''}>
         <Footer />
       </div>
 

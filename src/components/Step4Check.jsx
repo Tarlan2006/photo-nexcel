@@ -1,9 +1,10 @@
+import DocumentEditNotice from './DocumentEditNotice'
 import { useState, useRef, useEffect } from 'react'
 import { useLang } from '../contexts/LangContext'
 import { useWizard } from '../contexts/WizardContext'
 import { runPhotoChecks } from '../lib/checks'
 
-export default function Step3Check() {
+export default function Step4Check() {
   const { t, lang } = useLang()
   const {
     selectedPreset,
@@ -40,7 +41,8 @@ export default function Step3Check() {
         originalImage.bitmap.height,
         selectedPreset,
         activeCropState.headPct,
-        originalImage.blendshapes
+        originalImage.blendshapes,
+        activeCropState.backgroundMatte
       )
       setChecks(results)
     }
@@ -76,12 +78,14 @@ export default function Step3Check() {
       {/* Title & Subtitle */}
       <div className="text-center mb-8">
         <h1 tabIndex={-1} className="font-heading font-extrabold text-2xl sm:text-3xl text-text-main mb-2 tracking-tight">
-          {t.step3Title}
+          {t.step4Title}
         </h1>
         <p className="text-text-muted text-sm sm:text-base max-w-lg mx-auto">
-          {t.step3Subtitle}
+          {t.step4Subtitle}
         </p>
       </div>
+
+      <DocumentEditNotice />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Canvas Preview + Sliders */}
