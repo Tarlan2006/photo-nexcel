@@ -1,4 +1,5 @@
 import { hasClosedArea, hasPhotoEdits } from './edit-state.js'
+import { applyBrushStrokes } from './brush.js'
 import { colorChannels, compositeRows, refineMask, resizeMask } from './mask.js'
 import { estimateExposure, scaledSize, sharpenRows, toneRows } from './pixels.js'
 import { blendSuitRows, findSuitAnchors, suitPlacement } from './suits.js'
@@ -31,6 +32,7 @@ export function createEditorEngine(source, landmarks) {
   const originals = new Map()
   const templates = new Map()
   const refinedMasks = new Map()
+  const correctedMasks = new Map()
   const clothingMasks = new Map()
   const fullSize = scaledSize(source.width, source.height, 2000)
   let segmentation
@@ -78,8 +80,7 @@ export function createEditorEngine(source, landmarks) {
     return mask
   }
 
-  async function backgroundMask(bg, width, height) {
-    const dimensions = width + 'x' + height
+  async function baseBackgroundMask(bg, width, height, dimensions) {
     const key = [bg.method, bg.shift, bg.feather, bg.method === 'manual' ? JSON.stringify(bg.outline) : ''].join('|')
     const cached = refinedMasks.get(dimensions)
     if (cached?.key === key) return cached.mask
@@ -97,10 +98,28 @@ export function createEditorEngine(source, landmarks) {
     return refined
   }
 
+  async function backgroundMask(bg, width, height) {
+    const dimensions = width + 'x' + height
+    const base = await baseBackgroundMask(bg, width, height, dimensions)
+    if (!base || bg.method !== 'auto' || !bg.strokes?.length) return base
+
+    const ids = bg.strokes.map(stroke => stroke.id)
+    const cached = correctedMasks.get(dimensions)
+    const reuse = cached?.base === base && cached.ids.length <= ids.length &&
+      cached.ids.every((id, index) => ids[index] === id)
+    if (reuse && ids.length === cached.ids.length) return cached.mask
+
+    const mask = new Uint8Array(reuse ? cached.mask : base)
+    await applyBrushStrokes(mask, width, height, bg.strokes.slice(reuse ? cached.ids.length : 0), rows)
+    correctedMasks.set(dimensions, { base, ids, mask })
+    return mask
+  }
+
   function setSegmentation(value) {
     if (closed) throw new Error('EDITOR_CLOSED')
     segmentation = value
     refinedMasks.clear()
+    correctedMasks.clear()
     clothingMasks.clear()
     anchor = value.reliable ? findSuitAnchors(landmarks, value.categories, value.width, value.height) : null
     return { reliable: value.reliable, coverage: value.coverage, suitSupported: Boolean(anchor) }
@@ -184,6 +203,7 @@ export function createEditorEngine(source, landmarks) {
       templates.clear()
       originals.clear()
       refinedMasks.clear()
+      correctedMasks.clear()
       clothingMasks.clear()
       segmentation = null
       anchor = null

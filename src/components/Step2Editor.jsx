@@ -14,15 +14,22 @@ export default function Step2Editor() {
     getEditorSession, ensureSegmentation, updateEditor, setOutlineDraft, undoEditor, redoEditor, resetEditor, finishEditor,
   } = useWizard()
   const [showMask, setShowMask] = useState(false)
+  const [brush, setBrush] = useState(null)
   const title = useRef(null)
   const drawButton = useRef(null)
+  const brushButton = useRef(null)
   const needsModel = (edit.bg.enabled && edit.bg.method === 'auto') || edit.suit.enabled
+  const canBrush = edit.bg.enabled && edit.bg.method === 'auto' && Boolean(segmentation.result?.reliable) && !outlineDraft && !editorBusy
+  const activeBrush = canBrush ? brush : null
   const initialCrop = cropStates.kz_id
 
   useEffect(() => { title.current?.focus({ preventScroll: true }) }, [])
   useEffect(() => {
     if (needsModel && segmentation.status === 'idle') ensureSegmentation()
   }, [needsModel, segmentation.status, ensureSegmentation])
+  useEffect(() => {
+    if (!canBrush) setBrush(null)
+  }, [canBrush])
 
   const originalBackgroundWarning = useMemo(() => {
     if (!initialCrop?.success) return false
@@ -60,7 +67,21 @@ export default function Step2Editor() {
   const reset = () => {
     setShowMask(false)
     setOutlineDraft(null)
+    setBrush(null)
     resetEditor()
+  }
+
+  const closeBrush = () => {
+    setBrush(null)
+    brushButton.current?.focus()
+  }
+
+  const commitStroke = (stroke) => {
+    const saved = { ...stroke, id: crypto.randomUUID() }
+    updateEditor((current) => ({
+      ...current,
+      bg: { ...current.bg, strokes: [...current.bg.strokes, saved] },
+    }))
   }
 
   return (
@@ -80,6 +101,16 @@ export default function Step2Editor() {
           setDraft={setOutlineDraft}
           applyOutline={applyOutline}
           cancelOutline={closeOutline}
+          brush={activeBrush && {
+            ...activeBrush,
+            onChange: (patch) => setBrush(current => current && { ...current, ...patch }),
+            onStroke: commitStroke,
+            onClose: closeBrush,
+            onUndo: undoEditor,
+            onRedo: redoEditor,
+            canUndo: Boolean(editHistory.past.length),
+            canRedo: Boolean(editHistory.future.length),
+          }}
           text={text}
         />
 
@@ -93,6 +124,10 @@ export default function Step2Editor() {
             draft={outlineDraft}
             showMask={showMask}
             setShowMask={setShowMask}
+            brushAvailable={canBrush}
+            brushActive={Boolean(activeBrush)}
+            brushButton={brushButton}
+            toggleBrush={() => activeBrush ? closeBrush() : setBrush({ mode: 'erase', size: 4, original: false })}
             segmentation={segmentation}
             originalBackgroundWarning={originalBackgroundWarning}
             text={text}
@@ -114,8 +149,12 @@ export default function Step2Editor() {
           <SuitPanel suit={edit.suit} update={updateEditor} segmentation={segmentation} text={text} />
 
           <div className="flex flex-wrap gap-2">
-            <button type="button" className={secondaryButton} disabled={!editHistory.past.length} onClick={undoEditor}>{text.undo}</button>
-            <button type="button" className={secondaryButton} disabled={!editHistory.future.length} onClick={redoEditor}>{text.redo}</button>
+            {!activeBrush && (
+              <>
+                <button type="button" className={secondaryButton} disabled={!editHistory.past.length} onClick={undoEditor}>{text.undo}</button>
+                <button type="button" className={secondaryButton} disabled={!editHistory.future.length} onClick={redoEditor}>{text.redo}</button>
+              </>
+            )}
             <button type="button" className={secondaryButton} onClick={reset}>{text.reset}</button>
             <button type="button" className={secondaryButton} onClick={() => finishEditor(true)}>{text.skip}</button>
           </div>

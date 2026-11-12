@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { translations } from '../src/i18n.js'
 import { stepCount } from '../src/steps.js'
+import { applyBrushStrokes } from '../src/lib/editor/brush.js'
 import {
   changeEditHistory, createEditHistory, hasClosedArea, initialEdit, recommendedBackground, redoEdit, undoEdit,
 } from '../src/lib/editor/edit-state.js'
@@ -10,6 +11,38 @@ import { estimateExposure, luminance, toneRows } from '../src/lib/editor/pixels.
 import { findSuitAnchors, suitPlacement } from '../src/lib/editor/suits.js'
 
 const rows = async (height, work) => work(0, height)
+
+test('brush erases and restores alpha with soft edges and without gaps between points', async () => {
+  const width = 80
+  const height = 100
+  const mask = new Uint8Array(width * height).fill(180)
+  const points = [[0.25, 0.5], [0.75, 0.5]]
+  const erase = { mode: 'erase', size: 20, points }
+  await applyBrushStrokes(mask, width, height, [erase], rows)
+  const pixel = (x, y) => mask[y * width + x]
+  assert.equal(pixel(20, 50), 0)
+  assert.equal(pixel(40, 50), 0)
+  assert.equal(pixel(59, 50), 0)
+  assert.ok(pixel(40, 57) > 0 && pixel(40, 57) < 180)
+  assert.equal(pixel(40, 65), 180)
+
+  await applyBrushStrokes(mask, width, height, [{ mode: 'restore', size: 20, points: [[0.5, 0.5]] }], rows)
+  assert.equal(pixel(40, 50), 255)
+  assert.equal(pixel(20, 50), 0)
+  assert.ok(pixel(40, 57) < 255)
+})
+
+test('overlapping segments of a single stroke preserve feathering at different resolutions', async () => {
+  const line = { mode: 'restore', size: 20, points: [[0.25, 0.5], [0.75, 0.5]] }
+  const doubled = { ...line, points: [...line.points, line.points[0]] }
+  const base = await applyBrushStrokes(new Uint8Array(10000), 100, 100, [line], rows)
+  const retraced = await applyBrushStrokes(new Uint8Array(10000), 100, 100, [doubled], rows)
+  assert.deepEqual(retraced, base)
+  const large = await applyBrushStrokes(new Uint8Array(90000), 300, 300, [line], rows)
+  const x = 50
+  const y = 56
+  assert.equal(large[(y * 3 + 1) * 300 + x * 3 + 1], base[y * 100 + x])
+})
 
 function solid(width, height, color) {
   return Uint8ClampedArray.from({ length: width * height * 4 }, (_, index) => color[index % 4])

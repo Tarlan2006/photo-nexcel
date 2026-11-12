@@ -522,6 +522,76 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
       }, { ...devices['Pixel 7'], viewport: { width: 390, height: 844 } })
     })
 
+    await suite.test('mobile brush erases, restores, undoes, and carries edge edits into JPEG export', { skip: noPortrait }, async () => {
+      await withPage(async (page, requests, context) => {
+        await upload(page, await coloredPortrait(page))
+        assert.equal(await choose(page, editor.brush).count(), 0)
+        await choose(page, editor.automatic).click()
+        await waitForPixel(page, [255, 255, 255])
+
+        const point = [0.57, 0.52]
+        const getPixel = (locator, coords = point) => locator.evaluate((canvas, [x, y]) => Array.from(canvas.getContext('2d')
+          .getImageData(Math.floor(x * canvas.width), Math.floor(y * canvas.height), 1, 1).data.slice(0, 3)), coords)
+        const before = await getPixel(edited(page))
+        assert.notDeepEqual(before, [255, 255, 255])
+        await choose(page, editor.brush).click()
+        const area = page.getByRole('group', { name: editor.brushCanvas })
+        const tools = page.getByRole('group', { name: editor.brush, exact: true })
+        const client = await context.newCDPSession(page)
+        const paint = async ([x, y], finish = 'touchEnd') => {
+          await area.evaluate(element => element.scrollIntoView({ block: 'center' }))
+          const box = await area.boundingBox()
+          for (const [index, offset] of [-0.02, 0, 0.02].entries()) {
+            await client.send('Input.dispatchTouchEvent', {
+              type: index ? 'touchMove' : 'touchStart',
+              touchPoints: [{ x: box.x + (x + offset) * box.width, y: box.y + y * box.height }],
+            })
+          }
+          await client.send('Input.dispatchTouchEvent', { type: finish, touchPoints: [] })
+        }
+        await paint(point, 'touchCancel')
+        assert.deepEqual(await getPixel(edited(page)), before)
+        await paint(point)
+        await waitForPixel(page, [255, 255, 255], point)
+        await tools.getByRole('button', { name: editor.undo, exact: true }).click()
+        await waitForPixel(page, before, point)
+        await tools.getByRole('button', { name: editor.redo, exact: true }).click()
+        await waitForPixel(page, [255, 255, 255], point)
+        await checkAxe(page)
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth === innerWidth))
+
+        const exportKz = async () => {
+          await tools.getByRole('button', { name: editor.brushDone, exact: true }).click()
+          await next(page).click()
+          await heading(page, ru.step3Title)
+          await next(page).click()
+          await heading(page, ru.step4Title)
+          await next(page).click()
+          return jpeg(page, 413, 531, 30000)
+        }
+        const erased = await exportKz()
+        await page.getByRole('navigation', { name: ru.stepNavigation }).getByRole('button', { name: ru.stepLabels[1] }).click()
+        await editorHeading(page).waitFor()
+        await waitForPixel(page, [255, 255, 255], point)
+        await choose(page, editor.brush).click()
+        await tools.getByRole('button', { name: editor.brushRestore }).click()
+        const showOriginal = tools.getByRole('button', { name: editor.brushOriginal })
+        const missed = [0.57, 0.18]
+        await waitForPixel(page, [255, 255, 255], missed)
+        await showOriginal.click()
+        const originalRgb = await getPixel(original(page))
+        const missedRgb = await getPixel(original(page), missed)
+        await paint(point)
+        await paint(missed)
+        await showOriginal.click()
+        await waitForPixel(page, originalRgb, point)
+        await waitForPixel(page, missedRgb, missed)
+        const restored = await exportKz()
+        assert.notDeepEqual(restored, erased)
+        assert.equal(requests.filter(request => segmentResource(request.url)).length, 1)
+      }, { ...devices['Pixel 7'], viewport: { width: 390, height: 844 } })
+    })
+
     await suite.test('ten edit/reset cycles release image resources and do not retain heap', { skip: noPortrait }, async (t) => {
       await withPage(async (page, requests, context) => {
         const client = await context.newCDPSession(page)

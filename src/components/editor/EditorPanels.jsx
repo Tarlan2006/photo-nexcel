@@ -119,6 +119,7 @@ export function FiltersPanel({ filter, update, text }) {
 
 export function BackgroundPanel({
   bg, update, startOutline, drawButton, draft, showMask, setShowMask, segmentation, originalBackgroundWarning, text,
+  brushAvailable, brushActive, brushButton, toggleBrush,
 }) {
   const change = (patch, group) => update((edit) => ({ ...edit, bg: { ...edit.bg, ...patch } }), group)
   const showUnreliable = bg.enabled && bg.method === 'auto' && segmentation.result?.reliable === false
@@ -150,6 +151,17 @@ export function BackgroundPanel({
         >
           {text.pencil}
         </button>
+        {brushAvailable && (
+          <button
+            ref={brushButton}
+            type="button"
+            className={brushActive ? primaryButton : secondaryButton}
+            aria-pressed={brushActive}
+            onClick={toggleBrush}
+          >
+            {text.brush}
+          </button>
+        )}
       </div>
       {!draft && <p className="text-xs text-text-muted">{text.pencilHint}</p>}
       {showUnreliable && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">{text.unreliableMask}</p>}

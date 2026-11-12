@@ -15,6 +15,7 @@ export const initialEdit = {
     feather: 2,
     shift: -1,
     outline: [],
+    strokes: [],
   },
   suit: { enabled: false, gender: null, styleId: 'dark', scale: 0, offset: 0 },
 }

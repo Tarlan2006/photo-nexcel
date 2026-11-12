@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { hasClosedArea, hasPhotoEdits } from '../../lib/editor/edit-state'
 import { scaledSize } from '../../lib/editor/pixels'
 import ContourLayer from './ContourLayer'
+import BrushLayer from './BrushLayer'
 
 export const secondaryButton = 'min-h-11 min-w-11 rounded-lg border border-grid-border bg-white px-3 py-2 text-sm font-semibold hover:border-emerald-accent hover:text-emerald-accent disabled:cursor-not-allowed disabled:opacity-50'
 export const primaryButton = 'min-h-11 min-w-11 rounded-lg bg-emerald-accent px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-accent-hover disabled:cursor-not-allowed disabled:opacity-50'
 
-export default function EditorPreview({ original, edit, getSession, showMask, draft, setDraft, applyOutline, cancelOutline, text }) {
+export default function EditorPreview({ original, edit, getSession, showMask, draft, setDraft, applyOutline, cancelOutline, brush, text }) {
   const originalRef = useRef(null)
   const editedRef = useRef(null)
   const [painted, setPainted] = useState(false)
@@ -64,8 +65,8 @@ export default function EditorPreview({ original, edit, getSession, showMask, dr
     }
   }, [edit, hasEdits, getSession, showMask])
 
-  const showEdited = hasEdits && painted && !holding && !draft
-  const compare = showEdited && split && !showMask
+  const showEdited = hasEdits && painted && !holding && !draft && !brush?.original
+  const compare = showEdited && split && !showMask && !brush
 
   return (
     <div className="min-w-0">
@@ -95,6 +96,7 @@ export default function EditorPreview({ original, edit, getSession, showMask, dr
           />
           {compare && <div className="pointer-events-none absolute inset-y-0 w-0.5 bg-white shadow-sm" style={{ left: splitPosition + '%' }} />}
           {draft && <ContourLayer draft={draft} updateDraft={setDraft} cancel={cancelOutline} text={text} />}
+          {brush && <BrushLayer width={width} height={height} brush={brush} onStroke={brush.onStroke} onClose={brush.onClose} text={text} />}
         </div>
 
         {draft ? (
@@ -104,6 +106,43 @@ export default function EditorPreview({ original, edit, getSession, showMask, dr
               <button type="button" className={primaryButton} onClick={applyOutline} disabled={!hasClosedArea(draft.points)}>{text.applyOutline}</button>
               <button type="button" className={secondaryButton} onClick={() => setDraft((current) => ({ ...current, points: [] }))} disabled={!draft.points.length}>{text.clearOutline}</button>
               <button type="button" className={secondaryButton} onClick={cancelOutline}>{text.cancel}</button>
+            </div>
+          </div>
+        ) : brush ? (
+          <div className="mt-3 space-y-2" role="group" aria-label={text.brush}>
+            <p id="editor-brush-instructions" className="text-xs text-text-muted">{text.brushHelp}</p>
+            <div className="flex flex-wrap gap-2">
+              {['erase', 'restore'].map(mode => (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={brush.mode === mode}
+                  className={brush.mode === mode ? primaryButton : secondaryButton}
+                  onClick={() => brush.onChange({ mode })}
+                >
+                  {mode === 'erase' ? text.brushErase : text.brushRestore}
+                </button>
+              ))}
+              <button type="button" aria-pressed={brush.original} className={secondaryButton} onClick={() => brush.onChange({ original: !brush.original })}>
+                {text.brushOriginal}
+              </button>
+            </div>
+            <label className="block text-sm font-medium">
+              {text.brushSize} <span aria-hidden="true" className="ml-1 font-mono text-xs text-text-muted">{brush.size}%</span>
+              <input
+                type="range"
+                min="1"
+                max="20"
+                value={brush.size}
+                aria-valuetext={brush.size + '%'}
+                onChange={event => brush.onChange({ size: Number(event.target.value) })}
+                className="block min-h-11 w-full accent-emerald-accent"
+              />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={secondaryButton} onClick={brush.onUndo} disabled={!brush.canUndo}>{text.undo}</button>
+              <button type="button" className={secondaryButton} onClick={brush.onRedo} disabled={!brush.canRedo}>{text.redo}</button>
+              <button type="button" className={secondaryButton} onClick={brush.onClose}>{text.brushDone}</button>
             </div>
           </div>
         ) : (
