@@ -32,6 +32,16 @@ const symbols = {
   size: 'M8 4H4v4m12-4h4v4m0 8v4h-4m-8 0H4v-4M8 12h8',
   weight: 'M7 7h10l3 13H4L7 7Zm3 0V5a2 2 0 1 1 4 0v2',
   head: 'M8 20v-2a4 4 0 0 1 8 0v2M16 9a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z',
+  format: 'M6 3h8l4 4v14H6V3Zm8 0v5h4m-9 7h6m-6 3h6',
+  background: 'M4 4h16v16H4V4Zm3 10 3-3 3 3 2-2 2 2m-1-6h.01',
+  position: 'M12 3v5m0 8v5M3 12h5m8 0h5m-5 0a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z',
+  expression: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9 10h.01M15 10h.01M9 15h6',
+  glasses: 'M10 13a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm10 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm-10 0h4m-13-1h3m16 0h3',
+  headwear: 'M6 15v-4a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v4m-14 0h16a2 2 0 1 1 0 4H4a2 2 0 0 1 0-4Z',
+  lighting: 'M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5m-3 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z',
+  retouch: 'm4 20 11-11 4 4-7 7H4Zm11-11 2-2 4 4-2 2M4 4l16 16',
+  age: 'M5 4h14v16H5V4Zm0 5h14M9 2v4m6-4v4m-6 8h3v3',
+  clothing: 'M9 4a3 3 0 0 0 6 0l5 2 2 5-4 2v7H6v-7l-4-2 2-5 5-2Z',
 }
 
 function Requirements({ initialDocument }) {
@@ -39,7 +49,7 @@ function Requirements({ initialDocument }) {
   const copy = photoCopy[lang]
   const [override, setOverride] = useState(null)
   const current = override ?? initialDocument
-  const { source, items } = requirements[current]
+  const { intro, sources, items } = requirements[current]
 
   return (
     <section className="rounded-xl border border-grid-border bg-white p-4 sm:p-6">
@@ -60,9 +70,9 @@ function Requirements({ initialDocument }) {
         ))}
       </div>
       <div id="photo-rule-panel" role="tabpanel" aria-labelledby={'rule-tab-' + current} tabIndex={0} className="mt-4">
-        <p className="text-sm text-text-muted">{copy.presetNote}</p>
+        <p className="text-sm text-text-muted">{intro[lang]}</p>
         <ul className="my-3 grid gap-2 sm:grid-cols-3">
-          {items.filter(item => !item.todo).map(item => (
+          {items.map(item => (
             <li key={item.id} className="rounded-lg border border-grid-border bg-paper p-3">
               <div className="flex items-center gap-2">
                 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
@@ -73,10 +83,17 @@ function Requirements({ initialDocument }) {
             </li>
           ))}
         </ul>
-        <a href={source.href} target="_blank" rel="noreferrer"
-          className="inline-flex min-h-11 items-center text-sm font-semibold text-emerald-accent underline">
-          {copy.source.replace('{site}', source.name)}
-        </a>
+        <h3 className="text-sm">{copy.sources}</h3>
+        <ul aria-label={copy.sources} className="flex flex-wrap gap-x-4">
+          {Object.values(sources).map(source => (
+            <li key={source.href}>
+              <a href={lang === 'kz' ? source.kazakhHref ?? source.href : source.href} target="_blank" rel="noreferrer"
+                className="inline-flex min-h-11 items-center text-sm font-semibold text-emerald-accent underline">
+                {source.label[lang]}
+              </a>
+            </li>
+          ))}
+        </ul>
         <p className="text-sm text-text-muted">{copy.checkSource}</p>
       </div>
     </section>

@@ -9,6 +9,7 @@ import axe from 'axe-core'
 import { chromium, devices } from 'playwright'
 import { preview } from 'vite'
 import { photoCopy } from '../src/content/photo-copy.js'
+import { requirements } from '../src/content/requirements.js'
 import { translations } from '../src/i18n.js'
 import { fixturePng, synthSignature } from './helpers/synthSignature.js'
 
@@ -214,10 +215,22 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         await main(page).getByRole('heading', { name: ru.step1Title }).waitFor()
         assert.equal(await main(page).locator('input[name=upload-document]').count(), 2)
         await main(page).getByRole('heading', { name: copy.requirements }).waitFor()
-        assert.equal(await main(page).getByRole('tabpanel').getByRole('listitem').count(), 3)
+        const panel = main(page).getByRole('tabpanel')
+        assert.equal(await panel.getByRole('list').first().getByRole('listitem').count(), 13)
+        assert.equal(await panel.getByRole('link', { name: requirements.kz_id.sources.service.label.ru })
+          .getAttribute('href'), requirements.kz_id.sources.service.href)
         await main(page).getByRole('tab', { name: 'Green Card (DV)', exact: true }).click()
-        await main(page).getByRole('tabpanel').getByText('Готовый файл — 600 × 600 пикселей.').waitFor()
-        await main(page).getByRole('link', { name: copy.source.replace('{site}', 'travel.state.gov') }).waitFor()
+        await panel.getByText(/ровно 600 × 600/).waitFor()
+        assert.equal(await panel.getByRole('list').first().getByRole('listitem').count(), 13)
+        assert.equal(await panel.getByRole('link', { name: requirements.dv.sources.photoRules.label.ru })
+          .getAttribute('href'), requirements.dv.sources.photoRules.href)
+        await page.getByRole('button', { name: 'KZ', exact: true }).click()
+        await panel.getByText(/дәл 600 × 600/).waitFor()
+        await main(page).getByRole('tab', { name: 'ҚР жеке куәлігі', exact: true }).click()
+        await panel.getByText(/Түс тереңдігі — 24 бит/).waitFor()
+        assert.equal(await panel.getByRole('link', { name: requirements.kz_id.sources.photoRules.label.kz })
+          .getAttribute('href'), requirements.kz_id.sources.photoRules.kazakhHref)
+        await page.getByRole('button', { name: 'RU', exact: true }).click()
         assert.doesNotMatch(await main(page).innerText(), /TODO|Шаг 1/)
         assert.equal(await main(page).locator('details').count(), 4)
         assert.ok(!requests.some(({ url }) => /face_landmarker|detector-|\/models\/|\/wasm\//.test(url)))

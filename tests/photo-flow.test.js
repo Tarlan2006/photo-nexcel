@@ -32,25 +32,37 @@ test('DV exposes only white colors and starts with filters and suit off', () => 
   assert.equal(toPhotoParameters({ ...settings, background: 'natural' }).edit.bg.color, '#fafafa')
 })
 
-test('published requirements come from the presets, other topics have a private TODO', () => {
-  const expected = ['size', 'weight', 'head', 'format', 'background', 'position', 'expression', 'glasses', 'headwear', 'lighting', 'retouch']
-  for (const [id, { source, items }] of Object.entries(requirements)) {
+test('the official requirements are complete in both languages and have valid source references', () => {
+  const expected = ['size', 'weight', 'head', 'format', 'background', 'position', 'expression', 'glasses', 'headwear', 'lighting', 'retouch', 'age', 'clothing']
+  for (const [id, { intro, sources, items }] of Object.entries(requirements)) {
     assert.deepEqual(items.map(item => item.id), expected)
-    assert.ok(source.href.startsWith('https://'))
-    for (const item of items) {
-      assert.ok(item.title.ru.trim() && item.title.kz.trim())
-      if (item.detail) {
-        assert.equal(item.source, 'preset')
-        assert.ok(item.detail.ru.trim() && item.detail.kz.trim())
-        assert.ok(!item.todo)
-      } else {
-        assert.match(item.todo, /^TODO:/)
+    assert.ok(intro.ru.trim() && intro.kz.trim())
+    const allowedHosts = id === 'kz_id' ? ['beta.egov.kz', 'old.adilet.zan.kz'] : ['travel.state.gov']
+    for (const { label, href, kazakhHref } of Object.values(sources)) {
+      assert.ok(label.ru.trim() && label.kz.trim())
+      for (const link of [href, kazakhHref ?? href]) {
+        const url = new URL(link)
+        assert.equal(url.protocol, 'https:')
+        assert.ok(allowedHosts.includes(url.hostname), link)
       }
     }
+    for (const item of items) {
+      assert.ok(item.title.ru.trim() && item.title.kz.trim())
+      assert.ok(item.detail.ru.trim() && item.detail.kz.trim())
+      assert.ok(Object.hasOwn(sources, item.source), item.id)
+    }
     const preset = presets[id]
-    assert.match(items[0].detail.ru, new RegExp(preset.width + ' × ' + preset.height))
-    assert.match(items[1].detail.kz, new RegExp(preset.maxKb + ' КБ'))
-    assert.match(items[2].detail.kz, new RegExp(preset.headMinPct + '–' + preset.headMaxPct))
+    for (const lang of ['ru', 'kz']) {
+      for (const [index, value] of [
+        [0, preset.width + ' × ' + preset.height],
+        [1, preset.maxKb + ' КБ'],
+        [2, preset.headMinPct + '–' + preset.headMaxPct + '%'],
+      ]) {
+        assert.ok(items[index].detail[lang].includes(value), id + ' ' + lang + ' ' + value)
+      }
+      assert.match(requirements.dv.items[3].detail[lang], /JPEG/)
+      assert.doesNotMatch(requirements.kz_id.items[3].detail[lang], /JPEG/)
+    }
   }
 })
 
