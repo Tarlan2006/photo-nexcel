@@ -95,8 +95,9 @@ export function PaperCrop({ photo, crop, onCrop, copy }) {
                     onCrop(move(corners[i], crop[horizontal] + delta[0] * step, crop[vertical] + delta[1] * step))
                   }}>
                   <circle cx={gripX} cy={gripY} r={0.2} vectorEffect="non-scaling-stroke" stroke="transparent" strokeWidth="44" />
+                  <circle cx={gripX} cy={gripY} r={0.2} vectorEffect="non-scaling-stroke" stroke="white" strokeWidth="15" />
                   <circle className="signature-grip-mark" cx={gripX} cy={gripY} r={0.2} vectorEffect="non-scaling-stroke"
-                    stroke="white" strokeWidth="13" />
+                    stroke="#1b6b44" strokeWidth="9" />
                 </g>
               )
             })}

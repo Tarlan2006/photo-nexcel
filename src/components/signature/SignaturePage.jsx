@@ -343,7 +343,7 @@ export default function SignaturePage() {
   return (
     <div className="flex min-h-[calc(100dvh-7rem)] flex-col">
       <main id="signature-main" tabIndex={-1} className="signature-main grow">
-        <h1 ref={heading} tabIndex={-1} className="text-2xl tracking-tight sm:text-4xl">{copy.title}</h1>
+        <h1 ref={heading} tabIndex={-1} className="text-2xl tracking-tight focus:outline-none sm:text-4xl">{copy.title}</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-muted sm:text-base">{copy.subtitle}</p>
         <ol aria-label={copy.stepLabel} className="signature-steps">
           {copy.steps.map((label, i) => <li key={label} aria-current={i + 1 === step ? 'step' : undefined}>{label}</li>)}

@@ -8,21 +8,15 @@ const PhotoWizard = lazy(() => import('./App.jsx'))
 const SignaturePage = lazy(() => import('./components/signature/SignaturePage.jsx'))
 const paths = { photo: '/', signature: '/signature/' }
 const readTool = () => /^\/signature(?:\/|$)/.test(window.location.pathname) ? 'signature' : 'photo'
-const metadata = {
-  photo: {
-    title: 'Фото на удостоверение РК и Green Card | Nexcel',
-    description: 'Подгоним размер и кадр под требования к фото на удостоверение личности РК и Green Card. Бесплатно, фото не покидает ваше устройство.',
-    image: '/og-image.png',
-  },
-  signature: {
-    title: 'Подпись из фото в PNG с прозрачным фоном | Nexcel',
-    description: 'Уберите фон с фото рукописной подписи, обрежьте по штриху и скачайте PNG. Фото обрабатывается в браузере и остаётся на вашем устройстве.',
-    image: '/og-signature.png',
-  },
+const photoMetadata = {
+  title: 'Фото на удостоверение РК и Green Card | Nexcel',
+  description: 'Подгоним размер и кадр под требования к фото на удостоверение личности РК и Green Card. Бесплатно, фото не покидает ваше устройство.',
+  image: '/og-image.png',
+  locale: 'ru_RU',
 }
 
 function Tools() {
-  const { t } = useLang()
+  const { lang, t } = useLang()
   const [tool, setTool] = useState(readTool)
   const [visitedPhoto, setVisitedPhoto] = useState(() => readTool() === 'photo')
   const savedPhotoHistory = useRef(null)
@@ -38,7 +32,12 @@ function Tools() {
   }, [])
 
   useEffect(() => {
-    const { title, description, image } = metadata[tool]
+    const { title, description, image, locale } = tool === 'signature' ? {
+      title: t.site.signatureSeoTitle,
+      description: t.site.signatureSeoDescription,
+      image: '/og-signature.png',
+      locale: lang === 'kz' ? 'kk_KZ' : 'ru_RU',
+    } : photoMetadata
     const site = 'https://photo.nexcel.kz'
     document.title = title
     document.querySelector('link[rel="canonical"]').href = site + paths[tool]
@@ -48,6 +47,7 @@ function Tools() {
       'property="og:description"': description,
       'property="og:url"': site + paths[tool],
       'property="og:image"': site + image,
+      'property="og:locale"': locale,
       'name="twitter:title"': title,
       'name="twitter:description"': description,
       'name="twitter:image"': site + image,
@@ -55,7 +55,7 @@ function Tools() {
     for (const [selector, content] of Object.entries(tags)) {
       document.querySelector(`meta[${selector}]`)?.setAttribute('content', content)
     }
-  }, [tool])
+  }, [lang, t, tool])
 
   function navigate(event, next) {
     if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return

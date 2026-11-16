@@ -368,6 +368,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         await page.getByRole('button', { name: 'KZ', exact: true }).click()
         await main(page).getByRole('heading', { name: kz.title }).waitFor()
         assert.equal(await page.locator('html').getAttribute('lang'), 'kk')
+        assert.equal(await page.title(), translations.kz.site.signatureSeoTitle)
         await page.setViewportSize({ width: 360, height: 800 })
         await noOverflow()
         await page.setViewportSize({ width: 768, height: 900 })
