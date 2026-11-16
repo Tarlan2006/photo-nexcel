@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useLang } from '../contexts/LangContext'
 import { useWizard } from '../contexts/WizardContext'
 import CameraCapture from './CameraCapture'
@@ -59,7 +59,7 @@ function TipIcon({ type }) {
   )
 }
 
-export default function Step1Photo() {
+export default function Step1Photo({ active = true }) {
   const { t } = useLang()
   const { isProcessing, statusKey, errorKey, handleFile } = useWizard()
 
@@ -68,6 +68,10 @@ export default function Step1Photo() {
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [simdSupported] = useState(supportsWasmSimd)
   const canChoosePhoto = simdSupported && !isProcessing
+
+  useEffect(() => {
+    if (!active) setIsCameraOpen(false)
+  }, [active])
 
   const inputRef = useRef(null)
   const cameraBtnRef = useRef(null)
@@ -353,7 +357,7 @@ export default function Step1Photo() {
         </div>
       </div>
 
-      {isCameraOpen && (
+      {active && isCameraOpen && (
         <CameraCapture
           onClose={handleCameraClose}
           onCapture={handleCameraCapture}

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useLang } from '../contexts/LangContext'
 
-export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
+export default function CameraCapture({ onClose, onCapture, onSelectFile, facingMode = 'user' }) {
   const { t } = useLang()
   const videoRef = useRef(null)
   const dialogRef = useRef(null)
@@ -57,7 +57,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            ...(camera ? { deviceId: { exact: camera } } : { facingMode: 'user' }),
+            ...(camera ? { deviceId: { exact: camera } } : { facingMode }),
             width: { ideal: 1920 },
             height: { ideal: 1080 },
           },
@@ -77,7 +77,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
         if (!current()) return
 
         const settings = track.getSettings()
-        setMirrored(settings.facingMode ? settings.facingMode === 'user' : !camera)
+        setMirrored(settings.facingMode ? settings.facingMode === 'user' : !camera && facingMode === 'user')
         setIsLoading(false)
         const devices = await navigator.mediaDevices.enumerateDevices().catch(() => [])
         if (!current()) return
@@ -101,7 +101,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile }) {
       generation.current++
       stop()
     }
-  }, [camera])
+  }, [camera, facingMode])
 
   useEffect(() => {
     if (countdown === null) return

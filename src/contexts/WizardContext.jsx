@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { presets, presetList } from '../presets'
 import { steps } from '../steps'
 import { cropFace } from '../lib/crop'
-import { decodePhoto, photoMimeTypes, identifyPhoto } from '../lib/photo'
+import { decodePhoto, photoFileError, identifyPhoto } from '../lib/photo'
 import {
   changeEditHistory, createEditHistory, hasClosedArea, hasPhotoEdits, initialEdit,
   recommendedBackground, redoEdit, undoEdit,
@@ -31,6 +31,7 @@ const emptyWizard = {
 const faceErrors = { NO_FACE: 'errNoFace', MULTIPLE_FACES: 'errMultipleFaces', SMALL_FACE: 'errSmallFace' }
 
 function writeStep(method, step, photoId, previousStep) {
+  if (window.location.pathname !== '/') return
   window.history[method]({
     ...window.history.state,
     photoWizard: { step, photoId, previousStep },
@@ -108,6 +109,7 @@ export function WizardProvider({ children }) {
     writeStep('replaceState', steps.PHOTO)
 
     const onPopState = (event) => {
+      if (window.location.pathname !== '/') return
       request.current++
       const entry = event.state?.photoWizard
       const target = photo.current && entry?.photoId === photo.current.id ? entry.step : steps.PHOTO
@@ -156,9 +158,8 @@ export function WizardProvider({ children }) {
       if (id === request.current) setState((current) => ({ ...current, statusKey: null, errorKey }))
     }
 
-    if (!file.size) return fail('errRead')
-    if (file.size > 50 * 1024 * 1024) return fail('errUploadTooLarge')
-    if (file.type && !photoMimeTypes.includes(file.type)) return fail('errUnsupportedFormat')
+    const fileError = photoFileError(file)
+    if (fileError) return fail(fileError)
 
     setState((current) => ({ ...current, statusKey: 'processingModel', errorKey: null }))
     let bitmap

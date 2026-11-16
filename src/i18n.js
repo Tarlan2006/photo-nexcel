@@ -253,7 +253,10 @@ export const translations = {
 
     site: {
       skipToWizard: 'Перейти к мастеру',
+      skipToSignature: 'Перейти к обработке подписи',
       photoService: 'Фото на документы',
+      signatureTab: 'Подпись',
+      toolNavigation: 'Инструменты',
       navigation: 'Основная навигация',
       languages: 'Выбор языка',
       openMenu: 'Открыть меню',
@@ -548,7 +551,10 @@ export const translations = {
 
     site: {
       skipToWizard: 'Фото дайындауға өту',
+      skipToSignature: 'Қолтаңба өңдеуге өту',
       photoService: 'Құжатқа фото',
+      signatureTab: 'Қолтаңба',
+      toolNavigation: 'Құралдар',
       navigation: 'Негізгі навигация',
       languages: 'Тілді таңдау',
       openMenu: 'Мәзірді ашу',

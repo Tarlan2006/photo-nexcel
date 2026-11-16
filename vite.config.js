@@ -2,6 +2,7 @@ import { createReadStream, readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -37,8 +38,21 @@ const mediaPipeAssets = {
   },
 }
 
+function serveSignatureEntry(server) {
+  server.middlewares.use((request, _response, next) => {
+    if ((request.method === 'GET' || request.method === 'HEAD') && /^\/signature(?:\?|$)/.test(request.url)) {
+      request.url = request.url.replace('/signature', '/signature/')
+    }
+    next()
+  })
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), mediaPipeAssets],
+  appType: 'mpa',
+  plugins: [
+    react(), tailwindcss(), mediaPipeAssets,
+    { name: 'signature-entry', configureServer: serveSignatureEntry, configurePreviewServer: serveSignatureEntry },
+  ],
   define: { __MEDIAPIPE_WASM_PATH__: JSON.stringify(visionWasmPath) },
   preview: {
     headers: {
@@ -53,5 +67,11 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    rolldownOptions: {
+      input: {
+        photo: fileURLToPath(new URL('./index.html', import.meta.url)),
+        signature: fileURLToPath(new URL('./signature/index.html', import.meta.url)),
+      },
+    },
   },
 })

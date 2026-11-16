@@ -4,6 +4,13 @@ const signatures = {
 }
 export const photoMimeTypes = [...Object.keys(signatures), 'image/webp']
 
+export function photoFileError(file) {
+  if (!file.size) return 'errRead'
+  if (file.size > 50 * 1024 * 1024) return 'errUploadTooLarge'
+  if (file.type && !photoMimeTypes.includes(file.type)) return 'errUnsupportedFormat'
+  return null
+}
+
 // A minimal Wasm module containing v128 SIMD instructions.
 const wasmSimdProbe = Uint8Array.of(
   0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3,

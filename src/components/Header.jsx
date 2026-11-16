@@ -7,8 +7,9 @@ import SiteIcon from './SiteIcon'
 const serviceMenuPages = [...servicePages, 'calculator']
 const menuLink = 'flex min-h-11 items-center rounded px-3 py-2 text-sm hover:bg-paper hover:text-emerald-accent'
 
-export default function Header() {
+export default function Header({ tool = 'photo' }) {
   const { lang, setLang, t: { site } } = useLang()
+  const serviceName = tool === 'signature' ? site.signatureTab : site.photoService
   const [openPanel, setOpenPanel] = useState(null)
   const [logoFailed, setLogoFailed] = useState(false)
   const serviceGroup = useRef(null)
@@ -54,10 +55,10 @@ export default function Header() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 h-16 border-b border-grid-border bg-paper/90 backdrop-blur-md">
       <a
-        href="#wizard-main"
+        href={tool === 'signature' ? '#signature-main' : '#wizard-main'}
         className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-2 focus:z-10 focus:rounded focus:bg-white focus:px-4 focus:py-3"
       >
-        {site.skipToWizard}
+        {tool === 'signature' ? site.skipToSignature : site.skipToWizard}
       </a>
       <div className="relative mx-auto flex h-full max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:gap-2 lg:px-8 xl:gap-5">
         <div className="flex shrink-0 items-center gap-3">
@@ -83,10 +84,10 @@ export default function Header() {
               <span className="mt-0.5 hidden whitespace-nowrap text-[10px] tracking-wide text-text-muted uppercase sm:block">
                 Engineering &amp; Solutions
               </span>
-              <span className="mt-0.5 whitespace-nowrap text-[10px] text-text-muted xl:hidden">/ {site.photoService}</span>
+              <span className="mt-0.5 whitespace-nowrap text-[10px] text-text-muted xl:hidden">/ {serviceName}</span>
             </span>
           </a>
-          <span className="hidden whitespace-nowrap text-xs text-text-muted xl:inline">/ {site.photoService}</span>
+          <span className="hidden whitespace-nowrap text-xs text-text-muted xl:inline">/ {serviceName}</span>
         </div>
 
         <nav aria-label={site.navigation} className="hidden items-center gap-0.5 text-xs font-medium lg:flex xl:gap-2 xl:text-sm">

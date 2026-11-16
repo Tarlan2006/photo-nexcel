@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
-import { LangProvider, useLang } from './contexts/LangContext'
+import { useLang } from './contexts/LangContext'
 import { WizardProvider, useWizard } from './contexts/WizardContext'
-import Header from './components/Header'
 import StepIndicator from './components/StepIndicator'
 import Step1Photo from './components/Step1Photo'
 import Step3Document from './components/Step3Document'
@@ -13,27 +12,29 @@ import { steps } from './steps'
 
 const Step2Editor = lazy(() => import('./components/Step2Editor'))
 
-function WizardContent() {
-  const { step } = useWizard()
+function WizardContent({ active }) {
+  const { step, originalImage } = useWizard()
   const { t } = useLang()
   const mainRef = useRef(null)
   const lastStep = useRef(step)
 
   useEffect(() => {
-    if (lastStep.current === step) return
+    if (active && originalImage && window.history.state?.photoWizard?.step !== step) {
+      window.history.replaceState({ photoWizard: { step, photoId: originalImage.id } }, '')
+    }
+    if (!active || lastStep.current === step) return
     lastStep.current = step
     window.scrollTo(0, 0)
     mainRef.current?.querySelector('h1')?.focus({ preventScroll: true })
-  }, [step])
+  }, [step, active, originalImage])
 
   return (
-    <div className="min-h-screen bg-paper text-text-main flex flex-col justify-between">
-      <Header />
-      <div className="pt-16">
+    <div className="min-h-[calc(100dvh-7rem)] bg-paper text-text-main flex flex-col justify-between">
+      <div>
         <StepIndicator />
 
         <main id="wizard-main" tabIndex={-1} ref={mainRef} className="min-h-[500px]">
-          {step === steps.PHOTO && <Step1Photo />}
+          {step === steps.PHOTO && <Step1Photo active={active} />}
           {step === steps.EDITOR && (
             <Suspense fallback={<p role="status" className="p-8 text-center">{t.editor.processing}</p>}>
               <Step2Editor />
@@ -54,12 +55,10 @@ function WizardContent() {
   )
 }
 
-export default function App() {
+export default function App({ active }) {
   return (
-    <LangProvider>
-      <WizardProvider>
-        <WizardContent />
-      </WizardProvider>
-    </LangProvider>
+    <WizardProvider>
+      <WizardContent active={active} />
+    </WizardProvider>
   )
 }

@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/run-all-tests.js && node --test tests/editor-unit.test.js && npm run test:e2e",
-    "test:e2e": "npm run build && node --test tests/editor-e2e.test.js"
+    "test": "node tests/run-all-tests.js && node --test --test-concurrency=1 tests/editor-unit.test.js tests/signature-unit.test.js && npm run test:e2e",
+    "test:e2e": "npm run build && node --test --test-concurrency=1 tests/editor-e2e.test.js tests/signature-e2e.test.js"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.2.3",

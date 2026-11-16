@@ -1,2 +1,3 @@
-# Static single-page wizard: no catch-all rewrite so nonexistent URLs return 404
+# Explicit routes leave unknown paths to the static 404 page.
 /index.html / 301
+/signature /signature/ 200
