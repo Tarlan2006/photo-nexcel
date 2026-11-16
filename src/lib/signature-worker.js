@@ -2,6 +2,7 @@ import { applyBrushStrokes } from './editor/brush.js'
 import { scaledSize } from './editor/pixels.js'
 import { prepareSignature, renderSignature, signatureBounds, signatureMask } from './signature.js'
 import { exportSignature } from './signature-png.js'
+import { exportEgovSignature } from './signature-jpeg.js'
 
 let photo
 let cache
@@ -88,7 +89,9 @@ self.onmessage = async ({ data: { id, action, ...payload } }) => {
     } else {
       const key = JSON.stringify([payload.crop, payload.options, payload.strokes])
       if (finalImage?.key !== key) finalImage = { key, image: await extract(payload, false) }
-      result = await exportSignature(finalImage.image, payload.output)
+      result = payload.output.format === 'egov'
+        ? await exportEgovSignature(finalImage.image)
+        : await exportSignature(finalImage.image, payload.output)
     }
     self.postMessage({ id, result }, result.data ? [result.data.buffer] : [])
   } catch (error) {

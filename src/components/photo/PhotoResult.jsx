@@ -7,11 +7,15 @@ import PhotoCanvas from './PhotoCanvas'
 import { Slider } from './PhotoSettings'
 
 const PhotoBrush = lazy(() => import('./PhotoBrush'))
+const selfChecks = [
+  ['verifyGlasses'], ['verifyHeadwear'], ['verifyClothing'],
+  ['verifyMouth', 'mouth'], ['verifyEyes', 'eyes'], ['verifyTilt', 'tilt'], ['verifyAge'],
+]
 
 function CheckList({ checks, lang, t, preset }) {
   return (
     <ul className="divide-y divide-grid-border">
-      {checks.map(check => {
+      {checks.filter(check => check.observed !== false).map(check => {
         const guide = check.id === 'headProportion'
         const ok = guide ? check.params?.pct >= preset.headMinPct && check.params?.pct <= preset.headMaxPct : check.ok
         return (
@@ -25,6 +29,28 @@ function CheckList({ checks, lang, t, preset }) {
         )
       })}
     </ul>
+  )
+}
+
+function SelfCheck({ checks, copy }) {
+  return (
+    <section className="mt-4 border-t border-grid-border pt-3" aria-labelledby="photo-self-check">
+      <h3 id="photo-self-check" className="mb-2 text-sm">{copy.selfCheck}</h3>
+      <ul className="space-y-2 text-sm">
+        {selfChecks.map(([key, id]) => {
+          const check = id && checks.find(item => item.id === id)
+          const passed = check?.ok && check.observed !== false
+          return (
+            <li key={key} className="flex items-start gap-2">
+              <span aria-hidden="true" className={passed ? 'text-emerald-accent' : 'text-text-muted'}>
+                {passed ? '✓' : '•'}
+              </span>
+              <span>{copy[key]}{passed && <span className="sr-only"> {copy.automaticCheck}</span>}</span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
 
@@ -87,6 +113,7 @@ export default function PhotoResult({ result, source, heading, onSettings, onPro
         <section className="min-w-0 rounded-xl border border-grid-border bg-white p-4 sm:p-5">
           <h2 className="mb-2 text-base">{t.checksTitle}</h2>
           <CheckList checks={result.checks} lang={lang} t={t} preset={preset} />
+          {preset.id === 'kz_id' && <SelfCheck checks={result.checks} copy={copy} />}
           {corrections.length > 0 && (
             <>
               <h3 className="mt-3 text-sm">{copy.corrections}</h3>

@@ -5,6 +5,7 @@ import { photoFileError, identifyPhoto } from '../src/lib/photo.js'
 import { scaledSize } from '../src/lib/editor/pixels.js'
 import { prepareSignature, processSignature, signatureDefaults, signatureMask } from '../src/lib/signature.js'
 import { fitSignaturePngs } from '../src/lib/signature-png.js'
+import { exportEgovSignature, prepareEgovSignature } from '../src/lib/signature-jpeg.js'
 import { fixturePng, synthSignature } from './helpers/synthSignature.js'
 
 const testCases = new Map()
@@ -12,6 +13,51 @@ const fixture = variant => {
   if (!testCases.has(variant)) testCases.set(variant, synthSignature(variant))
   return testCases.get(variant)
 }
+
+test('the eGov canvas pads and centers the signature without rescaling it', () => {
+  const small = prepareEgovSignature({
+    width: 3, height: 1,
+    data: new Uint8ClampedArray([0, 0, 0, 255, 0, 50, 100, 128, 0, 0, 0, 0]),
+  })
+  assert.equal(small.width, 550)
+  assert.equal(small.height, 124)
+  assert.equal(small.tooSmall, true)
+  const at = (61 * small.width + 273) * 4
+  assert.deepEqual([...small.data.subarray(at, at + 12)], [0, 0, 0, 255, 127, 152, 177, 255, 255, 255, 255, 255])
+  assert.deepEqual([...small.data.subarray(0, 4)], [255, 255, 255, 255])
+  const large = prepareEgovSignature({ width: 600, height: 150, data: new Uint8ClampedArray(600 * 150 * 4) })
+  assert.deepEqual([large.width, large.height, large.tooSmall], [600, 150, false])
+})
+
+test('eGov export asks the canvas for an opaque JPEG at the minimum dimensions', async t => {
+  for (const name of ['OffscreenCanvas', 'ImageData']) {
+    const original = Object.getOwnPropertyDescriptor(globalThis, name)
+    t.after(() => {
+      if (original) Object.defineProperty(globalThis, name, original)
+      else delete globalThis[name]
+    })
+  }
+  globalThis.ImageData = class {
+    constructor(data, width, height) { Object.assign(this, { data, width, height }) }
+  }
+  globalThis.OffscreenCanvas = class {
+    constructor(width, height) { Object.assign(this, { width, height }) }
+    getContext(mode, options) {
+      assert.equal(mode, '2d')
+      assert.equal(options.alpha, false)
+      return { putImageData: ({ data, width, height }) => {
+        assert.deepEqual([width, height], [550, 124])
+        assert.deepEqual([...data.subarray(0, 4)], [255, 255, 255, 255])
+      } }
+    }
+    async convertToBlob({ type }) {
+      assert.equal(type, 'image/jpeg')
+      return new Blob([], { type })
+    }
+  }
+  const result = await exportEgovSignature({ width: 1, height: 1, data: new Uint8ClampedArray([0, 0, 0, 255]) })
+  assert.deepEqual([result.width, result.height, result.jpeg.type, result.tooSmall], [550, 124, 'image/jpeg', true])
+})
 
 function maskBounds(mask, width) {
   let left = width

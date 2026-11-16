@@ -20,3 +20,5 @@ export const presets = {
 }
 
 export const presetList = Object.values(presets)
+
+export const egovSignature = { width: 550, height: 124, mimeType: 'image/jpeg' }

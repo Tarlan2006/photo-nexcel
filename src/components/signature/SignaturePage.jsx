@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import CameraCapture from '../CameraCapture'
 import Footer from '../Footer'
+import SourceLink from '../SourceLink'
 import { useLang } from '../../contexts/LangContext'
+import { requirements } from '../../content/requirements'
 import { identifyPhoto, photoFileError, photoMimeTypes } from '../../lib/photo'
 import { fullPaper, signatureDefaults } from '../../lib/signature'
+import { egovSignature } from '../../presets'
 import { signatureCopy } from './copy'
 import { BrushCanvas, PaperCrop, SignatureCanvas } from './SignatureImages'
 import './signature.css'
@@ -230,6 +233,31 @@ function Downloads({ copy, result, maxKb, locale }) {
   )
 }
 
+function EgovDownload({ copy, result }) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    const href = URL.createObjectURL(result.jpeg)
+    setUrl({ blob: result.jpeg, href })
+    return () => URL.revokeObjectURL(href)
+  }, [result.jpeg])
+  const href = url?.blob === result.jpeg ? url.href : null
+
+  return (
+    <>
+      <div className="signature-well signature-bg-white">
+        {href && <img src={href} alt={copy.result} className="signature-canvas" />}
+      </div>
+      <p className="signature-help mt-2">{copy.size.replace('{width}', result.width).replace('{height}', result.height)}</p>
+      {result.tooSmall && <p role="status" className="signature-alert">{copy.egovSmall}</p>}
+      {href && (
+        <div className="signature-downloads">
+          <a className="signature-button signature-primary" download="signature-egov.jpg" href={href}>{copy.downloadEgov}</a>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function SignaturePage() {
   const { lang, t } = useLang()
   const copy = signatureCopy[lang]
@@ -242,12 +270,14 @@ export default function SignaturePage() {
   const [load, setLoad] = useState({ busy: false, error: null })
   const [preview, setPreview] = useState(null)
   const [finished, setFinished] = useState(null)
+  const [format, setFormat] = useState('png')
   const [fixedWidth, setFixedWidth] = useState(0)
   const [limit, setLimit] = useState('0')
   const [custom, setCustom] = useState('50')
   const maxKb = Number(limit === 'custom' ? custom : limit)
-  const invalidLimit = limit === 'custom' && (!Number.isInteger(maxKb) || maxKb < 1 || maxKb > 50000)
-  const output = useMemo(() => ({ width: fixedWidth, maxKb }), [fixedWidth, maxKb])
+  const egov = format === 'egov'
+  const invalidLimit = !egov && limit === 'custom' && (!Number.isInteger(maxKb) || maxKb < 1 || maxKb > 50000)
+  const output = useMemo(() => egov ? { format } : { format, width: fixedWidth, maxKb }, [egov, format, fixedWidth, maxKb])
   const hasCurrentExport = finished?.draft === draft && finished?.output === output && Boolean(finished.result)
 
   useEffect(() => () => {
@@ -298,6 +328,7 @@ export default function SignaturePage() {
     setPreview(null)
     setFinished(null)
     setLoad({ busy: false, error: null })
+    setFormat('png')
     setFixedWidth(0)
     setLimit('0')
     setCustom('50')
@@ -364,32 +395,53 @@ export default function SignaturePage() {
               <h2>{copy.export}</h2>
               <div className="signature-options">
                 <div className="signature-field">
-                  <label htmlFor="signature-width">{copy.width}</label>
-                  <select id="signature-width" value={fixedWidth} onChange={event => setFixedWidth(Number(event.target.value))}>
-                    <option value="0">{copy.autoWidth}</option>
-                    {[300, 600, 1000].map(width => <option key={width} value={width}>{width} {copy.px}</option>)}
+                  <label htmlFor="signature-format">{copy.outputFormat}</label>
+                  <select id="signature-format" value={format} onChange={event => setFormat(event.target.value)}>
+                    <option value="png">{copy.pngMode}</option>
+                    <option value="egov">{copy.egovMode}</option>
                   </select>
                 </div>
-                <div className="signature-field">
-                  <label htmlFor="signature-limit">{copy.limit}</label>
-                  <select id="signature-limit" value={limit} onChange={event => setLimit(event.target.value)}>
-                    <option value="0">{copy.noLimit}</option>
-                    {[50, 100, 200].map(kb => <option key={kb} value={kb}>{kb} {copy.kb}</option>)}
-                    <option value="custom">{copy.custom}</option>
-                  </select>
-                </div>
-                {limit === 'custom' && (
-                  <label className="signature-field">
-                    <span>{copy.customLimit}</span>
-                    <input type="number" min="1" max="50000" value={custom} aria-invalid={invalidLimit}
-                      aria-describedby={invalidLimit ? 'signature-invalid-limit' : undefined}
-                      onChange={event => setCustom(event.target.value)} />
-                  </label>
+                {!egov && (
+                  <>
+                    <div className="signature-field">
+                      <label htmlFor="signature-width">{copy.width}</label>
+                      <select id="signature-width" value={fixedWidth} onChange={event => setFixedWidth(Number(event.target.value))}>
+                        <option value="0">{copy.autoWidth}</option>
+                        {[300, 600, 1000].map(width => <option key={width} value={width}>{width} {copy.px}</option>)}
+                      </select>
+                    </div>
+                    <div className="signature-field">
+                      <label htmlFor="signature-limit">{copy.limit}</label>
+                      <select id="signature-limit" value={limit} onChange={event => setLimit(event.target.value)}>
+                        <option value="0">{copy.noLimit}</option>
+                        {[50, 100, 200].map(kb => <option key={kb} value={kb}>{kb} {copy.kb}</option>)}
+                        <option value="custom">{copy.custom}</option>
+                      </select>
+                    </div>
+                    {limit === 'custom' && (
+                      <label className="signature-field">
+                        <span>{copy.customLimit}</span>
+                        <input type="number" min="1" max="50000" value={custom} aria-invalid={invalidLimit}
+                          aria-describedby={invalidLimit ? 'signature-invalid-limit' : undefined}
+                          onChange={event => setCustom(event.target.value)} />
+                      </label>
+                    )}
+                  </>
                 )}
               </div>
+              {egov && (
+                <div className="my-3 space-y-1">
+                  <p className="signature-help">
+                    {copy.egovDetails.replace('{width}', egovSignature.width).replace('{height}', egovSignature.height)}
+                  </p>
+                  <p className="signature-help">{copy.source}{' '}<SourceLink source={requirements.kz_id.sources[0]} lang={lang} /></p>
+                </div>
+              )}
               {invalidLimit && <p id="signature-invalid-limit" className="signature-alert">{copy.invalidLimit}</p>}
               {!exporting && !invalidLimit && finished?.result && (
-                <Downloads copy={copy} result={finished.result} maxKb={maxKb} locale={lang === 'kz' ? 'kk-KZ' : 'ru-RU'} />
+                egov
+                  ? <EgovDownload copy={copy} result={finished.result} />
+                  : <Downloads copy={copy} result={finished.result} maxKb={maxKb} locale={lang === 'kz' ? 'kk-KZ' : 'ru-RU'} />
               )}
             </section>
             <div className="signature-actions signature-controls">

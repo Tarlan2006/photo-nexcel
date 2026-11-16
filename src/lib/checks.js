@@ -101,11 +101,15 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct,
   let eyesKey = 'checkEyesOk'
   let mouthOk = true
   let mouthKey = 'checkMouthOk'
+  let eyesObserved = false
+  let mouthObserved = false
 
   if (Array.isArray(blendshapes) && blendshapes.length > 0) {
-    const eyeBlinkLeft = blendshapes.find((b) => b.categoryName === 'eyeBlinkLeft')?.score || 0
-    const eyeBlinkRight = blendshapes.find((b) => b.categoryName === 'eyeBlinkRight')?.score || 0
-    const jawOpen = blendshapes.find((b) => b.categoryName === 'jawOpen')?.score || 0
+    const eyeBlinkLeft = blendshapes.find((b) => b.categoryName === 'eyeBlinkLeft')?.score
+    const eyeBlinkRight = blendshapes.find((b) => b.categoryName === 'eyeBlinkRight')?.score
+    const jawOpen = blendshapes.find((b) => b.categoryName === 'jawOpen')?.score
+    eyesObserved = Number.isFinite(eyeBlinkLeft) && Number.isFinite(eyeBlinkRight)
+    mouthObserved = Number.isFinite(jawOpen)
 
     if (eyeBlinkLeft > 0.5 || eyeBlinkRight > 0.5) {
       eyesOk = false
@@ -120,6 +124,7 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct,
 
   checks.push({
     id: 'eyes',
+    observed: eyesObserved,
     ok: eyesOk,
     status: eyesOk ? 'ok' : 'warn',
     key: eyesKey,
@@ -128,6 +133,7 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct,
 
   checks.push({
     id: 'mouth',
+    observed: mouthObserved,
     ok: mouthOk,
     status: mouthOk ? 'ok' : 'warn',
     key: mouthKey,

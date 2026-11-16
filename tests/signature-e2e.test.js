@@ -52,9 +52,9 @@ async function download(page, white = false) {
   return bytes
 }
 
-async function inspectPng(page, bytes) {
-  return page.evaluate(async base64 => {
-    const blob = new Blob([Uint8Array.from(atob(base64), char => char.charCodeAt(0))], { type: 'image/png' })
+async function inspectImage(page, bytes, type = 'image/png') {
+  return page.evaluate(async ({ base64, type }) => {
+    const blob = new Blob([Uint8Array.from(atob(base64), char => char.charCodeAt(0))], { type })
     const image = await createImageBitmap(blob)
     try {
       const { width, height } = image
@@ -70,7 +70,7 @@ async function inspectPng(page, bytes) {
     } finally {
       image.close()
     }
-  }, bytes.toString('base64'))
+  }, { base64: bytes.toString('base64'), type })
 }
 
 async function accessibility(page) {
@@ -219,16 +219,50 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         assert.equal(transparent[25], 6)
         const source = synthSignature('blue')
         const expected = processSignature(source.data, source.width, source.height)
-        const result = await inspectPng(page, transparent)
+        const result = await inspectImage(page, transparent)
         assert.equal(result.width, expected.width)
         assert.equal(result.height, expected.height)
         assert.equal(result.opacity, 255)
         assert.ok(result.corners.every(pixel => pixel[3] === 0))
-        assert.ok((await inspectPng(page, white)).corners.every(pixel => pixel.every(channel => channel === 255)))
+        assert.ok((await inspectImage(page, white)).corners.every(pixel => pixel.every(channel => channel === 255)))
         await button(page, ru.copy).click()
         await main(page).getByText(ru.copied, { exact: true }).waitFor()
         assert.ok(await page.evaluate(async () => (await navigator.clipboard.read())[0].types.includes('image/png')))
       })
+    })
+
+    await suite.test('eGov mode downloads a white JPEG, warns about small ink, and preserves PNG', async () => {
+      const { defaultBrowserType, ...mobile } = devices['iPhone 13']
+      await withPage(async page => {
+        await upload(page, png('blue', 360, 260))
+        await button(page, ru.finish).click()
+        const original = await download(page)
+        await main(page).getByLabel(ru.outputFormat).selectOption({ label: ru.egovMode })
+        const link = main(page).getByRole('link', { name: ru.downloadEgov, exact: true })
+        await link.waitFor()
+        const source = main(page).getByRole('link', { name: /Образцы фотографий и подписей/ })
+        assert.equal(await source.getAttribute('href'), 'https://zan.gov.kz/client/#!/doc/140840/rus/158')
+        assert.equal(await source.getAttribute('target'), '_blank')
+        assert.equal(await source.getAttribute('rel'), 'noopener noreferrer')
+        assert.ok(await main(page).getByText(ru.egovSmall, { exact: true }).isVisible())
+        assert.equal(await main(page).getByLabel(ru.width, { exact: true }).count(), 0)
+        const [saved] = await Promise.all([page.waitForEvent('download'), link.click()])
+        assert.equal(saved.suggestedFilename(), 'signature-egov.jpg')
+        const bytes = await readFile(await saved.path())
+        assert.equal(bytes.subarray(0, 3).toString('hex'), 'ffd8ff')
+        const jpeg = await inspectImage(page, bytes, 'image/jpeg')
+        assert.equal(jpeg.width, 550)
+        assert.ok(jpeg.height >= 124)
+        assert.ok(jpeg.corners.every(pixel => pixel.every(channel => channel >= 253)))
+        assert.ok(await page.evaluate(() => innerWidth === 390 && document.documentElement.scrollWidth <= innerWidth))
+        await accessibility(page)
+        await page.getByRole('button', { name: 'KZ', exact: true }).click()
+        await main(page).getByRole('link', { name: kz.downloadEgov, exact: true }).waitFor()
+        assert.ok(await main(page).getByText(kz.egovSmall, { exact: true }).isVisible())
+        await accessibility(page)
+        await main(page).getByLabel(kz.outputFormat).selectOption('png')
+        assert.deepEqual(await download(page), original)
+      }, mobile)
     })
 
     await suite.test('crop, keyboard sliders, brush erase and restore, before/after, and reset', async () => {
@@ -302,7 +336,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         const fifty = await download(page)
         assert.ok(fifty.length <= 50000)
         assert.ok(fifty.readUInt32BE(16) >= 300)
-        assert.equal((await inspectPng(page, fifty)).opacity, 255)
+        assert.equal((await inspectImage(page, fifty)).opacity, 255)
         t.diagnostic('12 MP, transparent PNG: ' + hundred.length + ' bytes at 100 KB; ' + fifty.length + ' bytes at 50 KB')
         await limit.selectOption('0')
         await main(page).getByLabel(ru.width, { exact: true }).selectOption('600')

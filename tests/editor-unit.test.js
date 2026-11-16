@@ -166,7 +166,7 @@ test('editor history preserves more than ten edits, groups drag events, and supp
   const reset = changeEditHistory(history, initialEdit)
   assert.deepEqual(JSON.parse(JSON.stringify(reset.present)), initialEdit)
   assert.deepEqual(undoEdit(reset).present, history.present)
-  assert.equal(recommendedBackground.kz_id, '#f0f0f0')
+  assert.equal(recommendedBackground.kz_id, '#d9d9d9')
   assert.equal(recommendedBackground.dv, '#ffffff')
   assert.equal(initialEdit.bg.enabled, false)
   assert.equal(initialEdit.suit.enabled, false)

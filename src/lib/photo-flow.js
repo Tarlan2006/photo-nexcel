@@ -1,12 +1,12 @@
 import { backgroundColors, initialEdit, recommendedBackground } from './editor/edit-state.js'
 
 const naturalWhite = '#fafafa'
-const sharedBackgrounds = ['recommended', 'original', 'white']
+const sharedBackgrounds = ['recommended', 'original', 'white', 'natural']
 
 export function backgroundChoices(presetId) {
   return presetId === 'dv'
-    ? [...sharedBackgrounds, 'natural']
-    : [...sharedBackgrounds, 'gray', 'blue', 'custom']
+    ? [...sharedBackgrounds]
+    : [...sharedBackgrounds, 'gray', 'custom']
 }
 
 export function createPhotoSettings(presetId = 'kz_id') {
@@ -23,8 +23,8 @@ export function changePhotoDocument(settings, presetId) {
   return {
     ...settings, presetId,
     background: backgroundChoices(presetId).includes(settings.background) ? settings.background : 'recommended',
-    filter: presetId === 'dv' ? 'none' : settings.filter,
-    suit: presetId === 'dv' ? initialEdit.suit : settings.suit,
+    filter: 'none',
+    suit: initialEdit.suit,
     scaleOffset: 0, offsetY: 0,
   }
 }
@@ -32,7 +32,7 @@ export function changePhotoDocument(settings, presetId) {
 export function toPhotoParameters(settings) {
   const { presetId, background, customColor, brightness, contrast, filter, suit, strokes } = settings
   const colorByChoice = { recommended: recommendedBackground[presetId], ...backgroundColors, natural: naturalWhite, custom: customColor }
-  const color = colorByChoice[background]
+  const color = colorByChoice[backgroundChoices(presetId).includes(background) ? background : 'recommended']
   return {
     autoExposure: settings.autoExposure,
     adjustments: { fixTilt: settings.fixTilt, scaleOffset: settings.scaleOffset, offsetY: settings.offsetY },

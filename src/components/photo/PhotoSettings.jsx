@@ -35,6 +35,7 @@ export default function PhotoSettings({ source, settings, status, error, chooseD
   const [documentOpen, setDocumentOpen] = useState(chooseDocument)
   const preset = presets[settings.presetId]
   const dv = preset.id === 'dv'
+  const kzWarning = !dv && (settings.filter !== 'none' || settings.suit.enabled || settings.brightness !== 0 || settings.contrast !== 0)
   const busy = Boolean(status)
   const set = patch => onSettings({ ...settings, ...patch })
   useLayoutEffect(() => {
@@ -134,7 +135,9 @@ export default function PhotoSettings({ source, settings, status, error, chooseD
                     className="h-11 w-16 cursor-pointer" />
                 </label>
               )}
-              {dv && <p className="mt-2 rounded-md bg-amber-50 p-2 text-sm text-amber-950">{copy.dvBackground}</p>}
+              <p className={'mt-2 text-sm ' + (dv ? 'rounded-md bg-amber-50 p-2 text-amber-950' : 'text-text-muted')}>
+                {dv ? copy.dvBackground : copy.kzBackground}
+              </p>
             </fieldset>
             <div className="divide-y divide-grid-border border-y border-grid-border">
               {['fixTilt', 'autoExposure'].map(key => (
@@ -162,6 +165,11 @@ export default function PhotoSettings({ source, settings, status, error, chooseD
                     update={apply => set({ suit: apply({ suit: settings.suit }).suit })} />
                 </div>
                 {dv && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-950">{copy.dvWarning}</p>}
+                {!dv && (
+                  <div aria-live="polite">
+                    {kzWarning && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-950">{copy.kzManipulation}</p>}
+                  </div>
+                )}
               </div>
             </details>
           </fieldset>

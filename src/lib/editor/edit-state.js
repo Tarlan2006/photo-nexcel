@@ -1,5 +1,5 @@
-export const backgroundColors = { white: '#ffffff', gray: '#f0f0f0', blue: '#dce9f5' }
-export const recommendedBackground = { kz_id: backgroundColors.gray, dv: backgroundColors.white }
+export const backgroundColors = { white: '#ffffff', gray: '#f0f0f0' }
+export const recommendedBackground = { kz_id: '#d9d9d9', dv: backgroundColors.white }
 
 export const initialEdit = {
   brightness: 0,

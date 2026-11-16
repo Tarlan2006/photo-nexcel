@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { presets } from '../src/presets.js'
+import { egovSignature, presets } from '../src/presets.js'
 import { requirements } from '../src/content/requirements.js'
 import { photoCopy } from '../src/content/photo-copy.js'
 import { backgroundChoices, changePhotoDocument, createPhotoSettings, initialPhotoFlow, photoFlow,
@@ -8,7 +8,7 @@ import { backgroundChoices, changePhotoDocument, createPhotoSettings, initialPho
 
 test('photo settings preserve explicit color, optional alignment and optional exposure', () => {
   const initial = createPhotoSettings()
-  assert.equal(toPhotoParameters(initial).edit.bg.color, '#f0f0f0')
+  assert.equal(toPhotoParameters(initial).edit.bg.color, '#d9d9d9')
   assert.equal(toPhotoParameters(createPhotoSettings('dv')).edit.bg.color, '#ffffff')
   const original = toPhotoParameters({ ...initial, background: 'original', fixTilt: false, autoExposure: false })
   assert.equal(original.edit.bg.enabled, false)
@@ -19,6 +19,17 @@ test('photo settings preserve explicit color, optional alignment and optional ex
   assert.equal(custom.edit.brightness, 12)
   assert.equal(custom.adjustments.fixTilt, true)
   assert.equal(custom.autoExposure, true)
+})
+
+test('Kazakhstan photo settings offer gray and light backgrounds and default to no filter or suit', () => {
+  const initial = createPhotoSettings('kz_id')
+  assert.deepEqual(backgroundChoices('kz_id'), ['recommended', 'original', 'white', 'natural', 'gray', 'custom'])
+  assert.equal(initial.filter, 'none')
+  assert.equal(initial.suit.enabled, false)
+  assert.equal(toPhotoParameters({ ...initial, background: 'blue' }).edit.bg.color, '#d9d9d9')
+  const changed = changePhotoDocument({ ...createPhotoSettings('dv'), filter: 'soft', suit: { enabled: true } }, 'kz_id')
+  assert.equal(changed.filter, 'none')
+  assert.equal(changed.suit.enabled, false)
 })
 
 test('DV exposes only white colors and starts with filters and suit off', () => {
@@ -33,10 +44,11 @@ test('DV exposes only white colors and starts with filters and suit off', () => 
 })
 
 test('each document has one main source and uses localized labels on approved HTTPS hosts', () => {
-  const allowedHosts = new Set(['egov.kz', 'www.gov.kz', 'gov.kz', 'adilet.zan.kz', 'travel.state.gov'])
+  const allowedHosts = new Set(['zan.gov.kz', 'egov.kz', 'adilet.zan.kz', 'travel.state.gov'])
   const kinds = new Set(['primary', 'document', 'service', 'regulation'])
   for (const { sources } of Object.values(requirements)) {
     assert.equal(sources.filter(source => source.kind === 'primary').length, 1)
+    assert.equal(sources[0].kind, 'primary')
     assert.equal(new Set(sources.map(source => source.url)).size, sources.length)
     for (const { label, url, kind } of sources) {
       assert.ok(label.ru.trim() && label.kz.trim())
@@ -44,13 +56,12 @@ test('each document has one main source and uses localized labels on approved HT
       const link = new URL(url)
       assert.equal(link.protocol, 'https:')
       assert.ok(allowedHosts.has(link.hostname), url)
+      assert.doesNotMatch(url, /^https:\/\/egov\.kz\/cms\//)
     }
   }
   assert.deepEqual(requirements.kz_id.sources.map(({ url }) => url), [
-    'https://egov.kz/cms/ru/articles/trebovaniya_k_fotografiyam',
-    'https://egov.kz/cms/sites/default/files/trebovaniya_k_fotografiyam.pdf',
-    'https://egov.kz/cms/ru/services/pass003_mvd',
-    'https://www.gov.kz/services/3087?lang=ru',
+    'https://zan.gov.kz/client/#!/doc/140840/rus/158',
+    'https://egov.kz/ru/services/presale/P4006',
     'https://adilet.zan.kz/rus/docs/V2000020192',
   ])
   assert.deepEqual(requirements.dv.sources.map(({ url }) => url), [
@@ -59,24 +70,25 @@ test('each document has one main source and uses localized labels on approved HT
 })
 
 test('photo guidance is complete in both languages and its digital dimensions match the presets', () => {
-  for (const [id, { intro, items, exportItems = [] }] of Object.entries(requirements)) {
+  for (const [id, { intro, items }] of Object.entries(requirements)) {
     assert.ok(intro.ru.trim() && intro.kz.trim())
-    const cards = items.length ? items : exportItems
-    assert.equal(new Set(cards.map(card => card.id)).size, cards.length)
-    for (const { id: key, title, summary, detail } of [...items, ...exportItems]) {
+    assert.equal(new Set(items.map(card => card.id)).size, items.length)
+    for (const { id: key, title, summary, detail } of items) {
       assert.ok(key.trim())
       for (const localized of [title, summary, detail]) {
         assert.ok(localized.ru.trim() && localized.kz.trim(), key)
       }
     }
     const { width, height, maxKb, headMinPct, headMaxPct } = presets[id]
+    const fileSizeRule = id === 'kz_id' ? 'format' : 'size'
+    const fileWeightRule = id === 'kz_id' ? 'format' : 'weight'
     for (const lang of ['ru', 'kz']) {
       for (const [key, value] of [
-        ['size', width + ' × ' + height],
-        ['weight', maxKb + ' КБ'],
+        [fileSizeRule, width + ' × ' + height],
+        [fileWeightRule, maxKb + ' КБ'],
         ['head', headMinPct + '–' + headMaxPct + '%'],
       ]) {
-        assert.ok(cards.find(card => card.id === key).summary[lang].includes(value), id + ' ' + lang + ' ' + value)
+        assert.ok(items.find(card => card.id === key).summary[lang].includes(value), id + ' ' + lang + ' ' + value)
       }
     }
   }
@@ -86,6 +98,26 @@ test('photo guidance is complete in both languages and its digital dimensions ma
     assert.match(dv.head.detail[lang], /1 3\/8/)
     assert.match(dv.scan.summary[lang], /2 × 2.*51 × 51/)
     assert.match(dv.scan.detail[lang], /300.*12/)
+  }
+})
+
+test('Kazakhstan guidance covers Appendix 2 and identifies the order and edition in both languages', () => {
+  const { basis, edition, items, standards } = requirements.kz_id
+  assert.deepEqual(items.map(({ id }) => id), [
+    'format', 'age', 'position', 'expression', 'head', 'child', 'background', 'lighting', 'quality', 'glasses', 'headwear', 'clothing', 'signature',
+  ])
+  const rules = Object.fromEntries(items.map(item => [item.id, item]))
+  for (const lang of ['ru', 'kz']) {
+    assert.match(basis[lang], /30\.03\.2020.*№ 267/)
+    assert.match(edition[lang], /27\.11\.2024/)
+    assert.match(standards[lang], /ICAO/)
+    assert.match(rules.format.summary[lang], /3,5 × 4,5.*24/)
+    assert.match(rules.format.detail[lang], /300 dpi/)
+    assert.match(rules.head.summary[lang], /32–36 мм/)
+    assert.match(rules.head.detail[lang], /27–40 мм/)
+    assert.match(rules.child.summary[lang], /50–80%.*22–36 мм/)
+    assert.match(rules.child.detail[lang], /17–40 мм.*6/)
+    assert.ok(rules.signature.summary[lang].includes(egovSignature.width + ' × ' + egovSignature.height))
   }
 })
 
