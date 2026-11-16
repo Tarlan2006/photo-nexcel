@@ -32,38 +32,68 @@ test('DV exposes only white colors and starts with filters and suit off', () => 
   assert.equal(toPhotoParameters({ ...settings, background: 'natural' }).edit.bg.color, '#fafafa')
 })
 
-test('the official requirements are complete in both languages and have valid source references', () => {
-  const expected = ['size', 'weight', 'head', 'format', 'background', 'position', 'expression', 'glasses', 'headwear', 'lighting', 'retouch', 'age', 'clothing']
-  for (const [id, { intro, sources, items }] of Object.entries(requirements)) {
-    assert.deepEqual(items.map(item => item.id), expected)
-    assert.ok(intro.ru.trim() && intro.kz.trim())
-    const allowedHosts = id === 'kz_id' ? ['beta.egov.kz', 'old.adilet.zan.kz'] : ['travel.state.gov']
-    for (const { label, href, kazakhHref } of Object.values(sources)) {
+test('each document has one main source and uses localized labels on approved HTTPS hosts', () => {
+  const allowedHosts = new Set(['egov.kz', 'www.gov.kz', 'gov.kz', 'adilet.zan.kz', 'travel.state.gov'])
+  const kinds = new Set(['primary', 'document', 'service', 'regulation'])
+  for (const { sources } of Object.values(requirements)) {
+    assert.equal(sources.filter(source => source.kind === 'primary').length, 1)
+    assert.equal(new Set(sources.map(source => source.url)).size, sources.length)
+    for (const { label, url, kind } of sources) {
       assert.ok(label.ru.trim() && label.kz.trim())
-      for (const link of [href, kazakhHref ?? href]) {
-        const url = new URL(link)
-        assert.equal(url.protocol, 'https:')
-        assert.ok(allowedHosts.includes(url.hostname), link)
-      }
-    }
-    for (const item of items) {
-      assert.ok(item.title.ru.trim() && item.title.kz.trim())
-      assert.ok(item.detail.ru.trim() && item.detail.kz.trim())
-      assert.ok(Object.hasOwn(sources, item.source), item.id)
-    }
-    const preset = presets[id]
-    for (const lang of ['ru', 'kz']) {
-      for (const [index, value] of [
-        [0, preset.width + ' × ' + preset.height],
-        [1, preset.maxKb + ' КБ'],
-        [2, preset.headMinPct + '–' + preset.headMaxPct + '%'],
-      ]) {
-        assert.ok(items[index].detail[lang].includes(value), id + ' ' + lang + ' ' + value)
-      }
-      assert.match(requirements.dv.items[3].detail[lang], /JPEG/)
-      assert.doesNotMatch(requirements.kz_id.items[3].detail[lang], /JPEG/)
+      assert.ok(kinds.has(kind), kind)
+      const link = new URL(url)
+      assert.equal(link.protocol, 'https:')
+      assert.ok(allowedHosts.has(link.hostname), url)
     }
   }
+  assert.deepEqual(requirements.kz_id.sources.map(({ url }) => url), [
+    'https://egov.kz/cms/ru/articles/trebovaniya_k_fotografiyam',
+    'https://egov.kz/cms/sites/default/files/trebovaniya_k_fotografiyam.pdf',
+    'https://egov.kz/cms/ru/services/pass003_mvd',
+    'https://www.gov.kz/services/3087?lang=ru',
+    'https://adilet.zan.kz/rus/docs/V2000020192',
+  ])
+  assert.deepEqual(requirements.dv.sources.map(({ url }) => url), [
+    'https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/photos.html',
+  ])
+})
+
+test('photo guidance is complete in both languages and its digital dimensions match the presets', () => {
+  for (const [id, { intro, items, exportItems = [] }] of Object.entries(requirements)) {
+    assert.ok(intro.ru.trim() && intro.kz.trim())
+    const cards = items.length ? items : exportItems
+    assert.equal(new Set(cards.map(card => card.id)).size, cards.length)
+    for (const { id: key, title, summary, detail } of [...items, ...exportItems]) {
+      assert.ok(key.trim())
+      for (const localized of [title, summary, detail]) {
+        assert.ok(localized.ru.trim() && localized.kz.trim(), key)
+      }
+    }
+    const { width, height, maxKb, headMinPct, headMaxPct } = presets[id]
+    for (const lang of ['ru', 'kz']) {
+      for (const [key, value] of [
+        ['size', width + ' × ' + height],
+        ['weight', maxKb + ' КБ'],
+        ['head', headMinPct + '–' + headMaxPct + '%'],
+      ]) {
+        assert.ok(cards.find(card => card.id === key).summary[lang].includes(value), id + ' ' + lang + ' ' + value)
+      }
+    }
+  }
+  for (const lang of ['ru', 'kz']) {
+    const dv = Object.fromEntries(requirements.dv.items.map(item => [item.id, item]))
+    assert.match(dv.format.summary[lang], /JPEG \(\.jpg\)/)
+    assert.match(dv.head.detail[lang], /1 3\/8/)
+    assert.match(dv.scan.summary[lang], /2 × 2.*51 × 51/)
+    assert.match(dv.scan.detail[lang], /300.*12/)
+  }
+})
+
+test('the DV warning describes a possible rejection and points to the official requirements', () => {
+  assert.doesNotMatch(photoCopy.ru.dvWarning, /запрещают/iu)
+  assert.match(photoCopy.ru.dvWarning, /могут привести к отклонению/u)
+  assert.match(photoCopy.kz.dvWarning, /қабылданбауына әкелуі мүмкін/u)
+  for (const { dvWarning } of Object.values(photoCopy)) assert.match(dvWarning, /travel\.state\.gov/)
 })
 
 test('photo flow maintains two screens, settings, errors, history, and reset', () => {

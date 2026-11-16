@@ -39,10 +39,15 @@ export default function PhotoSettings({ source, settings, status, error, chooseD
   const set = patch => onSettings({ ...settings, ...patch })
   useLayoutEffect(() => {
     const node = dialog.current
+    const style = document.body.style
+    const overflow = style.getPropertyValue('overflow-y')
+    const overflowPriority = style.getPropertyPriority('overflow-y')
     node.showModal()
+    style.setProperty('overflow-y', 'hidden')
     close.current?.focus({ preventScroll: true })
     return () => {
       node.close()
+      style.setProperty('overflow-y', overflow, overflowPriority)
       queueMicrotask(() => {
         if (!node.open && returnFocus.current?.isConnected) returnFocus.current.focus({ preventScroll: true })
       })
@@ -73,7 +78,7 @@ export default function PhotoSettings({ source, settings, status, error, chooseD
           next.focus()
         }
       }}
-      className="fixed inset-x-0 bottom-0 top-auto mx-auto my-0 max-h-[96dvh] w-full max-w-none overscroll-contain rounded-t-2xl bg-white text-text-main shadow-xl backdrop:bg-black/65 sm:inset-0 sm:m-auto sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100%-2rem)] sm:max-w-3xl sm:rounded-2xl">
+      className="fixed inset-x-0 bottom-0 top-auto mx-auto my-0 max-h-[96dvh] w-full max-w-none overflow-y-auto overscroll-contain rounded-t-2xl bg-white text-text-main shadow-xl backdrop:bg-black/65 sm:inset-0 sm:m-auto sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100%-2rem)] sm:max-w-3xl sm:rounded-2xl">
       <form onSubmit={event => { event.preventDefault(); onProcess(settings) }} className="p-4 sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-2 border-b border-grid-border pb-3">
           <h2 id="photo-settings-title" className="text-xl">{copy.settings}</h2>

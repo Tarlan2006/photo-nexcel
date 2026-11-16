@@ -38,10 +38,22 @@ const symbols = {
   expression: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9 10h.01M15 10h.01M9 15h6',
   glasses: 'M10 13a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm10 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm-10 0h4m-13-1h3m16 0h3',
   headwear: 'M6 15v-4a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v4m-14 0h16a2 2 0 1 1 0 4H4a2 2 0 0 1 0-4Z',
-  lighting: 'M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5m-3 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z',
+  quality: 'M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5m-3 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z',
   retouch: 'm4 20 11-11 4 4-7 7H4Zm11-11 2-2 4 4-2 2M4 4l16 16',
   age: 'M5 4h14v16H5V4Zm0 5h14M9 2v4m6-4v4m-6 8h3v3',
   clothing: 'M9 4a3 3 0 0 0 6 0l5 2 2 5-4 2v7H6v-7l-4-2 2-5 5-2Z',
+  scan: 'M6 11V4h12v7m-14 0h16v7H4v-7Zm3 4h10m-9 3v2h8v-2',
+  interview: 'M4 8h13v12H4V8Zm3-3h13v12m-13-1 3-3 3 3m-1-5h.01',
+  child: 'M20 13a8 8 0 1 1-8-8h1a2 2 0 0 1 0 4m-4 4h.01m6 0h.01M10 16a2 2 0 0 0 4 0',
+}
+
+function SourceLink({ source, lang }) {
+  return (
+    <a href={source.url} target="_blank" rel="noopener noreferrer"
+      className="font-semibold text-emerald-accent underline">
+      {source.label[lang]}
+    </a>
+  )
 }
 
 function Requirements({ initialDocument }) {
@@ -49,7 +61,9 @@ function Requirements({ initialDocument }) {
   const copy = photoCopy[lang]
   const [override, setOverride] = useState(null)
   const current = override ?? initialDocument
-  const { intro, sources, items } = requirements[current]
+  const { intro, sources, items, exportItems } = requirements[current]
+  const primary = sources.find(source => source.kind === 'primary')
+  const documents = sources.filter(source => source !== primary)
 
   return (
     <section className="rounded-xl border border-grid-border bg-white p-4 sm:p-6">
@@ -72,28 +86,31 @@ function Requirements({ initialDocument }) {
       <div id="photo-rule-panel" role="tabpanel" aria-labelledby={'rule-tab-' + current} tabIndex={0} className="mt-4">
         <p className="text-sm text-text-muted">{intro[lang]}</p>
         <ul className="my-3 grid gap-2 sm:grid-cols-3">
-          {items.map(item => (
+          {(items.length ? items : exportItems).map(item => (
             <li key={item.id} className="rounded-lg border border-grid-border bg-paper p-3">
               <div className="flex items-center gap-2">
                 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
                   strokeLinecap="round" strokeLinejoin="round" className="size-5 shrink-0 text-emerald-accent"><path d={symbols[item.id]} /></svg>
                 <h3 className="text-sm">{item.title[lang]}</h3>
               </div>
+              <p className="mt-1 text-sm font-semibold">{item.summary[lang]}</p>
               <p className="mt-1 text-sm text-text-muted">{item.detail[lang]}</p>
             </li>
           ))}
         </ul>
-        <h3 className="text-sm">{copy.sources}</h3>
-        <ul aria-label={copy.sources} className="flex flex-wrap gap-x-4">
-          {Object.values(sources).map(source => (
-            <li key={source.href}>
-              <a href={lang === 'kz' ? source.kazakhHref ?? source.href : source.href} target="_blank" rel="noreferrer"
-                className="inline-flex min-h-11 items-center text-sm font-semibold text-emerald-accent underline">
-                {source.label[lang]}
-              </a>
-            </li>
-          ))}
-        </ul>
+        <p className="py-2 text-sm">
+          <span>{copy.source}</span>{' '}<SourceLink source={primary} lang={lang} />
+        </p>
+        {documents.length > 0 && (
+          <details key={current} className="my-1 rounded-lg border border-grid-border px-3 text-sm">
+            <summary className="min-h-11 cursor-pointer py-3 font-semibold">{copy.officialDocuments}</summary>
+            <ul className="mb-3 list-disc space-y-2 pl-5">
+              {documents.map(source => (
+                <li key={source.url}><SourceLink source={source} lang={lang} /></li>
+              ))}
+            </ul>
+          </details>
+        )}
         <p className="text-sm text-text-muted">{copy.checkSource}</p>
       </div>
     </section>
@@ -144,7 +161,7 @@ export default function PhotoUpload({ presetId, onDocument, onFile, onCamera, ca
             </details>
           ))}
         </div>
-        <a href="#photo-examples" className="inline-flex min-h-11 items-center text-sm font-semibold text-emerald-accent underline">{copy.examples}</a>
+        <a href="#photo-examples" className="inline-flex min-h-11 items-center text-sm font-semibold text-emerald-accent underline">{copy.shootingTips}</a>
       </section>
       <section id="photo-examples" className="rounded-xl border border-grid-border bg-white p-4 sm:p-6">
         <h2 className="text-lg">{copy.examples}</h2>
