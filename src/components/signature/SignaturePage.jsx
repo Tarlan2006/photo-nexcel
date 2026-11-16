@@ -248,6 +248,7 @@ export default function SignaturePage() {
   const maxKb = Number(limit === 'custom' ? custom : limit)
   const invalidLimit = limit === 'custom' && (!Number.isInteger(maxKb) || maxKb < 1 || maxKb > 50000)
   const output = useMemo(() => ({ width: fixedWidth, maxKb }), [fixedWidth, maxKb])
+  const hasCurrentExport = finished?.draft === draft && finished?.output === output && Boolean(finished.result)
 
   useEffect(() => () => {
     generation.current++
@@ -270,7 +271,7 @@ export default function SignaturePage() {
   }, [photo, draft, step])
 
   useEffect(() => {
-    if (step !== 3 || invalidLimit) return
+    if (step !== 3 || invalidLimit || hasCurrentExport) return
     let active = true
     const timer = setTimeout(async () => {
       try {
@@ -281,7 +282,7 @@ export default function SignaturePage() {
       }
     }, 50)
     return () => { active = false; clearTimeout(timer) }
-  }, [draft, output, step, invalidLimit])
+  }, [draft, output, step, invalidLimit, hasCurrentExport])
 
   const go = next => {
     setStep(next)

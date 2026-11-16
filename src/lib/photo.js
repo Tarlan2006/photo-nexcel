@@ -35,8 +35,8 @@ export async function decodePhoto(file, mimeType) {
   const maxSide = Math.max(bitmap.width, bitmap.height)
   if (maxSide <= 2500) return bitmap
 
+  const canvas = document.createElement('canvas')
   try {
-    const canvas = document.createElement('canvas')
     canvas.width = Math.max(1, Math.round(bitmap.width * 2500 / maxSide))
     canvas.height = Math.max(1, Math.round(bitmap.height * 2500 / maxSide))
     const ctx = canvas.getContext('2d')
@@ -44,6 +44,7 @@ export async function decodePhoto(file, mimeType) {
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
     return await createImageBitmap(canvas)
   } finally {
+    canvas.width = canvas.height = 1
     bitmap.close()
   }
 }

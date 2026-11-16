@@ -61,9 +61,9 @@ function Tools() {
     if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     event.preventDefault()
     if (next === tool) return
-    if (tool === 'photo') savedPhotoHistory.current = window.history.state?.photoWizard
+    if (tool === 'photo') savedPhotoHistory.current = window.history.state?.photoResult
     const saved = savedPhotoHistory.current
-    const state = next === 'photo' && saved ? { photoWizard: { step: saved.step, photoId: saved.photoId } } : null
+    const state = next === 'photo' && saved ? { photoResult: saved } : null
     window.history.pushState(state, '', paths[next])
     window.scrollTo(0, 0)
     if (next === 'photo') setVisitedPhoto(true)

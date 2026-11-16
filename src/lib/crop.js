@@ -58,7 +58,7 @@ export function cropFace(source, landmarks, preset, adjustments = {}, background
   // 2. Eye alignment angle (p33 is right eye corner, p263 is left eye corner)
   const eyeDx = p263.x - p33.x
   const eyeDy = p263.y - p33.y
-  const angle = Math.atan2(eyeDy, eyeDx)
+  const angle = adjustments.fixTilt === false ? 0 : Math.atan2(eyeDy, eyeDx)
 
   // Pivot point: midpoint of eyes
   const cx = (p33.x + p263.x) / 2
@@ -182,5 +182,6 @@ export function cropFace(source, landmarks, preset, adjustments = {}, background
     headPct,
     chinY: chinCanvasY,
     chinPct,
+    rotation: angle * 180 / Math.PI,
   }
 }

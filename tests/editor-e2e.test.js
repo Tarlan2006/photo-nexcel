@@ -1,149 +1,129 @@
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { mkdtemp, open, readFile, rmdir, unlink } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
 import axe from 'axe-core'
 import { chromium, devices } from 'playwright'
 import { preview } from 'vite'
+import { photoCopy } from '../src/content/photo-copy.js'
 import { translations } from '../src/i18n.js'
+import { fixturePng, synthSignature } from './helpers/synthSignature.js'
 
 const ru = translations.ru
-const editor = ru.editor
-const fixture = (name) => fileURLToPath(new URL('./fixtures/' + name, import.meta.url))
-const portrait = fixture('portrait.jpg')
-const astronaut = fixture('astronaut.png')
+const copy = photoCopy.ru
+const portrait = fileURLToPath(new URL('./fixtures/portrait.jpg', import.meta.url))
+const astronaut = fileURLToPath(new URL('./fixtures/astronaut.png', import.meta.url))
+const skipPortrait = existsSync(portrait) ? false : 'Local portrait fixture unavailable'
 const chromePath = [
-  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
-  chromium.executablePath(),
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, chromium.executablePath(),
   join(process.env.ProgramFiles ?? 'C:/Program Files', 'Google/Chrome/Application/chrome.exe'),
   join(process.env['ProgramFiles(x86)'] ?? 'C:/Program Files (x86)', 'Microsoft/Edge/Application/msedge.exe'),
 ].find(path => path && existsSync(path))
+const main = page => page.locator('#wizard-main')
+const dialog = page => page.getByRole('dialog', { name: copy.settings })
+const button = (scope, name) => scope.getByRole('button', { name, exact: true })
+const file = scope => scope.locator('input[type=file]')
+const background = (page, value) => dialog(page).locator('input[name=photo-background][value=' + value + ']')
+const ready = page => main(page).getByRole('img', { name: copy.readyImage })
+const resultTitle = page => main(page).getByRole('heading', { level: 1, name: ru.step5Title })
 
-const editorHeading = (page) => page.getByRole('heading', { name: editor.title, exact: true })
-const choose = (page, name) => page.getByRole('button', { name, exact: true })
-const next = (page) => choose(page, ru.btnNext)
-const editorStage = (page, stage) => choose(page, editor[stage])
-const original = (page) => page.getByRole('img', { name: editor.original, exact: true })
-const edited = (page) => page.getByRole('img', { name: editor.edited, exact: true })
-const detectResource = (path) => /face_landmarker|detector-|\/models\/|\/wasm\//.test(path)
-const segmentResource = (path) => /\/models\/selfie-multiclass-v1\.tflite$/.test(path)
-
-async function upload(page, file = portrait) {
-  await page.locator('input[type=file]').setInputFiles(file)
-  await editorHeading(page).waitFor({ timeout: 20000 })
+async function upload(page, path = portrait) {
+  await file(main(page)).setInputFiles(path)
+  await dialog(page).getByRole('img', { name: ru.editor.original }).waitFor()
 }
 
-async function heading(page, name) {
-  await page.getByRole('heading', { name, exact: true }).waitFor()
+async function processPhoto(page) {
+  await button(dialog(page), copy.process).click()
+  const error = dialog(page).getByRole('alert')
+  await page.waitForFunction(() => {
+    const node = document.querySelector('dialog[open][aria-labelledby=photo-settings-title]')
+    return !node || Boolean(node.querySelector('[role=alert]'))
+  })
+  if (await error.isVisible()) assert.fail(await error.innerText())
+  await dialog(page).waitFor({ state: 'hidden' })
+  await ready(page).waitFor()
 }
 
-async function canvasData(locator, region) {
-  return locator.evaluate((canvas, [x, y, w, h]) => {
-    const context = canvas.getContext('2d')
-    return Array.from(context.getImageData(
-      Math.round(x * canvas.width), Math.round(y * canvas.height),
-      Math.min(canvas.width - Math.round(x * canvas.width), w),
-      Math.min(canvas.height - Math.round(y * canvas.height), h)
-    ).data)
-  }, region)
-}
-
-const regionDifference = (a, b) => a.reduce((sum, value, i) => sum + Math.abs(value - b[i]), 0) / a.length
-
-async function waitForPixel(page, rgb, coords = [0, 0]) {
-  await page.waitForFunction(({ rgb, coords }) => {
-    const canvas = [...document.querySelectorAll('main canvas')].find(element =>
-      !element.hidden && element.getAttribute('aria-label') === 'Фото с правками')
-    if (!canvas) return false
-    const [x, y] = coords
-    const pixel = canvas.getContext('2d').getImageData(
-      Math.floor(x * canvas.width), Math.floor(y * canvas.height), 1, 1
-    ).data
-    return rgb.every((value, channel) => Math.abs(value - pixel[channel]) <= 2)
-  }, { rgb, coords })
+async function changeDocument(page, id) {
+  const picker = dialog(page).locator('input[name=settings-document][value=' + id + ']')
+  if (!await picker.count()) await button(dialog(page), copy.changeDocument).click()
+  await picker.click()
 }
 
 async function checkAxe(page) {
   await page.evaluate(axe.source)
   assert.deepEqual(await page.evaluate(async () =>
-    (await axe.run()).violations.map(({ id, nodes }) => ({ id, elements: nodes.map(node => node.target) }))
-  ), [])
+    (await axe.run()).violations.map(({ id, nodes }) => [id, nodes.map(node => node.target)])), [])
+}
+
+async function sourceFixture(page, variant) {
+  const encoded = (await readFile(portrait)).toString('base64')
+  const data = await page.evaluate(async ({ encoded, variant }) => {
+    const bytes = Uint8Array.from(atob(encoded), char => char.charCodeAt(0))
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/jpeg' }))
+    const canvas = document.createElement('canvas')
+    canvas.width = variant === 'large' ? 4000 : variant === 'two' ? 1120 : 600
+    canvas.height = variant === 'large' ? 3000 : variant === 'two' ? 580 : 600
+    const context = canvas.getContext('2d')
+    context.fillStyle = '#376c9e'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    try {
+      if (variant === 'two') {
+        context.drawImage(bitmap, 30, 40, 510, 510)
+        context.drawImage(bitmap, 565, 40, 510, 510)
+      } else if (variant === 'large') {
+        context.drawImage(bitmap, 900, 200, 2550, 2550)
+      } else {
+        const points = [[84,511],[145,470],[219,408],[220,345],[216,278],[213,209],[211,156],[220,121],[242,106],
+          [304,107],[352,123],[373,159],[376,217],[370,276],[364,329],[364,383],[405,442],[467,511]]
+        context.beginPath()
+        for (const [i, [x, y]] of points.entries()) context[i ? 'lineTo' : 'moveTo'](x + 42, y + 35)
+        context.closePath()
+        context.clip()
+        context.drawImage(bitmap, 42, 35, 512, 512)
+      }
+      return canvas.toDataURL('image/jpeg', 0.97).split(',')[1]
+    } finally { bitmap.close(); canvas.width = canvas.height = 1 }
+  }, { encoded, variant })
+  return { name: variant + '.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(data, 'base64') }
 }
 
 async function jpeg(page, width, height, limit) {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    choose(page, ru.btnDownloadJpeg).click(),
+    main(page).getByRole('link', { name: copy.download, exact: true }).click(),
   ])
   const bytes = await readFile(await download.path())
   assert.ok(bytes.length <= limit, bytes.length + ' bytes')
   assert.equal(bytes.subarray(0, 3).toString('hex'), 'ffd8ff')
-  assert.equal(bytes.subarray(-2).toString('hex'), 'ffd9')
-  const dimensions = await page.evaluate(async (encoded) => {
-    const blob = new Blob([Uint8Array.from(atob(encoded), letter => letter.charCodeAt(0))], { type: 'image/jpeg' })
-    const bitmap = await createImageBitmap(blob)
-    const result = [bitmap.width, bitmap.height]
-    bitmap.close()
-    return result
+  const info = await page.evaluate(async base64 => {
+    const bitmap = await createImageBitmap(new Blob([Uint8Array.from(atob(base64), char => char.charCodeAt(0))], { type: 'image/jpeg' }))
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    try {
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(bitmap, 0, 0)
+      const { width, height } = bitmap
+      return {
+        width, height,
+        corners: [[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]]
+          .map(([x, y]) => Array.from(ctx.getImageData(x, y, 1, 1).data).slice(0, 3)),
+      }
+    } finally { bitmap.close(); canvas.width = canvas.height = 1 }
   }, bytes.toString('base64'))
-  assert.deepEqual(dimensions, [width, height])
-  return bytes
+  assert.deepEqual([info.width, info.height], [width, height])
+  return { ...info, bytes }
 }
 
-function lumaQuantizer(jpegBytes) {
-  for (let i = 2; i < jpegBytes.length - 6;) {
-    const marker = jpegBytes.readUInt16BE(i)
-    if (marker === 0xffdb && jpegBytes[i + 4] === 0) return jpegBytes[i + 5]
-    if (marker === 0xffda) break
-    i += 2 + jpegBytes.readUInt16BE(i + 2)
-  }
-  throw new Error('JPEG luma quantization table missing')
+function closeColor(pixel, rgb) {
+  assert.ok(rgb.every((channel, i) => Math.abs(channel - pixel[i]) <= 2), pixel + ' != ' + rgb)
 }
 
-async function coloredPortrait(page) {
-  const base64 = (await readFile(portrait)).toString('base64')
-  const data = await page.evaluate(async (base64) => {
-    const bytes = Uint8Array.from(atob(base64), letter => letter.charCodeAt(0))
-    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/jpeg' }))
-    try {
-      const canvas = document.createElement('canvas')
-      canvas.width = canvas.height = 600
-      const context = canvas.getContext('2d')
-      context.fillStyle = '#376c9e'
-      context.fillRect(0, 0, 600, 600)
-      context.beginPath()
-      const points = [[84,511],[94,450],[136,387],[170,345],[184,286],[165,209],[160,156],[188,121],[238,106],[304,107],[352,123],[389,159],[403,217],[394,276],[369,329],[364,383],[416,431],[467,511]]
-      for (const [index, [x, y]] of points.entries()) context[index ? 'lineTo' : 'moveTo'](42 + x, 35 + y)
-      context.closePath()
-      context.clip()
-      context.drawImage(bitmap, 42, 35)
-      return canvas.toDataURL('image/jpeg', 0.96).split(',')[1]
-    } finally { bitmap.close() }
-  }, base64)
-  return { name: 'colored.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(data, 'base64') }
-}
-
-async function tinyPortrait(page) {
-  const source = (await readFile(portrait)).toString('base64')
-  const encoded = await page.evaluate(async (source) => {
-    const bytes = Uint8Array.from(atob(source), letter => letter.charCodeAt(0))
-    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/jpeg' }))
-    try {
-      const canvas = document.createElement('canvas')
-      canvas.width = canvas.height = 600
-      const context = canvas.getContext('2d')
-      context.fillStyle = 'white'
-      context.fillRect(0, 0, 600, 600)
-      context.drawImage(bitmap, 260, 260, 80, 80)
-      return canvas.toDataURL('image/jpeg').split(',')[1]
-    } finally { bitmap.close() }
-  }, source)
-  return { name: 'tiny.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(encoded, 'base64') }
-}
-
-test('photo editor in the production build', { timeout: 240000 }, async (suite) => {
+test('two-screen photo tool in the production build', { timeout: 240000 }, async suite => {
   if (!chromePath) return suite.skip('Chromium unavailable. Run npx playwright install chromium.')
   const server = await preview({ logLevel: 'warn', preview: { host: '127.0.0.1', port: 4198 } })
   const origin = 'http://127.0.0.1:' + server.httpServer.address().port
@@ -155,23 +135,28 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
       executablePath: chromePath,
       args: ['--enable-unsafe-swiftshader', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'],
     })
-
     async function withPage(run, options = {}) {
       const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'ru-RU', ...options })
       const page = await context.newPage()
       const requests = []
       const errors = []
-      page.setDefaultTimeout(9000)
-      page.on('request', (request) => requests.push({ url: request.url(), method: request.method() }))
-      page.on('pageerror', (error) => errors.push(error.message))
+      page.setDefaultTimeout(12000)
+      page.on('request', request => requests.push({ url: request.url(), method: request.method() }))
+      page.on('pageerror', error => errors.push(error.message))
+      page.on('console', message => {
+        if (message.type() === 'error' && message.text() !== 'INFO: Created TensorFlow Lite XNNPACK delegate for CPU.') {
+          errors.push(message.text())
+        }
+      })
       await page.addInitScript(() => {
-        window.editorQA = { violations: [], longTasks: [], liveWorkers: 0, activeBitmaps: 0 }
-        document.addEventListener('securitypolicyviolation', event => editorQA.violations.push(event.violatedDirective))
-        new PerformanceObserver(list => {
-          editorQA.longTasks.push(...list.getEntries().map(entry => [entry.startTime, entry.duration]))
-        }).observe({ type: 'longtask', buffered: true })
-
-        const activeBitmaps = new WeakSet()
+        window.photoQA = { violations: [], detections: 0, workers: 0, bitmaps: 0, urls: new Set() }
+        document.addEventListener('securitypolicyviolation', event => photoQA.violations.push(event.violatedDirective))
+        const mark = performance.mark.bind(performance)
+        performance.mark = function (name, ...args) {
+          if (name === 'photo:face-detection') photoQA.detections++
+          return mark(name, ...args)
+        }
+        const bitmaps = new WeakSet()
         const create = window.createImageBitmap
         const close = ImageBitmap.prototype.close
         const transfer = Worker.prototype.postMessage
@@ -180,578 +165,297 @@ test('photo editor in the production build', { timeout: 240000 }, async (suite) 
         const workers = new WeakSet()
         window.createImageBitmap = async (...args) => {
           const bitmap = await create(...args)
-          activeBitmaps.add(bitmap)
-          editorQA.activeBitmaps++
+          bitmaps.add(bitmap)
+          photoQA.bitmaps++
           return bitmap
         }
         ImageBitmap.prototype.close = function () {
-          if (activeBitmaps.delete(this)) editorQA.activeBitmaps--
+          if (bitmaps.delete(this)) photoQA.bitmaps--
           return close.call(this)
         }
         Worker.prototype.postMessage = function (data, list) {
           const result = transfer.call(this, data, list)
-          if (Array.isArray(list)) {
-            for (const item of list) if (activeBitmaps.delete(item)) editorQA.activeBitmaps--
-          }
+          if (Array.isArray(list)) for (const item of list) if (bitmaps.delete(item)) photoQA.bitmaps--
           return result
         }
         Worker.prototype.terminate = function () {
-          if (workers.delete(this)) editorQA.liveWorkers--
+          if (workers.delete(this)) photoQA.workers--
           return terminate.call(this)
         }
         window.Worker = class extends NativeWorker {
           constructor(...args) {
             super(...args)
             workers.add(this)
-            editorQA.liveWorkers++
+            photoQA.workers++
           }
         }
+        const url = URL.createObjectURL
+        const revoke = URL.revokeObjectURL
+        URL.createObjectURL = blob => {
+          const next = url(blob)
+          photoQA.urls.add(next)
+          return next
+        }
+        URL.revokeObjectURL = value => { photoQA.urls.delete(value); return revoke(value) }
       })
-
       try {
         const response = await page.goto(origin)
         assert.equal(response.headers()['content-security-policy'], csp)
         await run(page, requests, context)
         assert.deepEqual(errors, [])
-        assert.deepEqual(await page.evaluate(() => editorQA.violations), [])
-        assert.deepEqual(requests.filter(request =>
-          request.url.startsWith('http') && (!request.url.startsWith(origin + '/') || request.method !== 'GET')
-        ), [])
-      } finally {
-        await context.close()
-      }
+        assert.deepEqual(await page.evaluate(() => photoQA.violations), [])
+        assert.deepEqual(requests.filter(({ url, method }) =>
+          url.startsWith('http') && (!url.startsWith(origin + '/') || method !== 'GET')), [])
+      } finally { await context.close() }
     }
 
-    await suite.test('five steps are visible, model is lazy, and fake camera stops on Escape', async () => {
-      await withPage(async (page, requests) => {
-        await heading(page, ru.step1Title)
-        assert.equal(await page.locator('input[type=file]').getAttribute('aria-label'), ru.choosePhotoLabel)
-        await page.waitForFunction(() => document.querySelector('header img')?.naturalWidth === 96)
-        assert.ok(requests.some(request => /\/assets\/logo-96-[\w-]+\.png$/.test(request.url)))
-        assert.ok(!requests.some(request => request.url.endsWith('/logo-1024.png')))
-        const nav = page.getByRole('navigation', { name: ru.stepNavigation })
-        assert.deepEqual((await nav.getByRole('button').allTextContents()).map(text => text.replace(/^\d/, '')), ru.stepLabels)
-        assert.ok(!requests.some(request => detectResource(request.url)))
-        await page.evaluate(() => {
-          window.cameraTracks = []
-          const native = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
-          navigator.mediaDevices.getUserMedia = async (...args) => {
-            const stream = await native(...args)
-            cameraTracks.push(...stream.getTracks())
-            return stream
-          }
-        })
-        await choose(page, ru.btnShootCamera).click()
-        await page.waitForFunction(() => cameraTracks.some(track => track.readyState === 'live'))
+    await suite.test('opening shows documents, upload, rules, FAQs and no step UI; models are lazy', async () => {
+      await withPage(async (page, requests, context) => {
+        await main(page).getByRole('heading', { name: ru.step1Title }).waitFor()
+        assert.equal(await main(page).locator('input[name=upload-document]').count(), 2)
+        await main(page).getByRole('heading', { name: copy.requirements }).waitFor()
+        assert.equal(await main(page).getByRole('tabpanel').getByRole('listitem').count(), 3)
+        await main(page).getByRole('tab', { name: 'Green Card (DV)', exact: true }).click()
+        await main(page).getByRole('tabpanel').getByText('Готовый файл — 600 × 600 пикселей.').waitFor()
+        await main(page).getByRole('link', { name: copy.source.replace('{site}', 'travel.state.gov') }).waitFor()
+        assert.doesNotMatch(await main(page).innerText(), /TODO|Шаг 1/)
+        assert.equal(await main(page).locator('details').count(), 4)
+        assert.ok(!requests.some(({ url }) => /face_landmarker|detector-|\/models\/|\/wasm\//.test(url)))
+        await checkAxe(page)
+        await context.grantPermissions(['camera'], { origin })
+        await button(main(page), ru.btnShootCamera).click()
+        await page.getByRole('dialog', { name: ru.cameraModalTitle }).waitFor()
+        await page.waitForFunction(() => document.querySelector('dialog video')?.videoWidth > 0 ||
+          document.querySelector('dialog [role=alert]'))
+        assert.equal(await page.getByRole('dialog').getByRole('alert').count(), 0)
         await page.keyboard.press('Escape')
         await page.getByRole('dialog').waitFor({ state: 'hidden' })
-        await page.waitForFunction(() => cameraTracks.every(track => track.readyState === 'ended'))
-      }, { viewport: { width: 390, height: 844 } })
-    })
-
-    await suite.test('browsers without Wasm SIMD show localized requirements without loading the model', async () => {
-      await withPage(async (page, requests) => {
-        await page.addInitScript(() => { WebAssembly.validate = () => false })
-        await page.reload()
-        const warning = page.getByRole('alert')
-        await warning.waitFor()
-        assert.equal(await warning.textContent(), ru.browserRequiresSimd)
-        assert.ok(await choose(page, ru.btnChooseFile).isDisabled())
-        assert.ok(await choose(page, ru.btnShootCamera).isDisabled())
-
-        await choose(page, 'KZ').click()
-        assert.equal(await warning.textContent(), translations.kz.browserRequiresSimd)
-        assert.equal(await page.locator('input[type=file]').getAttribute('aria-label'), translations.kz.choosePhotoLabel)
-        assert.ok(!requests.some(request => detectResource(request.url)))
-        await checkAxe(page)
       })
     })
 
-    const noPortrait = !existsSync(portrait) && 'tests/fixtures/portrait.jpg отсутствует'
-    const noAstronaut = !existsSync(astronaut) && 'tests/fixtures/astronaut.png отсутствует'
-    await suite.test('upload, skip, document, check, download, browser history and reload', { skip: noPortrait }, async () => {
-      await withPage(async (page, requests) => {
+    await suite.test('settings open before detection and restore focus on Escape or backdrop click', { skip: skipPortrait }, async () => {
+      await withPage(async page => {
+        const trigger = button(main(page), ru.btnChooseFile)
+        const [chooser] = await Promise.all([page.waitForEvent('filechooser'), trigger.click()])
+        await chooser.setFiles(portrait)
+        await dialog(page).getByRole('img', { name: ru.editor.original }).waitFor()
+        assert.equal(await dialog(page).getAttribute('aria-modal'), 'true')
+        for (let i = 0; i < 20; i++) {
+          await page.keyboard.press('Tab')
+          assert.ok(await dialog(page).evaluate(element => element.contains(document.activeElement)))
+        }
+        assert.equal(await page.evaluate(() => photoQA.detections), 0)
+        await page.keyboard.press('Escape')
+        await dialog(page).waitFor({ state: 'hidden' })
+        assert.ok(await trigger.evaluate(element => element === document.activeElement))
         await upload(page)
-        assert.ok(!requests.some(request => segmentResource(request.url)))
-        await choose(page, editor.skip).click()
-        await heading(page, ru.step3Title)
+        await page.mouse.click(8, 8)
+        await dialog(page).waitFor({ state: 'hidden' })
+        assert.ok(await trigger.evaluate(element => element === document.activeElement))
+      })
+    })
+
+    await suite.test('recommended colors, original background, custom JPEG and both document sizes', { skip: skipPortrait }, async () => {
+      await withPage(async page => {
+        await upload(page, await sourceFixture(page, 'colored'))
+        const swatch = () => background(page, 'recommended').locator('..').locator('span[aria-hidden]')
+        assert.equal(await swatch().evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(240, 240, 240)')
+        await changeDocument(page, 'dv')
+        assert.equal(await swatch().evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(255, 255, 255)')
+        assert.deepEqual(await dialog(page).locator('input[name=photo-background]').evaluateAll(nodes => nodes.map(node => node.value)),
+          ['recommended', 'original', 'white', 'natural'])
+        await changeDocument(page, 'kz_id')
+        await background(page, 'original').check()
+        await dialog(page).getByRole('switch', { name: copy.autoExposure }).uncheck()
+        await processPhoto(page)
+        const original = await jpeg(page, 413, 531, 30000)
+        assert.ok(original.corners.some(pixel => [55, 108, 158].every((channel, i) => Math.abs(channel - pixel[i]) <= 2)),
+          JSON.stringify(original.corners))
+        assert.equal(await page.evaluate(() => photoQA.detections), 1)
+        await main(page).getByText(copy.framing, { exact: true }).click()
+        await main(page).getByRole('slider', { name: ru.adjustScale, exact: true }).press('Home')
+        const shift = main(page).getByRole('slider', { name: ru.adjustShiftY, exact: true })
+        for (let i = 0; i < 5; i++) await shift.press('ArrowRight')
+        await button(main(page), copy.applyFraming).click()
+        await page.waitForFunction(() => document.querySelector('#wizard-main [role=status]')?.textContent === '')
+        await button(main(page), copy.editSettings).click()
+        assert.ok(await background(page, 'original').isChecked())
+        assert.ok(!await dialog(page).getByRole('switch', { name: copy.autoExposure }).isChecked())
+        await background(page, 'custom').check()
+        await dialog(page).locator('input[type=color]').fill('#c0e0f0')
+        await processPhoto(page)
+        const custom = await jpeg(page, 413, 531, 30000)
+        for (const pixel of custom.corners) closeColor(pixel, [192, 224, 240])
+        assert.equal(await page.evaluate(() => photoQA.detections), 1)
+        await button(main(page), ru.btnOtherDoc).click()
+        await changeDocument(page, 'dv')
+        assert.ok(await background(page, 'recommended').isChecked())
+        await processPhoto(page)
+        await jpeg(page, 600, 600, 240000)
+        assert.equal(await page.evaluate(() => photoQA.detections), 1)
+        await button(main(page), copy.compare).click()
+        await main(page).getByRole('img', { name: ru.editor.original }).waitFor()
+        await button(main(page), copy.compare).click()
+        await ready(page).waitFor()
+      })
+    })
+
+    await suite.test('face, multiple faces, broken files, unsupported files and size errors stay in settings', { skip: skipPortrait }, async () => {
+      await withPage(async page => {
+        const broken = { name: 'broken.jpg', mimeType: 'image/jpeg', buffer: Buffer.of(255, 216, 255, 0) }
+        await file(main(page)).setInputFiles(broken)
+        await dialog(page).getByRole('alert').getByText(ru.errRead).waitFor()
+        await file(dialog(page)).setInputFiles({ name: 'text.txt', mimeType: 'text/plain', buffer: Buffer.from('text') })
+        await dialog(page).getByRole('alert').getByText(ru.errUnsupportedFormat).waitFor()
+        const path = await mkdtemp(join(tmpdir(), 'photo-size-test-'))
+        const oversized = join(path, 'oversized.jpg')
+        try {
+          const handle = await open(oversized, 'w')
+          try { await handle.truncate(51 * 1024 * 1024) } finally { await handle.close() }
+          await file(dialog(page)).setInputFiles(oversized)
+          await dialog(page).getByRole('alert').getByText(ru.errUploadTooLarge).waitFor()
+        } finally { await unlink(oversized); await rmdir(path) }
+        await file(dialog(page)).setInputFiles({
+          name: 'blank.png', mimeType: 'image/png', buffer: fixturePng(synthSignature('blank', 400, 300)),
+        })
+        await button(dialog(page), copy.process).click()
+        await dialog(page).getByRole('alert').getByText(ru.errNoFace).waitFor()
+        await file(dialog(page)).setInputFiles(await sourceFixture(page, 'two'))
+        await button(dialog(page), copy.process).click()
+        await dialog(page).getByRole('alert').getByText(ru.errMultipleFaces).waitFor()
+      })
+    })
+
+    await suite.test('Back and Forward restore the two screens; reload clears photo state', { skip: skipPortrait }, async () => {
+      await withPage(async page => {
+        await upload(page)
+        await background(page, 'original').check()
+        await processPhoto(page)
         await page.goBack()
-        await editorHeading(page).waitFor()
+        await main(page).getByRole('heading', { name: ru.step1Title }).waitFor()
+        assert.equal(new URL(page.url()).origin, origin)
         await page.goForward()
-        await heading(page, ru.step3Title)
-        await next(page).click()
-        await heading(page, ru.step4Title)
-        await page.getByText(ru.checkBgWarn, { exact: true }).waitFor()
-        await next(page).click()
-        await heading(page, ru.step5Title)
-        const skipped = await jpeg(page, 413, 531, 30000)
-        await page.getByRole('navigation', { name: ru.stepNavigation }).getByRole('button', { name: ru.stepLabels[1], exact: true }).click()
-        await editorHeading(page).waitFor()
-        await next(page).click()
-        await next(page).click()
-        await next(page).click()
-        assert.deepEqual(await jpeg(page, 413, 531, 30000), skipped)
+        await resultTitle(page).waitFor()
         await page.reload()
-        await heading(page, ru.step1Title)
+        await main(page).getByRole('heading', { name: ru.step1Title }).waitFor()
+        assert.equal(await page.evaluate(() => history.state?.photoResult), null)
       })
     })
 
-    await suite.test('tone, keyboard and double-click reset, undo/redo, monochrome and RU/KZ', { skip: noPortrait }, async () => {
-      await withPage(async (page) => {
+    await suite.test('filters and suits default to off in DV, and the warning is visible when chosen', { skip: skipPortrait }, async () => {
+      await withPage(async page => {
+        await main(page).locator('input[name=upload-document][value=dv]').check()
         await upload(page)
-        await editorStage(page, 'tone').click()
-        const range = page.getByRole('slider', { name: editor.brightness, exact: true })
-        const baseline = await canvasData(original(page), [0.57, 0.55, 20, 20])
-        await range.focus()
-        for (let i = 0; i < 30; i++) await range.press('ArrowRight')
-        assert.equal(await range.inputValue(), '30')
-        assert.match(await range.getAttribute('aria-valuetext'), /\+30/)
-        await edited(page).waitFor()
-        assert.ok(regionDifference(baseline, await canvasData(edited(page), [0.57, 0.55, 20, 20])) > 15)
-        await choose(page, 'KZ').click()
-        assert.equal(await page.getByRole('slider', { name: translations.kz.editor.brightness }).inputValue(), '30')
-        await choose(page, 'RU').click()
-        await range.dispatchEvent('dblclick')
-        assert.equal(await range.inputValue(), '0')
-        await edited(page).waitFor({ state: 'hidden' })
-        await choose(page, editor.undo).click()
-        assert.equal(await range.inputValue(), '30')
-        await choose(page, editor.redo).click()
-        assert.equal(await range.inputValue(), '0')
-        await editorStage(page, 'filters').click()
-        await choose(page, editor.mono).click()
-        await edited(page).waitFor()
-        assert.ok(!(await next(page).isEnabled()))
-        assert.ok(await page.getByText(editor.monoWarning).isVisible())
-        const mono = await canvasData(edited(page), [0.57, 0.55, 1, 1])
-        assert.equal(mono[0], mono[1])
-        assert.equal(mono[0], mono[2])
-        await choose(page, editor.reset).click()
-        assert.ok(await next(page).isEnabled())
+        await dialog(page).getByText(copy.advanced, { exact: true }).click()
+        const filter = dialog(page).getByLabel(ru.editor.filters, { exact: true })
+        assert.equal(await filter.inputValue(), 'none')
+        assert.equal(await button(dialog(page), ru.editor.skipSuit).getAttribute('aria-pressed'), 'true')
+        await filter.selectOption('soft')
+        await button(dialog(page), ru.editor.male).click()
+        await button(dialog(page), ru.editor.dark).click()
+        await dialog(page).getByText(copy.dvWarning, { exact: true }).waitFor()
       })
     })
 
-    await suite.test('pencil accepts a freehand outline, applies color, and works without segmentation', { skip: noPortrait }, async () => {
-      await withPage(async (page, requests) => {
-        await upload(page)
-        await choose(page, editor.pencil).click()
-        const area = page.getByRole('group', { name: editor.drawCanvas })
-        const rect = await area.boundingBox()
-        assert.ok(rect && !(await next(page).isEnabled()))
-        const draw = async (x, y, steps) => page.mouse.move(rect.x + rect.width * x, rect.y + rect.height * y, { steps })
-        await draw(0.19, 0.18, 1)
-        await page.mouse.down()
-        await draw(0.82, 0.19, 12)
-        await draw(0.86, 0.95, 12)
-        await draw(0.18, 0.95, 12)
-        await page.mouse.up()
-        await choose(page, editor.applyOutline).click()
-        await waitForPixel(page, [255, 255, 255])
-        await next(page).click()
-        await heading(page, ru.step3Title)
-        await choose(page, ru.btnBack).click()
-        await editorHeading(page).waitFor()
-        await waitForPixel(page, [255, 255, 255])
-        assert.ok(!requests.some(request => segmentResource(request.url)))
-      }, { viewport: { width: 390, height: 844 } })
-    })
-
-    await suite.test('automatic mask, colors, edge preview, cached offline recolor, and performance', { skip: noPortrait }, async (t) => {
-      await withPage(async (page, requests, context) => {
-        const colored = await coloredPortrait(page)
-        await upload(page, colored)
-        await page.getByText(editor.backgroundSuggestion).waitFor()
-        const faceBefore = await canvasData(original(page), [0.57, 0.52, 20, 20])
-        const start = await page.evaluate(() => performance.now())
-        const requested = performance.now()
-        await choose(page, editor.automatic).click()
-        await waitForPixel(page, [255, 255, 255])
-        const elapsed = performance.now() - requested
-        const worker = page.workers().find(item => item.url().includes('editor-worker'))
-        const inference = await worker?.evaluate(() => performance.getEntriesByName('photo-editor-segmentation').at(-1)?.duration)
-        t.diagnostic('Cold model and preview: ' + Math.round(elapsed) + ' ms. Inference and mask: ' + Math.round(inference) + ' ms.')
-        assert.ok(inference < 6000, 'Segmentation: ' + inference + ' ms')
-        const longest = await page.evaluate((start) => Math.max(0, ...editorQA.longTasks.filter(([time]) => time >= start).map(([, duration]) => duration)), start)
-        t.diagnostic('Longest main-thread task in editor: ' + Math.round(longest) + ' ms.')
-        assert.ok(longest <= 100, 'Main-thread task: ' + longest + ' ms')
-        for (const point of [[0,0],[0.96,0],[0,0.96],[0.96,0.96]]) {
-          const corners = await canvasData(edited(page), [...point, 20, 20])
-          assert.ok(corners.every(value => value >= 253))
-        }
-        const faceAfter = await canvasData(edited(page), [0.57, 0.52, 20, 20])
-        assert.ok(regionDifference(faceBefore, faceAfter) < 3)
-        await edited(page).evaluate(canvas => {
-          window.compositeForEdgeTest = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
-        })
-        await page.getByRole('checkbox', { name: editor.showMask }).check()
-        const mask = page.getByRole('img', { name: editor.mask })
-        await mask.waitFor()
-        await page.waitForFunction(() => {
-          const canvas = document.querySelector('canvas[aria-label="Маска человека"]')
-          return canvas && canvas.getContext('2d').getImageData(0, 0, 1, 1).data[0] === 0
-        })
-        const edge = await mask.evaluate(canvas => {
-          const { width, height } = canvas
-          const image = document.querySelector('canvas[aria-label="Исходное фото"]')
-          const original = image.getContext('2d').getImageData(0, 0, width, height).data
-          const matte = canvas.getContext('2d').getImageData(0, 0, width, height).data
-          const composite = window.compositeForEdgeTest
-          delete window.compositeForEdgeTest
-          let before = 0
-          let after = 0
-          let count = 0
-          for (let i = 0; i < Math.floor(height * 0.55) * width * 4; i += 4) {
-            if (matte[i] < 10 || matte[i] > 75) continue
-            count++
-            for (let c = 0; c < 3; c++) {
-              before += 255 - original[i + c]
-              after += 255 - composite[i + c]
-            }
-          }
-          return { before, after, count }
-        })
-        assert.ok(edge.count > 10 && edge.after < edge.before * 0.5, JSON.stringify(edge))
-        await page.getByRole('checkbox', { name: editor.showMask }).uncheck()
-        await context.setOffline(true)
-        await choose(page, editor.gray).click()
-        await waitForPixel(page, [240, 240, 240])
-        await choose(page, editor.blue).click()
-        await waitForPixel(page, [220, 233, 245])
-        assert.equal(requests.filter(request => segmentResource(request.url)).length, 1)
-        await context.setOffline(false)
-        await next(page).click()
-        await heading(page, ru.step3Title)
-        await choose(page, editor.applyColor).click()
-        await next(page).click()
-        await heading(page, ru.step4Title)
-        assert.equal(requests.filter(request => segmentResource(request.url)).length, 1)
-        await page.getByText(ru.checkBgOk, { exact: true }).waitFor()
-      })
-    })
-
-    await suite.test('bad input and failed model are reported; manual editing remains available', { skip: noPortrait }, async () => {
-      await withPage(async (page, requests, context) => {
-        await page.locator('input[type=file]').setInputFiles({
-          name: 'empty.png', mimeType: 'image/png', buffer: Buffer.alloc(0),
-        })
-        await page.getByText(ru.errRead).waitFor()
-        await page.locator('input[type=file]').setInputFiles(await tinyPortrait(page))
-        await page.getByText(ru.errNoFace, { exact: true }).or(page.getByText(ru.errSmallFace, { exact: true })).waitFor()
-        assert.ok(!requests.some(request => segmentResource(request.url)))
-        await upload(page)
-        await context.route('**/models/*.tflite', route => route.abort())
-        await choose(page, editor.automatic).click()
-        await page.getByText(editor.modelError).waitFor({ timeout: 20000 })
-        assert.ok(!(await next(page).isEnabled()))
-        await choose(page, editor.pencil).click()
-        const area = page.getByRole('group', { name: editor.drawCanvas })
-        await area.press('Shift+ArrowUp')
-        await area.press('Enter')
-        for (let i = 0; i < 3; i++) await area.press('Shift+ArrowRight')
-        await area.press('Enter')
-        for (let i = 0; i < 4; i++) await area.press('Shift+ArrowDown')
-        await area.press('Enter')
-        assert.ok(await choose(page, editor.applyOutline).isEnabled())
-        await choose(page, editor.applyOutline).click()
-        await waitForPixel(page, [255, 255, 255])
-      })
-    })
-
-    await suite.test('edited JPEG meets both document limits and DV shows the filter warning', { skip: noPortrait }, async (t) => {
-      await withPage(async (page) => {
-        await upload(page, await coloredPortrait(page))
-        await choose(page, editor.automatic).click()
-        await waitForPixel(page, [255, 255, 255])
-        await editorStage(page, 'filters').click()
-        await choose(page, editor.soft).click()
-        await next(page).click()
-        await heading(page, ru.step3Title)
-        assert.equal(await page.getByText(editor.dvFilterWarning).count(), 0)
-        await next(page).click()
-        await next(page).click()
-        const kz = await jpeg(page, 413, 531, 30000)
-        t.diagnostic('KZ JPEG: ' + kz.length + ' bytes, first luma quantizer ' + lumaQuantizer(kz))
-        assert.ok(lumaQuantizer(kz) <= 13)
-        await choose(page, ru.btnOtherDoc).click()
-        await page.locator('#dv').check()
-        await page.getByText(editor.dvFilterWarning).waitFor()
-        await page.getByText(editor.dvBackgroundWarning).waitFor()
-        await next(page).click()
-        await next(page).click()
-        const dv = await jpeg(page, 600, 600, 240000)
-        t.diagnostic('DV JPEG: ' + dv.length + ' bytes, first luma quantizer ' + lumaQuantizer(dv))
-        assert.ok(lumaQuantizer(dv) <= 13)
-      })
-    })
-
-    await suite.test('both suit styles preserve the face and can be removed', { skip: noAstronaut }, async () => {
-      await withPage(async (page) => {
+    await suite.test('framing, background brush, and real suit through the preserved editor modules', {
+      skip: existsSync(astronaut) ? skipPortrait : 'Local suit fixture unavailable',
+    }, async () => {
+      await withPage(async page => {
         await upload(page, astronaut)
-        await editorStage(page, 'suit').click()
-        assert.equal(await choose(page, editor.dark).count(), 0)
-        const faceBefore = await canvasData(original(page), [0.42, 0.22, 20, 20])
-        const neckBefore = await canvasData(original(page), [0.42, 0.36, 20, 10])
-        const clothesBefore = await canvasData(original(page), [0.32, 0.52, 50, 50])
-        for (const gender of [editor.male, editor.female]) {
-          await choose(page, gender).click()
-          await choose(page, editor.dark).click()
-          await edited(page).waitFor({ timeout: 20000 })
-          const faceAfter = await canvasData(edited(page), [0.42, 0.22, 20, 20])
-          const neckAfter = await canvasData(edited(page), [0.42, 0.36, 20, 10])
-          const clothesAfter = await canvasData(edited(page), [0.32, 0.52, 50, 50])
-          assert.equal(regionDifference(faceBefore, faceAfter), 0)
-          assert.equal(regionDifference(neckBefore, neckAfter), 0)
-          assert.ok(regionDifference(clothesBefore, clothesAfter) > 4)
-          await choose(page, editor.removeSuit).click()
-          await edited(page).waitFor({ state: 'hidden' })
-        }
-        await choose(page, editor.skipSuit).click()
-        assert.equal(await choose(page, editor.dark).count(), 0)
-        await choose(page, editor.female).click()
-        await choose(page, editor.light).click()
-        await edited(page).waitFor()
-        await next(page).click()
-        await page.locator('#dv').check()
-        await page.getByText(editor.dvSuitWarning).waitFor()
+        await dialog(page).getByText(copy.advanced, { exact: true }).click()
+        await button(dialog(page), ru.editor.female).click()
+        await button(dialog(page), ru.editor.dark).click()
+        await processPhoto(page)
+        const suit = await jpeg(page, 413, 531, 30000)
+        await main(page).getByText(copy.framing, { exact: true }).click()
+        const scale = main(page).getByRole('slider', { name: ru.adjustScale, exact: true })
+        await scale.press('ArrowRight')
+        await button(main(page), copy.applyFraming).click()
+        await page.waitForFunction(() => document.querySelector('#wizard-main [role=status]')?.textContent === '')
+        const framed = await jpeg(page, 413, 531, 30000)
+        assert.notDeepEqual(framed.bytes, suit.bytes)
+        await button(main(page), copy.refineBackground).click()
+        const surface = main(page).getByRole('group', { name: ru.editor.brushCanvas })
+        await surface.press('ArrowRight')
+        await surface.press('Enter')
+        await button(main(page), copy.applyBrush).click()
+        await page.waitForFunction(() => document.querySelector('#wizard-main [role=status]')?.textContent === '')
+        assert.equal(await page.evaluate(() => photoQA.detections), 1)
       })
     })
 
-    await suite.test('mobile and tablet editor layout, touch contour and axe', { skip: noPortrait }, async () => {
-      await withPage(async (page) => {
+    await suite.test('RU/KZ and axe across mobile sheet, result and 768 px tablet', { skip: skipPortrait }, async () => {
+      const { defaultBrowserType, ...mobile } = devices['iPhone 13']
+      await withPage(async page => {
+        const noOverflow = () => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)
+        await main(page).getByRole('heading', { name: ru.step1Title }).waitFor()
+        assert.ok(await noOverflow())
         await upload(page)
-        const checkLayout = async () => assert.ok(await page.evaluate(() =>
-          document.documentElement.scrollWidth <= innerWidth
-        ))
-        await checkLayout()
-        await checkAxe(page)
-        await choose(page, editor.pencil).click()
-        const area = page.getByRole('group', { name: editor.drawCanvas })
-        const box = await area.boundingBox()
-        const client = await page.context().newCDPSession(page)
-        const positions = [[0.2,0.2],[0.8,0.2],[0.85,0.88],[0.18,0.88]]
-        for (const [index, [x, y]] of positions.entries()) {
-          await client.send('Input.dispatchTouchEvent', {
-            type: index ? 'touchMove' : 'touchStart',
-            touchPoints: [{ x: box.x + x * box.width, y: box.y + y * box.height }],
-          })
-        }
-        await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
-        await choose(page, editor.applyOutline).click()
-        await waitForPixel(page, [255,255,255])
-        await checkAxe(page)
-        await page.setViewportSize({ width: 768, height: 1000 })
-        await checkLayout()
-        await checkAxe(page)
-      }, { ...devices['Pixel 7'], viewport: { width: 390, height: 844 } })
-    })
-
-    await suite.test('phone and laptop show only one settings section and keep the photo on the left', { skip: noPortrait }, async () => {
-      for (const viewport of [{ width: 360, height: 740 }, { width: 1280, height: 720 }]) {
-        await withPage(async (page) => {
-          await upload(page)
-          const stages = ['background', 'tone', 'filters', 'suit']
-          const stage = key => editorStage(page, key)
-          const checkExpanded = async (selected) => {
-            for (const key of stages) {
-              const header = stage(key)
-              assert.equal(await header.getAttribute('aria-expanded'), String(key === selected))
-              const panel = page.locator('#' + await header.getAttribute('aria-controls'))
-              assert.equal(await panel.isVisible(), key === selected)
-              assert.ok(await header.isVisible())
-            }
-          }
-          const actions = page.getByRole('group', { name: editor.stagePicker, exact: true })
-          const done = () => actions.getByRole('button', { name: editor.stageDone, exact: true }).click()
-          const preview = await original(page).boundingBox()
-          const picker = await stage('background').boundingBox()
-          assert.ok(preview.x + preview.width <= picker.x)
-          assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), viewport.width)
-          const bottomBar = await page.locator('#wizard-bottom-bar').boundingBox()
-          const stageActions = await actions.boundingBox()
-          assert.ok(stageActions.y + stageActions.height <= bottomBar.y)
-          assert.ok(preview.y + preview.height <= bottomBar.y)
-
-          await checkExpanded('background')
-          assert.equal(await page.getByRole('slider', { name: editor.brightness }).count(), 0)
-          const beforeScroll = await original(page).boundingBox()
-          const filtersHeader = await stage('filters').boundingBox()
-          const scrollTop = await page.getByRole('region', { name: editor.background, exact: true }).evaluate(element => {
-            element.scrollTop = element.scrollHeight
-            return element.scrollTop
-          })
-          if (viewport.width === 360) assert.ok(scrollTop > 0)
-          assert.deepEqual(await original(page).boundingBox(), beforeScroll)
-          assert.deepEqual(await stage('filters').boundingBox(), filtersHeader)
-          await choose(page, editor.gray).click()
-          await done()
-
-          await checkExpanded('tone')
-          assert.equal(await choose(page, editor.automatic).count(), 0)
-          await page.getByRole('slider', { name: editor.brightness }).press('ArrowRight')
-          await stage('filters').press('Enter')
-          await checkExpanded('filters')
-          assert.equal(await page.getByRole('slider', { name: editor.brightness }).count(), 0)
-          await choose(page, editor.soft).click()
-          await actions.getByRole('button', { name: editor.previousStage, exact: true }).click()
-          await checkExpanded('tone')
-          assert.equal(await page.getByRole('slider', { name: editor.brightness }).inputValue(), '1')
-          await stage('background').click()
-          await checkExpanded('background')
-          assert.equal(await choose(page, editor.gray).getAttribute('aria-pressed'), 'true')
-          await stage('background').click()
-          await checkExpanded(null)
-          await stage('filters').click()
-          assert.equal(await choose(page, editor.soft).getAttribute('aria-pressed'), 'true')
-          await done()
-          await checkExpanded('suit')
-          await checkAxe(page)
-          await done()
-          await heading(page, ru.step3Title)
-        }, viewport.width === 360 ? { ...devices['Pixel 7'], viewport } : { viewport })
-      }
-    })
-
-    await suite.test('mobile pinch and pan leave no brush marks, and intentional strokes still reach JPEG', { skip: noPortrait }, async () => {
-      await withPage(async (page, requests, context) => {
-        await upload(page, await coloredPortrait(page))
-        assert.equal(await choose(page, editor.brush).count(), 0)
-        await choose(page, editor.automatic).click()
-        await waitForPixel(page, [255, 255, 255])
-
-        const point = [0.57, 0.52]
-        const getPixel = (locator, coords = point) => locator.evaluate((canvas, [x, y]) => Array.from(canvas.getContext('2d')
-          .getImageData(Math.floor(x * canvas.width), Math.floor(y * canvas.height), 1, 1).data.slice(0, 3)), coords)
-        const before = await getPixel(edited(page))
-        assert.notDeepEqual(before, [255, 255, 255])
-        await choose(page, editor.brush).click()
-        const area = page.getByRole('group', { name: editor.brushCanvas })
-        const tools = page.getByRole('group', { name: editor.brush, exact: true })
-        const client = await context.newCDPSession(page)
-        const imageBytes = () => edited(page).evaluate(canvas => canvas.toDataURL())
-        const initial = await imageBytes()
-        await area.evaluate(element => element.scrollIntoView({ block: 'center' }))
-        const surface = await area.boundingBox()
-        const touch = (type, positions) => client.send('Input.dispatchTouchEvent', {
-          type,
-          touchPoints: positions.map(([id, x, y]) => ({ id, x: surface.x + x * surface.width, y: surface.y + y * surface.height })),
+        const geometry = await dialog(page).evaluate(node => {
+          const rect = node.getBoundingClientRect()
+          return { width: rect.width, bottom: rect.bottom, windowWidth: innerWidth, windowHeight: innerHeight, contentWidth: node.scrollWidth }
         })
-        await touch('touchStart', [[1, 0.57, 0.52]])
-        await touch('touchMove', [[1, 0.54, 0.52]])
-        await touch('touchStart', [[1, 0.54, 0.52], [2, 0.81, 0.52]])
-        await touch('touchMove', [[1, 0.38, 0.52], [2, 0.95, 0.52]])
-        await page.waitForFunction(width => {
-          const image = document.querySelector('canvas[aria-label="Фото с правками"]')
-          return image?.getBoundingClientRect().width > width * 1.5
-        }, surface.width)
-        const zoomed = await edited(page).boundingBox()
-        await touch('touchMove', [[1, 0.32, 0.47], [2, 0.89, 0.47]])
-        await page.waitForFunction(({ x, y }) => {
-          const image = document.querySelector('canvas[aria-label="Фото с правками"]')
-          const rect = image?.getBoundingClientRect()
-          return rect && rect.left < x - 5 && rect.top < y - 5
-        }, zoomed)
-        const panned = await edited(page).boundingBox()
-        await touch('touchEnd', [[1, 0.32, 0.47]])
-        await touch('touchMove', [[2, 0.57, 0.47]])
-        await touch('touchEnd', [])
-        assert.equal(await area.locator('path').count(), 0)
-        assert.deepEqual(await edited(page).boundingBox(), panned)
-        assert.equal(await imageBytes(), initial)
-
-        const paint = async ([x, y], finish = 'touchEnd') => {
-          await area.evaluate(element => element.scrollIntoView({ block: 'center' }))
-          const canvas = page.locator('canvas[aria-label="' + editor.original + '"]')
-          const box = await canvas.evaluate(element => {
-            const rect = element.getBoundingClientRect()
-            return { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
-          })
-          for (const [index, offset] of [-0.02, 0, 0.02].entries()) {
-            await client.send('Input.dispatchTouchEvent', {
-              type: index ? 'touchMove' : 'touchStart',
-              touchPoints: [{ x: box.x + (x + offset) * box.width, y: box.y + y * box.height }],
-            })
-          }
-          await client.send('Input.dispatchTouchEvent', { type: finish, touchPoints: [] })
-        }
-        await paint(point, 'touchCancel')
-        assert.deepEqual(await getPixel(edited(page)), before)
-        await paint(point)
-        await waitForPixel(page, [255, 255, 255], point)
-        await tools.getByRole('button', { name: editor.undo, exact: true }).click()
-        await waitForPixel(page, before, point)
-        assert.equal(await imageBytes(), initial)
-        await tools.getByRole('button', { name: editor.redo, exact: true }).click()
-        await waitForPixel(page, [255, 255, 255], point)
+        assert.equal(geometry.width, geometry.windowWidth)
+        assert.equal(geometry.bottom, geometry.windowHeight)
+        assert.ok(geometry.contentWidth <= geometry.width)
         await checkAxe(page)
-        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth === innerWidth))
-
-        const exportKz = async () => {
-          await tools.getByRole('button', { name: editor.brushDone, exact: true }).click()
-          await next(page).click()
-          await heading(page, ru.step3Title)
-          await next(page).click()
-          await heading(page, ru.step4Title)
-          await next(page).click()
-          return jpeg(page, 413, 531, 30000)
-        }
-        const erased = await exportKz()
-        await page.getByRole('navigation', { name: ru.stepNavigation }).getByRole('button', { name: ru.stepLabels[1] }).click()
-        await editorHeading(page).waitFor()
-        await waitForPixel(page, [255, 255, 255], point)
-        await choose(page, editor.brush).click()
-        await tools.getByRole('button', { name: editor.brushRestore }).click()
-        const showOriginal = tools.getByRole('button', { name: editor.brushOriginal })
-        const missed = [0.57, 0.18]
-        await waitForPixel(page, [255, 255, 255], missed)
-        await showOriginal.click()
-        const originalRgb = await getPixel(original(page))
-        const missedRgb = await getPixel(original(page), missed)
-        await paint(point)
-        await paint(missed)
-        await showOriginal.click()
-        await waitForPixel(page, originalRgb, point)
-        await waitForPixel(page, missedRgb, missed)
-        const restored = await exportKz()
-        assert.notDeepEqual(restored, erased)
-        assert.equal(requests.filter(request => segmentResource(request.url)).length, 1)
-      }, { ...devices['Pixel 7'], viewport: { width: 390, height: 844 } })
+        await background(page, 'original').check()
+        await processPhoto(page)
+        await checkAxe(page)
+        await page.getByRole('button', { name: 'KZ', exact: true }).click()
+        const kz = translations.kz
+        const kazakhCopy = photoCopy.kz
+        await main(page).getByRole('heading', { name: kz.step5Title }).waitFor()
+        assert.equal(await page.locator('html').getAttribute('lang'), 'kk')
+        await button(main(page), kazakhCopy.editSettings).click()
+        await page.getByRole('dialog', { name: kazakhCopy.settings }).waitFor()
+        await checkAxe(page)
+        await page.keyboard.press('Escape')
+        await button(main(page), kz.btnNewPhoto).click()
+        await main(page).getByRole('heading', { name: kz.step1Title }).waitFor()
+        await page.setViewportSize({ width: 360, height: 800 })
+        assert.ok(await noOverflow())
+        await page.setViewportSize({ width: 768, height: 900 })
+        assert.ok(await noOverflow())
+        await checkAxe(page)
+      }, mobile)
     })
 
-    await suite.test('ten edit/reset cycles release image resources and do not retain heap', { skip: noPortrait }, async (t) => {
-      await withPage(async (page, requests, context) => {
-        const client = await context.newCDPSession(page)
-        await client.send('Performance.enable')
+    await suite.test('processing a 12 MP photo completes in five seconds', { skip: skipPortrait }, async t => {
+      await withPage(async page => {
+        await upload(page, await sourceFixture(page, 'large'))
+        const start = performance.now()
+        await processPhoto(page)
+        const ms = performance.now() - start
+        t.diagnostic('12 MP camera-sized JPEG, process to result: ' + ms.toFixed(0) + ' ms')
+        assert.ok(ms <= 5000, ms + ' ms')
+        await jpeg(page, 413, 531, 30000)
+      })
+    })
+
+    await suite.test('ten cycles release photo memory, workers and download URLs', { skip: skipPortrait }, async t => {
+      await withPage(async page => {
+        const cdp = await page.context().newCDPSession(page)
         const heap = async () => {
-          await client.send('HeapProfiler.collectGarbage')
-          return (await client.send('Performance.getMetrics')).metrics.find(metric => metric.name === 'JSHeapUsedSize').value
+          await cdp.send('HeapProfiler.collectGarbage')
+          return (await cdp.send('Runtime.getHeapUsage')).usedSize
         }
-        let warmed
-        for (let cycle = 0; cycle < 10; cycle++) {
+        async function cycle() {
           await upload(page)
-          if (cycle < 2 || cycle === 9) {
-            await choose(page, editor.automatic).click()
-          } else {
-            await editorStage(page, 'tone').click()
-            await page.getByRole('slider', { name: editor.brightness }).press('ArrowRight')
-          }
-          await edited(page).waitFor()
-          await choose(page, editor.reset).click()
-          await next(page).click()
-          await next(page).click()
-          await next(page).click()
-          await choose(page, ru.btnNewPhoto).click()
-          await heading(page, ru.step1Title)
-          await page.waitForFunction(() => editorQA.liveWorkers === 0 && editorQA.activeBitmaps === 0)
-          if (cycle === 1) warmed = await heap()
+          await processPhoto(page)
+          await button(main(page), ru.btnNewPhoto).click()
+          await page.waitForFunction(() => photoQA.workers === 0 && photoQA.bitmaps === 0 && photoQA.urls.size === 0)
         }
-        const final = await heap()
-        t.diagnostic('Retained JS heap after warm-up and final cycle: ' + warmed + ' → ' + final + ' bytes.')
-        assert.ok(final <= warmed * 1.3)
-        assert.equal(requests.filter(request => segmentResource(request.url)).length, 3)
+        for (let i = 0; i < 2; i++) await cycle()
+        const start = await heap()
+        for (let i = 0; i < 10; i++) await cycle()
+        const end = await heap()
+        t.diagnostic('Retained JS heap ' + start + ' → ' + end + ' bytes')
+        assert.ok(end <= start * 1.3, start + ' → ' + end)
       })
     })
   } finally {
     await browser?.close()
-    await server.close()
+    await new Promise(resolve => server.httpServer.close(resolve))
   }
 })

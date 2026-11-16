@@ -42,7 +42,11 @@ export function createEditorEngine(source, landmarks) {
   function original(limit) {
     if (!originals.has(limit)) {
       const canvas = drawScaled(source, limit)
-      originals.set(limit, canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height))
+      try {
+        originals.set(limit, canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height))
+      } finally {
+        canvas.width = canvas.height = 1
+      }
     }
     return originals.get(limit)
   }

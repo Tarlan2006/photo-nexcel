@@ -73,11 +73,18 @@ export function compositeRows(data, original, mask, width, height, start, end, c
       const p = y * width + x
       const index = p * 4
       const alpha = mask[p] / 255
+      if (alpha === 0) {
+        data[index] = color[0]
+        data[index + 1] = color[1]
+        data[index + 2] = color[2]
+        data[index + 3] = 255
+        continue
+      }
       if (alpha === 1 && data[index + 3] === 255) continue
 
       let inner = p
       let cleanup = 0
-      if (alpha > 0 && alpha < 1) {
+      if (alpha < 1) {
         const dx = Math.sign(mask[y * width + Math.min(x + 1, width - 1)] - mask[y * width + Math.max(x - 1, 0)])
         const dy = Math.sign(mask[Math.min(y + 1, height - 1) * width + x] - mask[Math.max(y - 1, 0) * width + x])
         inner = clamp(y + 3 * dy, 0, height - 1) * width + clamp(x + 3 * dx, 0, width - 1)

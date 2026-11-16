@@ -8,6 +8,7 @@ import axe from 'axe-core'
 import { chromium, devices } from 'playwright'
 import { preview as vitePreview } from 'vite'
 import { signatureCopy } from '../src/components/signature/copy.js'
+import { photoCopy } from '../src/content/photo-copy.js'
 import { processSignature } from '../src/lib/signature.js'
 import { translations } from '../src/i18n.js'
 import { fixturePng, synthSignature } from './helpers/synthSignature.js'
@@ -105,12 +106,17 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
       })
       page.on('request', request => requests.push({ url: request.url(), method: request.method() }))
       await page.addInitScript(() => {
-        window.signatureQA = { violations: [], tasks: [], workers: 0, urls: new Set() }
+        window.signatureQA = { violations: [], tasks: [], workers: 0, exports: 0, urls: new Set() }
         document.addEventListener('securitypolicyviolation', event => signatureQA.violations.push(event.violatedDirective))
         new PerformanceObserver(list => signatureQA.tasks.push(...list.getEntries().map(task => task.duration)))
           .observe({ type: 'longtask', buffered: true })
         const NativeWorker = window.Worker
         const terminate = NativeWorker.prototype.terminate
+        const post = NativeWorker.prototype.postMessage
+        NativeWorker.prototype.postMessage = function (message, ...options) {
+          if (message?.action === 'export') signatureQA.exports++
+          return post.call(this, message, ...options)
+        }
         const active = new WeakSet()
         NativeWorker.prototype.terminate = function () {
           if (active.delete(this)) signatureQA.workers--
@@ -165,18 +171,19 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
       })
     })
 
-    await suite.test('tabs load signature lazily and keep the photo editor and its edits', async t => {
+    await suite.test('tabs load signature lazily and keep the photo result', async t => {
       await withPage(async (page, { requests }) => {
         const photoMain = page.locator('#wizard-main')
         await photoMain.getByRole('heading', { level: 1 }).waitFor()
         assert.ok(!requests.some(({ url }) => /SignaturePage-|signature-worker-/.test(url)))
         const hasPortrait = existsSync(portrait)
-        const brightness = photoMain.getByRole('slider', { name: photo.editor.brightness, exact: true })
+        const labels = photoCopy.ru
         if (hasPortrait) {
           await photoMain.locator('input[type=file]').setInputFiles(portrait)
-          await photoMain.getByRole('heading', { name: photo.editor.title }).waitFor({ timeout: 20000 })
-          await photoMain.getByRole('button', { name: photo.editor.tone, exact: true }).click()
-          await brightness.press('ArrowRight')
+          const settings = page.getByRole('dialog', { name: labels.settings })
+          await settings.locator('input[name=photo-background][value=original]').check()
+          await settings.getByRole('button', { name: labels.process, exact: true }).click()
+          await photoMain.getByRole('heading', { name: photo.step5Title }).waitFor({ timeout: 20000 })
         } else {
           t.diagnostic('Portrait fixture unavailable; checked tab and history navigation from the first photo step.')
         }
@@ -191,14 +198,14 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         await photoTab.click()
         assert.equal(await photoTab.getAttribute('aria-current'), 'page')
         assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'), 'https://photo.nexcel.kz/')
-        const name = hasPortrait ? photo.editor.title : photo.step1Title
+        const name = hasPortrait ? photo.step5Title : photo.step1Title
         await photoMain.getByRole('heading', { name, exact: true }).waitFor()
-        if (hasPortrait) assert.equal(await brightness.inputValue(), '1')
+        if (hasPortrait) await photoMain.getByRole('link', { name: labels.download, exact: true }).waitFor()
         await page.goBack()
         await main(page).getByRole('heading', { level: 1 }).waitFor()
         await page.goBack()
         await photoMain.getByRole('heading', { name, exact: true }).waitFor()
-        if (hasPortrait) assert.equal(await brightness.inputValue(), '1')
+        if (hasPortrait) await photoMain.getByRole('link', { name: labels.download, exact: true }).waitFor()
       }, {}, '/')
     })
 
@@ -344,6 +351,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         }
         await button(page, ru.finish).click()
         assert.deepEqual(await download(page), first)
+        assert.equal(await page.evaluate(() => signatureQA.exports), 1)
       })
     })
 

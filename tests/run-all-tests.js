@@ -199,7 +199,7 @@ async function runSelfieTests() {
     const headCheck = checks.find((c) => c.id === 'headProportion')
     assert(headCheck && headCheck.status === 'neutral', `[${i + 1}] headProportion check is neutral`)
     assert(
-      headCheck && headCheck.message.ru.includes('проверьте по направляющим'),
+      headCheck && headCheck.message.ru.includes('70–80%'),
       `[${i + 1}] headProportion mentions guidelines in RU`
     )
     console.log('')

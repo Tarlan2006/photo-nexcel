@@ -49,7 +49,7 @@ function formatMessage(key, params = {}) {
  * @param {HTMLCanvasElement|null} backgroundMatte - Cropped grayscale person mask, if background replacement was applied
  * @returns {Array<Object>} List of checks with { id, ok: boolean, status: 'ok'|'warn', key, message: { ru, kz } }
  */
-export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct, blendshapes = [], backgroundMatte = null) {
+export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct, blendshapes = [], backgroundMatte = null, { rotation = 0 } = {}) {
   const checks = []
 
   // Safeguard: validate landmarks
@@ -63,7 +63,7 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct,
   const eyeDx = p263.x - p33.x
   const eyeDy = p263.y - p33.y
   const angleRad = Math.atan2(eyeDy, eyeDx)
-  const angleDeg = Math.round(Math.abs((angleRad * 180) / Math.PI) * 10) / 10
+  const angleDeg = Math.round(Math.abs(angleRad * 180 / Math.PI - rotation) * 10) / 10
   const isTiltOk = angleDeg <= THRESHOLDS.MAX_TILT_DEG
   const tiltKey = isTiltOk ? 'checkTiltOk' : 'checkTiltWarn'
 
@@ -285,6 +285,8 @@ export function runPhotoChecks(canvas, landmarks, origW, origH, preset, headPct,
   const headKey = 'checkHeadNeutral'
   const headParams = {
     pct: headPct,
+    min: preset.headMinPct,
+    max: preset.headMaxPct,
   }
 
   checks.push({

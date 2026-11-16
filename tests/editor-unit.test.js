@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { translations } from '../src/i18n.js'
-import { stepCount } from '../src/steps.js'
 import { applyBrushStrokes } from '../src/lib/editor/brush.js'
 import { imagePoint, initialView, limitView, maxZoom, zoomView } from '../src/lib/editor/viewport.js'
 import {
@@ -201,7 +200,4 @@ test('RU and KZ editor keys and placeholders agree', () => {
     assert.ok(text && kz.editor[key], key)
     assert.deepEqual(placeholders(text), placeholders(kz.editor[key]), key)
   }
-  assert.deepEqual(placeholders(ru.stepProgress), placeholders(kz.stepProgress))
-  assert.equal(ru.stepLabels.length, stepCount)
-  assert.equal(kz.stepLabels.length, stepCount)
 })
