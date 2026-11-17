@@ -60,16 +60,22 @@ async function checkAxe(page) {
     (await axe.run()).violations.map(({ id, nodes }) => [id, nodes.map(node => node.target)])), [])
 }
 
-async function documentCameraRatio(camera, mode) {
+async function checkDocumentCamera(camera, mode) {
   const guide = camera.locator('[data-camera-guide]')
   const error = camera.getByRole('alert')
   await guide.or(error).first().waitFor()
   if (await error.isVisible()) assert.fail(await error.innerText())
   assert.equal(await guide.getAttribute('data-camera-guide'), mode)
   assert.equal(await guide.locator('[data-camera-silhouette]').count(), 1)
-  assert.equal(await guide.locator('[data-camera-eye-line]').count(), 1)
-  return guide.locator('[data-camera-frame]').evaluate(node =>
-    Number(node.getAttribute('width')) / Number(node.getAttribute('height')))
+  assert.equal(await guide.locator('svg path').count(), 1)
+  assert.equal(await guide.locator('[data-camera-eye-line], [data-camera-frame], rect, ellipse, line').count(), 0)
+  const outside = await guide.locator('[data-camera-outside]').evaluate(node => {
+    const style = getComputedStyle(node)
+    return { blur: style.backdropFilter || style.webkitBackdropFilter, mask: style.maskImage || style.webkitMaskImage }
+  })
+  assert.match(outside.blur, /blur\(/)
+  assert.match(outside.mask, /data:image\/svg\+xml/)
+  await camera.getByText(ru.cameraGuideFace, { exact: true }).waitFor()
 }
 
 async function sourceFixture(page, variant) {
@@ -288,19 +294,21 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         await context.grantPermissions(['camera'], { origin })
         await button(main(page), ru.btnShootCamera).click()
         const camera = page.getByRole('dialog', { name: ru.cameraModalTitle })
-        assert.ok(Math.abs(await documentCameraRatio(camera, 'kz_id') - 413 / 531) < 0.001)
+        await checkDocumentCamera(camera, 'kz_id')
         await page.keyboard.press('Escape')
         await camera.waitFor({ state: 'hidden' })
       })
     })
 
-    await suite.test('Green Card camera shows a square guide and opens settings after taking a photo', async () => {
+    await suite.test('Green Card camera shows one silhouette with a blurred exterior on desktop and mobile', async () => {
       await withPage(async (page, _, context) => {
         await context.grantPermissions(['camera'], { origin })
         await main(page).locator('input[name=upload-document][value=dv]').check()
         await button(main(page), ru.btnShootCamera).click()
         const camera = page.getByRole('dialog', { name: ru.cameraModalTitle })
-        assert.ok(Math.abs(await documentCameraRatio(camera, 'dv') - 1) < 0.001)
+        await checkDocumentCamera(camera, 'dv')
+        await page.setViewportSize({ width: 390, height: 844 })
+        await checkDocumentCamera(camera, 'dv')
         await checkAxe(page)
         await button(camera, ru.cameraShoot).click()
         await dialog(page).getByRole('img', { name: ru.editor.original }).waitFor()
