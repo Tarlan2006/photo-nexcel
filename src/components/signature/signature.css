@@ -179,6 +179,21 @@
 .signature-card input[type="checkbox"] { width: 1.15rem; height: 1.15rem; flex-shrink: 0; }
 .signature-downloads { display: flex; flex-wrap: wrap; gap: .55rem; margin: 1rem 0 .5rem; }
 
+.signature-output-preview {
+  display: grid;
+  place-items: center;
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: .6rem;
+  background: #f4f5f4;
+}
+.signature-output-preview .signature-canvas {
+  width: min(100%, 42rem, calc(24rem * var(--signature-aspect)));
+  max-height: none;
+  outline: 1px solid #b5c2ba;
+}
+.signature-output-crop { margin-top: 1rem; }
+
 @media (min-width: 52rem) {
   .signature-upload { grid-template-columns: 1.13fr 1fr; }
   .signature-grid { grid-template-columns: 1fr 1fr; }

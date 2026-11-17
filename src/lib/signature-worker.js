@@ -3,6 +3,7 @@ import { scaledSize } from './editor/pixels.js'
 import { prepareSignature, renderSignature, signatureBounds, signatureMask } from './signature.js'
 import { exportSignature } from './signature-png.js'
 import { exportEgovSignature } from './signature-jpeg.js'
+import { cropSignatureImage } from './signature-crop.js'
 
 let photo
 let cache
@@ -89,9 +90,16 @@ self.onmessage = async ({ data: { id, action, ...payload } }) => {
     } else {
       const key = JSON.stringify([payload.crop, payload.options, payload.strokes])
       if (finalImage?.key !== key) finalImage = { key, image: await extract(payload, false) }
-      result = payload.output.format === 'egov'
-        ? await exportEgovSignature(finalImage.image)
-        : await exportSignature(finalImage.image, payload.output)
+      if (action === 'result') {
+        const { data, width, height } = finalImage.image
+        // Transfer a copy; the full-resolution source remains available for reversible crops.
+        result = { data: data.slice(), width, height }
+      } else {
+        const image = payload.output.crop ? cropSignatureImage(finalImage.image, payload.output.crop) : finalImage.image
+        result = payload.output.format === 'egov'
+          ? await exportEgovSignature(image)
+          : await exportSignature(image, payload.output)
+      }
     }
     self.postMessage({ id, result }, result.data ? [result.data.buffer] : [])
   } catch (error) {

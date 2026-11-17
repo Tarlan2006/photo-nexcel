@@ -6,7 +6,7 @@ import { scaledSize } from '../src/lib/editor/pixels.js'
 import { prepareSignature, processSignature, signatureDefaults, signatureMask } from '../src/lib/signature.js'
 import { fitSignaturePngs } from '../src/lib/signature-png.js'
 import { egovSignatureSize, exportEgovSignature } from '../src/lib/signature-jpeg.js'
-import { moveSignatureCrop, resizeSignatureCrop, squareSignatureCrop } from '../src/lib/signature-crop.js'
+import { cropSignatureImage, signatureOutputBounds, moveSignatureCrop, resizeSignatureCrop, squareSignatureCrop } from '../src/lib/signature-crop.js'
 import { fixturePng, synthSignature } from './helpers/synthSignature.js'
 
 const testCases = new Map()
@@ -14,6 +14,34 @@ const fixture = variant => {
   if (!testCases.has(variant)) testCases.set(variant, synthSignature(variant))
   return testCases.get(variant)
 }
+
+test('result crop keeps exact RGBA pixels and margins without mutating the full signature', () => {
+  const data = new Uint8ClampedArray(8 * 6 * 4)
+  data.set([21, 40, 90, 180], (2 * 8 + 3) * 4)
+  const image = { width: 8, height: 6, data }
+  const original = data.slice()
+  const crop = { left: 0.25, right: 0.75, top: 1 / 6, bottom: 5 / 6 }
+  assert.deepEqual(signatureOutputBounds(image, crop), { left: 2, top: 1, width: 4, height: 4 })
+  const result = cropSignatureImage(image, crop)
+  assert.deepEqual([result.width, result.height], [4, 4])
+  assert.deepEqual(Array.from(result.data.slice((1 * 4 + 1) * 4, (1 * 4 + 2) * 4)), [21, 40, 90, 180])
+  assert.equal(result.data[3], 0)
+  assert.deepEqual(image.data, original)
+  assert.throws(() => cropSignatureImage(image, { left: 0, top: 0, right: 0.1, bottom: 0.1 }), /NO_INK/)
+})
+
+test('an explicit pixel size stays exact even when the file budget cannot be met', async () => {
+  let renders = 0
+  const result = await fitSignaturePngs(720, 1, async width => {
+    renders++
+    assert.equal(width, 720)
+    return { transparent: new Blob(['too large']), white: new Blob(['too large']), height: 200 }
+  }, 720)
+  assert.equal(result.width, 720)
+  assert.equal(result.height, 200)
+  assert.equal(result.exceedsLimit, true)
+  assert.equal(renders, 1)
+})
 
 test('the eGov canvas scales the ink proportionally to fill both minimum dimensions', () => {
   assert.deepEqual(egovSignatureSize({ width: 220, height: 60 }), { width: 550, height: 150, tooSmall: true })

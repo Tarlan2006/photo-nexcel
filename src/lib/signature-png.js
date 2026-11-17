@@ -79,7 +79,7 @@ async function palettePngs(image, colorBins, alphaLevels) {
   ]
 }
 
-export async function fitSignaturePngs(width, limit, rasterize) {
+export async function fitSignaturePngs(width, limit, rasterize, minWidth = 300) {
   for (;;) {
     const { transparent, white, pixels, height } = await rasterize(width)
     let blobs = [transparent, white]
@@ -95,21 +95,21 @@ export async function fitSignaturePngs(width, limit, rasterize) {
         if (bytes <= limit) break
       }
     }
-    if (bytes <= limit || width <= 300) {
+    if (bytes <= limit || width <= minWidth) {
       return { transparent: blobs[0], white: blobs[1], width, height, exceedsLimit: bytes > limit }
     }
     // Use the byte ratio to pick the next size, then verify the actual encoding.
-    width = Math.max(300, Math.floor(width * Math.min(0.88, Math.sqrt(limit / bytes))))
+    width = Math.max(minWidth, Math.floor(width * Math.min(0.88, Math.sqrt(limit / bytes))))
   }
 }
 
-export async function exportSignature(image, { width: fixedWidth, maxKb }) {
+export async function exportSignature(image, { width: fixedWidth, maxKb, exactSize = false }) {
   const limit = maxKb ? Math.floor(maxKb * 1000) : Infinity
   const original = new OffscreenCanvas(image.width, image.height)
   const canvas = new OffscreenCanvas(1, 1)
   const context = canvas.getContext('2d', { willReadFrequently: true })
   original.getContext('2d').putImageData(new ImageData(image.data, image.width, image.height), 0, 0)
-  const startingWidth = Math.max(maxKb ? 300 : 1, fixedWidth || image.width)
+  const startingWidth = Math.max(maxKb && !exactSize ? 300 : 1, fixedWidth || image.width)
   try {
     return await fitSignaturePngs(startingWidth, limit, async width => {
       canvas.width = width
@@ -125,7 +125,7 @@ export async function exportSignature(image, { width: fixedWidth, maxKb }) {
       context.fillRect(0, 0, width, canvas.height)
       const white = await canvas.convertToBlob({ type: 'image/png' })
       return { transparent, white, pixels, height: canvas.height }
-    })
+    }, exactSize ? startingWidth : 300)
   } finally {
     original.width = original.height = canvas.width = canvas.height = 1
   }

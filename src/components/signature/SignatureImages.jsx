@@ -28,7 +28,7 @@ function pointerPosition(event, element = event.currentTarget) {
   ]
 }
 
-export function PaperCrop({ photo, crop, square, onCrop, copy }) {
+export function PaperCrop({ photo, crop, square, onCrop, copy, output = false, children }) {
   const surface = useRef(null)
   const drag = useRef(null)
   const [selection, setSelection] = useState(null)
@@ -70,8 +70,8 @@ export function PaperCrop({ photo, crop, square, onCrop, copy }) {
   }
 
   return (
-    <section className="signature-card">
-      <h2>{copy.paper}</h2>
+    <section className={`signature-card${output ? ' signature-output-crop' : ''}`}>
+      <h2>{output ? copy.cropResult : copy.paper}</h2>
       <p className="signature-help">{copy.cropHint}</p>
       <div className="signature-actions mt-3" role="group" aria-label={copy.cropShape}>
         <button type="button" className="signature-button" aria-pressed={!square} onClick={() => onCrop(crop, false)}>
@@ -82,11 +82,11 @@ export function PaperCrop({ photo, crop, square, onCrop, copy }) {
           {copy.squareCrop}
         </button>
         <button type="button" className="signature-button" onClick={() => onCrop(fullPaper, false)}>
-          {copy.resetCrop}
+          {output ? copy.resetOutputCrop : copy.resetCrop}
         </button>
       </div>
       <div className="signature-well">
-        <div ref={surface} className="signature-image"
+        <div ref={surface} className={`signature-image${output ? ' signature-bg-checker' : ''}`}
           onPointerMove={event => {
             if (drag.current?.pointerId === event.pointerId) setSelection(moveFrame(event))
           }}
@@ -98,7 +98,7 @@ export function PaperCrop({ photo, crop, square, onCrop, copy }) {
             onCrop(next, square)
           }}
           onLostPointerCapture={() => { drag.current = null; setSelection(null) }}>
-          <SignatureCanvas image={photo} label={copy.original} />
+          <SignatureCanvas image={photo} label={output ? copy.cropResult : copy.original} />
           <svg aria-hidden="true" viewBox={`0 0 ${width} ${height}`} className="signature-crop">
             <path fillRule="evenodd" fill="#0c1715" fillOpacity="0.56"
               d={`M0 0H${width}V${height}H0Z M${left} ${top}H${right}V${bottom}H${left}Z`} />
@@ -120,6 +120,7 @@ export function PaperCrop({ photo, crop, square, onCrop, copy }) {
           ))}
         </div>
       </div>
+      {children}
     </section>
   )
 }
