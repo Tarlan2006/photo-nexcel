@@ -1,8 +1,12 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { useLang } from '../contexts/LangContext'
+import { presets } from '../presets'
+import CameraGuide from './CameraGuide'
 
-export default function CameraCapture({ onClose, onCapture, onSelectFile, facingMode = 'user' }) {
+export default function CameraCapture({ onClose, onCapture, onSelectFile, mode }) {
   const { t } = useLang()
+  const signature = mode === 'signature'
+  const facingMode = signature ? 'environment' : 'user'
   const videoRef = useRef(null)
   const dialogRef = useRef(null)
   const closeRef = useRef(null)
@@ -16,12 +20,21 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, facing
   const [mirrored, setMirrored] = useState(true)
   const [countdown, setCountdown] = useState(null)
   const [encoding, setEncoding] = useState(false)
+  const [videoSize, setVideoSize] = useState(null)
+  const videoReady = !isLoading && !errorType && videoSize?.width > 0 && videoSize.height > 0
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = dialogRef.current
+    const style = document.body.style
+    const overflow = style.getPropertyValue('overflow-y')
+    const overflowPriority = style.getPropertyPriority('overflow-y')
     dialog.showModal()
-    closeRef.current.focus()
-    return () => dialog.close()
+    style.setProperty('overflow-y', 'hidden')
+    closeRef.current.focus({ preventScroll: true })
+    return () => {
+      dialog.close()
+      style.setProperty('overflow-y', overflow, overflowPriority)
+    }
   }, [])
 
   useEffect(() => {
@@ -77,6 +90,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, facing
         if (!current()) return
 
         const settings = track.getSettings()
+        setVideoSize({ width: video.videoWidth, height: video.videoHeight })
         setMirrored(settings.facingMode ? settings.facingMode === 'user' : !camera && facingMode === 'user')
         setIsLoading(false)
         const devices = await navigator.mediaDevices.enumerateDevices().catch(() => [])
@@ -128,7 +142,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, facing
         closeRef.current?.focus()
         return
       }
-      onCapture(new File([blob], 'selfie.jpg', { type: 'image/jpeg' }))
+      onCapture(new File([blob], signature ? 'signature.jpg' : 'selfie.jpg', { type: 'image/jpeg' }))
     }
 
     try {
@@ -137,7 +151,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, facing
     } catch {
       finish(null)
     }
-  }, [countdown, onCapture])
+  }, [countdown, onCapture, signature])
 
   const dismiss = () => {
     dialogRef.current.close()
@@ -197,7 +211,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, facing
         event.preventDefault()
         dismiss()
       }}
-      className="fixed inset-0 m-auto w-[calc(100%-1.5rem)] max-w-lg max-h-[calc(100dvh-1.5rem)] rounded-2xl bg-white text-text-main overflow-y-auto backdrop:bg-black/80 backdrop:backdrop-blur-xs"
+      className="fixed inset-0 m-auto w-[calc(100%-1.5rem)] max-w-lg max-h-[calc(100dvh-1.5rem)] rounded-2xl bg-white text-text-main overflow-y-auto overscroll-contain backdrop:bg-black/80 backdrop:backdrop-blur-xs"
     >
       {/* Screen reader live region for countdown */}
       <div className="sr-only" aria-live="assertive" aria-atomic="true">
@@ -227,7 +241,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, facing
               id="camera-modal-title"
               className="font-heading font-extrabold text-sm sm:text-base text-text-main"
             >
-              {t.cameraModalTitle}
+              {signature ? t.cameraSignatureTitle : t.cameraModalTitle}
             </h2>
           </div>
 
@@ -249,15 +263,25 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, facing
           </button>
         </div>
 
+        {videoReady && (
+          <p className="px-4 py-2 text-center text-xs font-medium leading-relaxed text-text-muted">
+            {signature ? t.cameraSignatureGuide : t.cameraGuideFace}
+          </p>
+        )}
         {/* Video / Camera Viewport */}
-        <div className="relative bg-black aspect-3/4 sm:aspect-4/3 flex items-center justify-center overflow-hidden">
+        <div className="relative flex aspect-3/4 min-h-52 max-h-[64dvh] items-center justify-center overflow-hidden bg-black sm:aspect-4/3"
+          style={videoReady ? { aspectRatio: videoSize.width / videoSize.height } : undefined}>
           {/* Live Video (Mirrored in CSS only for selfie/user camera) */}
           <video
             ref={videoRef}
             playsInline
             muted
             autoPlay
-            className={`w-full h-full object-cover transition-opacity duration-300 ${mirrored ? '-scale-x-100' : ''} ${
+            onResize={event => {
+              const video = event.currentTarget
+              setVideoSize({ width: video.videoWidth, height: video.videoHeight })
+            }}
+            className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-300 ${mirrored ? '-scale-x-100' : ''} ${
               isLoading || errorType ? 'opacity-0' : 'opacity-100'
             }`}
           />
@@ -339,28 +363,8 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, facing
             </div>
           )}
 
-          {/* Guidelines Overlay (Head Oval & Eye Level) */}
-          {!isLoading && !errorType && (
-            <div className="absolute inset-0 pointer-events-none select-none flex items-center justify-center">
-              {/* Top Hint */}
-              <div className="absolute top-3 inset-x-3 flex justify-center">
-                <span className="bg-black/60 backdrop-blur-xs text-white text-[11px] font-medium px-3 py-1 rounded-full border border-white/20 text-center shadow-xs">
-                  {t.cameraGuideOval}
-                </span>
-              </div>
-
-              {/* Head Outline Oval Guide */}
-              <div className="relative w-52 h-72 sm:w-60 sm:h-80 border-2 border-dashed border-white/80 rounded-[50%/42%] flex flex-col justify-center items-center shadow-[0_0_0_9999px_rgba(0,0,0,0.30)]">
-                {/* Eye level guideline across upper portion */}
-                <div className="absolute top-[42%] inset-x-[-12%] flex items-center">
-                  <div className="flex-1 border-t-2 border-dashed border-emerald-400/90" />
-                  <span className="bg-emerald-950/80 text-emerald-300 font-mono text-[9px] font-bold px-1.5 py-0.5 rounded border border-emerald-500/60 leading-none">
-                    {t.cameraEyeLine}
-                  </span>
-                  <div className="flex-1 border-t-2 border-dashed border-emerald-400/90" />
-                </div>
-              </div>
-            </div>
+          {videoReady && (
+            <CameraGuide size={videoSize} preset={presets[mode]} mode={mode} />
           )}
 
           {/* Countdown display over video */}
@@ -425,12 +429,12 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, facing
               ) : (
                 <button
                   type="button"
-                  onClick={() => setCountdown(3)}
-                  disabled={isLoading || encoding}
+                  onClick={() => setCountdown(signature ? 0 : 3)}
+                  disabled={!videoReady || encoding}
                   className="group inline-flex items-center gap-2.5 bg-emerald-accent hover:bg-emerald-accent-hover text-white font-heading font-extrabold text-sm sm:text-base px-3 sm:px-7 min-h-11 py-3 rounded-full transition-all shadow-md hover:shadow-lg active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
                 >
                   <span className="w-3.5 h-3.5 rounded-full bg-white group-hover:scale-110 transition-transform" />
-                  <span>{t.cameraShoot}</span>
+                  <span>{signature ? t.cameraSignatureShoot : t.cameraShoot}</span>
                 </button>
               )}
             </div>

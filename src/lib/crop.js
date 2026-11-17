@@ -1,5 +1,10 @@
 export const HEAD_TOP_FACTOR = 1.25
 
+export function photoHeadLayout(preset, frameHeight, scaleOffset = 0) {
+  const headHeight = frameHeight * (preset.headMinPct + preset.headMaxPct) / 200 * (1 + scaleOffset)
+  return { headHeight, headTop: (frameHeight - headHeight) * 0.4 }
+}
+
 /**
  * Rotates point (x, y) around pivot (cx, cy) by given radians
  */
@@ -88,9 +93,8 @@ export function cropFace(source, landmarks, preset, adjustments = {}, background
   const headTopY = chinY - headHeightInImage
 
   // Target head height: middle of preset range (kz: 75%, dv: 59.5%)
-  const midHeadPct = (preset.headMinPct + preset.headMaxPct) / 2 / 100
-  const scaleMultiplier = 1 + (adjustments.scaleOffset || 0)
-  const targetHeadHeightCanvas = targetH * midHeadPct * scaleMultiplier
+  const { headHeight: targetHeadHeightCanvas, headTop: baseCanvasHeadTopY } =
+    photoHeadLayout(preset, targetH, adjustments.scaleOffset)
   const headPct = Math.round((targetHeadHeightCanvas / targetH) * 100)
 
   // Scale factor: image -> canvas
@@ -106,8 +110,6 @@ export function cropFace(source, landmarks, preset, adjustments = {}, background
   }
 
   // Vertical placement: 40% free space at top, 60% at bottom
-  const freeSpace = targetH - targetHeadHeightCanvas
-  const baseCanvasHeadTopY = 0.4 * freeSpace
   const shiftY = (adjustments.offsetY || 0) * targetH
   const canvasHeadTopY = baseCanvasHeadTopY + shiftY
 

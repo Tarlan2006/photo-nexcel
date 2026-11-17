@@ -60,6 +60,18 @@ async function checkAxe(page) {
     (await axe.run()).violations.map(({ id, nodes }) => [id, nodes.map(node => node.target)])), [])
 }
 
+async function documentCameraRatio(camera, mode) {
+  const guide = camera.locator('[data-camera-guide]')
+  const error = camera.getByRole('alert')
+  await guide.or(error).first().waitFor()
+  if (await error.isVisible()) assert.fail(await error.innerText())
+  assert.equal(await guide.getAttribute('data-camera-guide'), mode)
+  assert.equal(await guide.locator('[data-camera-silhouette]').count(), 1)
+  assert.equal(await guide.locator('[data-camera-eye-line]').count(), 1)
+  return guide.locator('[data-camera-frame]').evaluate(node =>
+    Number(node.getAttribute('width')) / Number(node.getAttribute('height')))
+}
+
 async function sourceFixture(page, variant) {
   const encoded = (await readFile(portrait)).toString('base64')
   const data = await page.evaluate(async ({ encoded, variant }) => {
@@ -275,12 +287,25 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         await checkAxe(page)
         await context.grantPermissions(['camera'], { origin })
         await button(main(page), ru.btnShootCamera).click()
-        await page.getByRole('dialog', { name: ru.cameraModalTitle }).waitFor()
-        await page.waitForFunction(() => document.querySelector('dialog video')?.videoWidth > 0 ||
-          document.querySelector('dialog [role=alert]'))
-        assert.equal(await page.getByRole('dialog').getByRole('alert').count(), 0)
+        const camera = page.getByRole('dialog', { name: ru.cameraModalTitle })
+        assert.ok(Math.abs(await documentCameraRatio(camera, 'kz_id') - 413 / 531) < 0.001)
         await page.keyboard.press('Escape')
-        await page.getByRole('dialog').waitFor({ state: 'hidden' })
+        await camera.waitFor({ state: 'hidden' })
+      })
+    })
+
+    await suite.test('Green Card camera shows a square guide and opens settings after taking a photo', async () => {
+      await withPage(async (page, _, context) => {
+        await context.grantPermissions(['camera'], { origin })
+        await main(page).locator('input[name=upload-document][value=dv]').check()
+        await button(main(page), ru.btnShootCamera).click()
+        const camera = page.getByRole('dialog', { name: ru.cameraModalTitle })
+        assert.ok(Math.abs(await documentCameraRatio(camera, 'dv') - 1) < 0.001)
+        await checkAxe(page)
+        await button(camera, ru.cameraShoot).click()
+        await dialog(page).getByRole('img', { name: ru.editor.original }).waitFor()
+        assert.equal(await page.locator('[data-camera-guide]').count(), 0)
+        await page.keyboard.press('Escape')
       })
     })
 

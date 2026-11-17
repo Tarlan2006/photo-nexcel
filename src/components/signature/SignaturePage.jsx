@@ -11,7 +11,7 @@ import { signatureCopy } from './copy'
 import { BrushCanvas, PaperCrop, SignatureCanvas } from './SignatureImages'
 import './signature.css'
 
-const defaultDraft = { crop: fullPaper, options: signatureDefaults, strokes: [] }
+const defaultDraft = { crop: fullPaper, square: false, options: signatureDefaults, strokes: [] }
 const colors = ['original', 'black', 'blue']
 const backgrounds = ['checker', 'white', 'gray', 'dark']
 const errorLabels = { NO_INK: 'noInk', TOO_DARK: 'dark', PROCESSING_FAILED: 'processingError' }
@@ -70,7 +70,7 @@ function Upload({ copy, busy, onFile }) {
     <div className="signature-upload">
       <div className={`signature-drop${dragging ? ' signature-dragging' : ''}`}
         onDragOver={event => { event.preventDefault(); if (!busy) setDragging(true) }}
-        onDragLeave={() => setDragging(false)}
+        onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget)) setDragging(false) }}
         onDrop={event => {
           event.preventDefault()
           setDragging(false)
@@ -103,7 +103,7 @@ function Upload({ copy, busy, onFile }) {
         <p className="mt-4 border-t border-grid-border pt-4 text-sm leading-relaxed text-text-main">{copy.legal}</p>
       </section>
       {camera && (
-        <CameraCapture facingMode="environment" onClose={closeCamera}
+        <CameraCapture mode="signature" onClose={closeCamera}
           onCapture={file => { setCamera(false); onFile(file) }}
           onSelectFile={() => { closeCamera(); input.current.click() }} />
       )}
@@ -127,7 +127,9 @@ function Edit({ copy, photo, draft, setDraft, preview, busy, finish, restart }) 
   return (
     <>
       <div className="signature-grid">
-        <PaperCrop photo={photo} crop={draft.crop} copy={copy} onCrop={crop => setDraft(current => ({ ...current, crop }))} />
+        <PaperCrop photo={photo} crop={draft.crop} square={draft.square} copy={copy}
+          onCrop={(crop, square) => setDraft(current => current.crop === crop && current.square === square
+            ? current : { ...current, crop, square })} />
         <section className="signature-card">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2>{copy.preview}</h2>
@@ -245,7 +247,7 @@ function EgovDownload({ copy, result }) {
   return (
     <>
       <div className="signature-well signature-bg-white">
-        {href && <img src={href} alt={copy.result} className="signature-canvas" />}
+        {href && <img src={href} alt={copy.egovResult} className="signature-canvas" />}
       </div>
       <p className="signature-help mt-2">{copy.size.replace('{width}', result.width).replace('{height}', result.height)}</p>
       {result.tooSmall && <p role="status" className="signature-alert">{copy.egovSmall}</p>}

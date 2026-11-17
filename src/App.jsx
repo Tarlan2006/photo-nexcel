@@ -180,7 +180,7 @@ export default function App({ active }) {
             onProcess={processPhoto} onClose={closeSettings} returnFocus={returning} />
         )}
         {active && camera && (
-          <CameraCapture onClose={closeCamera} onSelectFile={() => { closeCamera(); picker.current?.click() }}
+          <CameraCapture mode={state.settings.presetId} onClose={closeCamera} onSelectFile={() => { closeCamera(); picker.current?.click() }}
             onCapture={file => { setCamera(false); selectFile(file, cameraTrigger.current) }} />
         )}
       </main>

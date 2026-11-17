@@ -65,8 +65,21 @@ async function inspectImage(page, bytes, type = 'image/png') {
         ([x, y]) => Array.from(ctx.getImageData(x, y, 1, 1).data))
       const data = ctx.getImageData(0, 0, width, height).data
       let opacity = 0
-      for (let i = 3; i < data.length; i += 4) opacity = Math.max(opacity, data[i])
-      return { corners, opacity, width, height }
+      let left = width
+      let right = -1
+      let top = height
+      let bottom = -1
+      for (let i = 0; i < data.length; i += 4) {
+        opacity = Math.max(opacity, data[i + 3])
+        if (data[i + 3] < 128 || Math.min(data[i], data[i + 1], data[i + 2]) > 180) continue
+        const x = (i / 4) % width
+        const y = Math.floor(i / 4 / width)
+        left = Math.min(left, x)
+        right = Math.max(right, x)
+        top = Math.min(top, y)
+        bottom = Math.max(bottom, y)
+      }
+      return { corners, opacity, width, height, inkWidth: right - left + 1, inkHeight: bottom - top + 1 }
     } finally {
       image.close()
     }
@@ -231,7 +244,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
       })
     })
 
-    await suite.test('eGov mode downloads a white JPEG, warns about small ink, and preserves PNG', async () => {
+    await suite.test('eGov mode fills the white JPEG with the signature and preserves PNG', async () => {
       const { defaultBrowserType, ...mobile } = devices['iPhone 13']
       await withPage(async page => {
         await upload(page, png('blue', 360, 260))
@@ -251,9 +264,10 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         const bytes = await readFile(await saved.path())
         assert.equal(bytes.subarray(0, 3).toString('hex'), 'ffd8ff')
         const jpeg = await inspectImage(page, bytes, 'image/jpeg')
-        assert.equal(jpeg.width, 550)
+        assert.ok(jpeg.width >= 550)
         assert.ok(jpeg.height >= 124)
         assert.ok(jpeg.corners.every(pixel => pixel.every(channel => channel >= 253)))
+        assert.ok(jpeg.inkWidth / jpeg.width > 0.85 && jpeg.inkHeight / jpeg.height > 0.55, JSON.stringify(jpeg))
         assert.ok(await page.evaluate(() => innerWidth === 390 && document.documentElement.scrollWidth <= innerWidth))
         await accessibility(page)
         await page.getByRole('button', { name: 'KZ', exact: true }).click()
@@ -398,6 +412,10 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         await accessibility(page)
         await upload(page)
         await noOverflow()
+        await button(page, ru.squareCrop).click()
+        const frame = main(page).getByRole('button', { name: ru.moveCrop, exact: true })
+        const square = await frame.boundingBox()
+        assert.ok(Math.abs(square.width - square.height) < 1)
         const touch = await page.context().newCDPSession(page)
         const grip = await main(page).locator('.signature-grip-mark').first().boundingBox()
         const x = grip.x + grip.width / 2
@@ -406,6 +424,20 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + 36, y: y + 18 }] })
         await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
         await waitUntilIdle(page)
+        await frame.scrollIntoViewIfNeeded()
+        const resized = await frame.boundingBox()
+        assert.ok(resized.width < square.width && Math.abs(resized.width - resized.height) < 1)
+        const centerX = resized.x + resized.width / 2
+        const centerY = resized.y + resized.height / 2
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: centerX, y: centerY }] })
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: centerX - 24, y: centerY + 5 }] })
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+        await waitUntilIdle(page)
+        const moved = await frame.boundingBox()
+        assert.ok(moved.x < resized.x && Math.abs(moved.width - resized.width) < 1)
+        await frame.press('ArrowLeft')
+        await waitUntilIdle(page)
+        assert.ok((await frame.boundingBox()).x < moved.x)
         await accessibility(page)
         await page.getByRole('button', { name: 'KZ', exact: true }).click()
         await main(page).getByRole('heading', { name: kz.title }).waitFor()
@@ -435,13 +467,27 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
       })
     })
 
-    await suite.test('camera closes on Escape and an 8000 px source is processed at bounded sizes', async () => {
+    await suite.test('signature camera uses a paper guide, captures into crop, and processes large uploads', async () => {
       await withPage(async (page, { context }) => {
-        await context.grantPermissions(['camera'])
+        await context.grantPermissions(['camera'], { origin })
         await button(page, ru.camera).click()
-        await page.getByRole('dialog').waitFor()
+        const camera = page.getByRole('dialog', { name: photo.cameraSignatureTitle })
+        const guide = camera.locator('[data-camera-guide="signature"]')
+        await guide.waitFor()
+        await camera.getByText(photo.cameraSignatureGuide, { exact: true }).waitFor()
+        assert.equal(await guide.locator('[data-camera-silhouette], [data-camera-eye-line]').count(), 0)
+        assert.equal(await guide.locator('[data-camera-frame]').count(), 1)
+        assert.equal(await page.evaluate(() => getComputedStyle(document.body).overflowY), 'hidden')
+        await accessibility(page)
         await page.keyboard.press('Escape')
-        await page.getByRole('dialog').waitFor({ state: 'hidden' })
+        await camera.waitFor({ state: 'hidden' })
+        assert.notEqual(await page.evaluate(() => getComputedStyle(document.body).overflowY), 'hidden')
+        await button(page, ru.camera).click()
+        const shoot = camera.getByRole('button', { name: photo.cameraSignatureShoot, exact: true })
+        await shoot.click()
+        await main(page).getByRole('heading', { name: ru.paper }).waitFor()
+        await camera.waitFor({ state: 'hidden' })
+        await button(page, ru.new).click()
         await upload(page, png('blue', 8000, 1200))
         assert.ok(await canvas(page).evaluate(element => element.width <= 800))
         await button(page, ru.finish).click()

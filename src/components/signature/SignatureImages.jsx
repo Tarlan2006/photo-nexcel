@@ -1,5 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { clamp } from '../../lib/editor/pixels.js'
+import { moveSignatureCrop, resizeSignatureCrop, squareSignatureCrop } from '../../lib/signature-crop.js'
+import { fullPaper } from '../../lib/signature.js'
 
 const corners = [
   ['left', 'top'], ['right', 'top'], ['right', 'bottom'], ['left', 'bottom'],
@@ -26,82 +28,96 @@ function pointerPosition(event, element = event.currentTarget) {
   ]
 }
 
-export function PaperCrop({ photo, crop, onCrop, copy }) {
+export function PaperCrop({ photo, crop, square, onCrop, copy }) {
+  const surface = useRef(null)
   const drag = useRef(null)
-  const [draft, setDraft] = useState(null)
-  const frame = draft ?? crop
+  const [selection, setSelection] = useState(null)
+  const frame = selection ?? crop
   const { width, height } = photo
   const [left, right] = [frame.left * width, frame.right * width]
   const [top, bottom] = [frame.top * height, frame.bottom * height]
 
-  function move([horizontal, vertical], x, y) {
-    return {
-      ...crop,
-      [horizontal]: horizontal === 'left' ? clamp(x, 0, crop.right - 0.06) : clamp(x, crop.left + 0.06, 1),
-      [vertical]: vertical === 'top' ? clamp(y, 0, crop.bottom - 0.06) : clamp(y, crop.top + 0.06, 1),
-    }
+  function startDrag(event, corner) {
+    if (event.button !== 0 || drag.current) return
+    const element = surface.current
+    drag.current = { pointerId: event.pointerId, crop, corner, start: pointerPosition(event, element) }
+    element.setPointerCapture(event.pointerId)
   }
 
-  function moveGrip(event) {
-    const { corner, start } = drag.current
-    const [horizontal, vertical] = corner
+  function moveFrame(event) {
+    const { corner, start, crop: initial } = drag.current
     const [x, y] = pointerPosition(event)
-    return move(corner, crop[horizontal] + x - start[0], crop[vertical] + y - start[1])
+    const dx = x - start[0]
+    const dy = y - start[1]
+    if (!corner) return moveSignatureCrop(initial, dx, dy)
+    const [horizontal, vertical] = corner
+    return resizeSignatureCrop(initial, photo, corner, initial[horizontal] + dx, initial[vertical] + dy, square)
+  }
+
+  function handleArrow(event, corner) {
+    const delta = arrows[event.key]
+    if (!delta) return
+    event.preventDefault()
+    const step = (event.shiftKey ? 0.05 : 0.01) * Math.min(width, height)
+    const dx = delta[0] * step / width
+    const dy = delta[1] * step / height
+    if (!corner) {
+      onCrop(moveSignatureCrop(crop, dx, dy), square)
+      return
+    }
+    const [horizontal, vertical] = corner
+    onCrop(resizeSignatureCrop(crop, photo, corner, crop[horizontal] + dx, crop[vertical] + dy, square), square)
   }
 
   return (
     <section className="signature-card">
       <h2>{copy.paper}</h2>
       <p className="signature-help">{copy.cropHint}</p>
+      <div className="signature-actions mt-3" role="group" aria-label={copy.cropShape}>
+        <button type="button" className="signature-button" aria-pressed={!square} onClick={() => onCrop(crop, false)}>
+          {copy.freeCrop}
+        </button>
+        <button type="button" className="signature-button" aria-pressed={square}
+          onClick={() => { if (!square) onCrop(squareSignatureCrop(crop, photo), true) }}>
+          {copy.squareCrop}
+        </button>
+        <button type="button" className="signature-button" onClick={() => onCrop(fullPaper, false)}>
+          {copy.resetCrop}
+        </button>
+      </div>
       <div className="signature-well">
-        <div className="signature-image">
+        <div ref={surface} className="signature-image"
+          onPointerMove={event => {
+            if (drag.current?.pointerId === event.pointerId) setSelection(moveFrame(event))
+          }}
+          onPointerUp={event => {
+            if (drag.current?.pointerId !== event.pointerId) return
+            const next = moveFrame(event)
+            drag.current = null
+            setSelection(null)
+            onCrop(next, square)
+          }}
+          onLostPointerCapture={() => { drag.current = null; setSelection(null) }}>
           <SignatureCanvas image={photo} label={copy.original} />
-          <svg viewBox={`0 0 ${width} ${height}`} className="signature-crop"
-            onPointerMove={event => {
-              if (drag.current?.pointerId === event.pointerId) setDraft(moveGrip(event))
-            }}
-            onPointerUp={event => {
-              if (drag.current?.pointerId !== event.pointerId) return
-              const next = moveGrip(event)
-              drag.current = null
-              setDraft(null)
-              onCrop(next)
-            }}
-            onLostPointerCapture={() => { drag.current = null; setDraft(null) }}>
-            <path aria-hidden="true" fillRule="evenodd" fill="#0c1715" fillOpacity="0.56"
+          <svg aria-hidden="true" viewBox={`0 0 ${width} ${height}`} className="signature-crop">
+            <path fillRule="evenodd" fill="#0c1715" fillOpacity="0.56"
               d={`M0 0H${width}V${height}H0Z M${left} ${top}H${right}V${bottom}H${left}Z`} />
-            <rect aria-hidden="true" x={left} y={top} width={right - left} height={bottom - top}
+            <rect x={left} y={top} width={right - left} height={bottom - top}
               stroke="#1b6b44" strokeWidth="2" vectorEffect="non-scaling-stroke" fill="none" />
-            {corners.map(([horizontal, vertical], i) => {
-              const x = frame[horizontal] * width
-              const y = frame[vertical] * height
-              // Keep the grips visible and reachable when the crop touches the border.
-              const gripX = clamp(x, width * 0.018, width * 0.982)
-              const gripY = clamp(y, height * 0.018, height * 0.982)
-              return (
-                <g key={copy.corners[i]} role="button" tabIndex={0} aria-label={copy.corners[i]}
-                  className="signature-grip"
-                  onPointerDown={event => {
-                    if (event.button !== 0 || drag.current) return
-                    const svg = event.currentTarget.ownerSVGElement
-                    drag.current = { pointerId: event.pointerId, corner: corners[i], start: pointerPosition(event, svg) }
-                    svg.setPointerCapture(event.pointerId)
-                  }}
-                  onKeyDown={event => {
-                    const delta = arrows[event.key]
-                    if (!delta) return
-                    event.preventDefault()
-                    const step = event.shiftKey ? 0.05 : 0.01
-                    onCrop(move(corners[i], crop[horizontal] + delta[0] * step, crop[vertical] + delta[1] * step))
-                  }}>
-                  <circle cx={gripX} cy={gripY} r={0.2} vectorEffect="non-scaling-stroke" stroke="transparent" strokeWidth="44" />
-                  <circle cx={gripX} cy={gripY} r={0.2} vectorEffect="non-scaling-stroke" stroke="white" strokeWidth="15" />
-                  <circle className="signature-grip-mark" cx={gripX} cy={gripY} r={0.2} vectorEffect="non-scaling-stroke"
-                    stroke="#1b6b44" strokeWidth="9" />
-                </g>
-              )
-            })}
           </svg>
+          {(crop.right - crop.left < 1 || crop.bottom - crop.top < 1) && (
+            <button type="button" className="signature-crop-move" aria-label={copy.moveCrop}
+              style={{ left: frame.left * 100 + '%', top: frame.top * 100 + '%',
+                width: (frame.right - frame.left) * 100 + '%', height: (frame.bottom - frame.top) * 100 + '%' }}
+              onPointerDown={event => startDrag(event, null)} onKeyDown={event => handleArrow(event, null)} />
+          )}
+          {corners.map((corner, i) => (
+            <button type="button" key={copy.corners[i]} aria-label={copy.corners[i]} className="signature-grip"
+              style={{ left: clamp(frame[corner[0]] * 100, 1.8, 98.2) + '%', top: clamp(frame[corner[1]] * 100, 1.8, 98.2) + '%' }}
+              onPointerDown={event => startDrag(event, corner)} onKeyDown={event => handleArrow(event, corner)}>
+              <span aria-hidden="true" className="signature-grip-mark" />
+            </button>
+          ))}
         </div>
       </div>
     </section>
