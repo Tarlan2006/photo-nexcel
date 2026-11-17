@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { useLang } from '../contexts/LangContext'
 import { presets } from '../presets'
-import CameraGuide from './CameraGuide'
+import CameraGuide, { SignatureCameraGuide } from './CameraGuide'
 
 export default function CameraCapture({ onClose, onCapture, onSelectFile, mode }) {
   const { t } = useLang()
@@ -363,9 +363,9 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, mode }
             </div>
           )}
 
-          {videoReady && (
-            <CameraGuide size={videoSize} preset={presets[mode]} mode={mode} />
-          )}
+          {videoReady && (signature
+            ? <SignatureCameraGuide size={videoSize} />
+            : <CameraGuide size={videoSize} preset={presets[mode]} mode={mode} />)}
 
           {/* Countdown display over video */}
           {countdown !== null && countdown > 0 && (

@@ -1,15 +1,27 @@
 import { photoHeadLayout } from '../lib/crop'
 
+export function SignatureCameraGuide({ size: { width, height } }) {
+  const side = Math.min(width, height) * 0.76
+  return (
+    <svg aria-hidden="true" data-camera-guide="signature" viewBox={`0 0 ${width} ${height}`}
+      className="pointer-events-none absolute inset-0 h-full w-full drop-shadow-[0_1px_2px_#000]"
+      fill="none" stroke="white" strokeWidth="2">
+      <rect data-camera-frame="" x={(width - side) / 2} y={(height - side) / 2}
+        width={side} height={side} rx={side * 0.025} vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
 export default function CameraGuide({ size, preset, mode }) {
   const { width, height } = size
   const center = width / 2
-  const ratio = preset ? preset.width / preset.height : 3
-  const frameHeight = Math.min(height * 0.84, width * (preset ? 0.84 : 0.86) / ratio)
+  const ratio = preset.width / preset.height
+  const frameHeight = Math.min(height * 0.84, width * 0.84 / ratio)
   const frameWidth = frameHeight * ratio
   const x = (width - frameWidth) / 2
   const y = (height - frameHeight) / 2
   const end = y + frameHeight
-  const layout = preset && photoHeadLayout(preset, frameHeight)
+  const layout = photoHeadLayout(preset, frameHeight)
 
   let head
   if (layout) {
@@ -44,7 +56,7 @@ export default function CameraGuide({ size, preset, mode }) {
       className="pointer-events-none absolute inset-0 h-full w-full drop-shadow-[0_1px_2px_#000]"
       fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect data-camera-frame="" x={x} y={y} width={frameWidth} height={frameHeight}
-        rx={frameHeight * 0.04} strokeDasharray={preset ? '5 5' : undefined} vectorEffect="non-scaling-stroke" />
+        rx={frameHeight * 0.04} strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />
       {head}
     </svg>
   )

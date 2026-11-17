@@ -92,6 +92,26 @@ async function accessibility(page) {
     (await axe.run()).violations.map(({ id, nodes }) => [id, nodes.map(node => node.target)])), [])
 }
 
+async function checkSignatureCamera(page, lang = 'ru') {
+  const labels = translations[lang]
+  const camera = page.getByRole('dialog', { name: labels.cameraSignatureTitle })
+  const guide = camera.locator('[data-camera-guide="signature"]')
+  await guide.waitFor()
+  await camera.getByText(labels.cameraSignatureGuide, { exact: true }).waitFor()
+  assert.equal(await camera.locator('[data-camera-silhouette], [data-camera-eye-line]').count(), 0)
+  assert.equal(await guide.locator('path, ellipse, line').count(), 0)
+  assert.equal(await camera.getByText(labels.cameraGuideFace, { exact: true }).count(), 0)
+  assert.equal(await camera.getByRole('button', { name: labels.cameraShoot, exact: true }).count(), 0)
+  assert.equal(await guide.locator('[data-camera-frame]').count(), 1)
+  const frame = await guide.locator('[data-camera-frame]').boundingBox()
+  const video = await camera.locator('video').boundingBox()
+  assert.ok(frame.width > 100 && Math.abs(frame.width - frame.height) < 1)
+  assert.ok(Math.abs(frame.x + frame.width / 2 - video.x - video.width / 2) < 1)
+  assert.ok(Math.abs(frame.y + frame.height / 2 - video.y - video.height / 2) < 1)
+  assert.ok(frame.width < video.width && frame.height < video.height)
+  return camera
+}
+
 test('signature tool in the production build', { timeout: 240000 }, async suite => {
   if (!chrome) return suite.skip('Chromium unavailable. Run npx playwright install chromium.')
   const server = await vitePreview({ logLevel: 'warn', preview: { host: '127.0.0.1', port: 4199 } })
@@ -467,16 +487,35 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
       })
     })
 
-    await suite.test('signature camera uses a paper guide, captures into crop, and processes large uploads', async () => {
+    for (const lang of ['ru', 'kz']) {
+      await suite.test(`signature camera has only a square after leaving the photo camera on mobile (${lang})`, async () => {
+        const { defaultBrowserType, ...mobile } = devices['iPhone 13']
+        await withPage(async (page, { context }) => {
+          await context.grantPermissions(['camera'], { origin })
+          if (lang === 'kz') await page.getByRole('button', { name: 'KZ', exact: true }).click()
+          const labels = translations[lang]
+          await page.locator('#wizard-main').getByRole('button', { name: labels.btnShootCamera, exact: true }).click()
+          const portraitCamera = page.getByRole('dialog', { name: labels.cameraModalTitle })
+          await portraitCamera.locator('[data-camera-silhouette]').waitFor()
+          await page.keyboard.press('Escape')
+          await portraitCamera.waitFor({ state: 'hidden' })
+          await page.getByRole('navigation', { name: labels.site.toolNavigation })
+            .getByRole('link', { name: labels.site.signatureTab, exact: true }).click()
+          await button(page, signatureCopy[lang].camera).click()
+          const camera = await checkSignatureCamera(page, lang)
+          await accessibility(page)
+          await camera.getByRole('button', { name: labels.cameraSignatureShoot, exact: true }).click()
+          await main(page).getByRole('heading', { name: signatureCopy[lang].paper }).waitFor()
+          await camera.waitFor({ state: 'hidden' })
+        }, mobile, '/')
+      })
+    }
+
+    await suite.test('signature camera uses a square, captures into crop, and processes large uploads', async () => {
       await withPage(async (page, { context }) => {
         await context.grantPermissions(['camera'], { origin })
         await button(page, ru.camera).click()
-        const camera = page.getByRole('dialog', { name: photo.cameraSignatureTitle })
-        const guide = camera.locator('[data-camera-guide="signature"]')
-        await guide.waitFor()
-        await camera.getByText(photo.cameraSignatureGuide, { exact: true }).waitFor()
-        assert.equal(await guide.locator('[data-camera-silhouette], [data-camera-eye-line]').count(), 0)
-        assert.equal(await guide.locator('[data-camera-frame]').count(), 1)
+        const camera = await checkSignatureCamera(page)
         assert.equal(await page.evaluate(() => getComputedStyle(document.body).overflowY), 'hidden')
         await accessibility(page)
         await page.keyboard.press('Escape')
