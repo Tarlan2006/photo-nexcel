@@ -70,13 +70,13 @@ async function renderPhoto(source, edit, session, cancelled) {
   return source.rendered
 }
 
-export async function runPhotoPipeline(source, settings, progress, cancelled) {
+async function preparePhoto(source, settings, progress, cancelled) {
   ensureCurrent(source, cancelled)
   progress('processingFace')
   const face = await detect(source)
   ensureCurrent(source, cancelled)
   if (!face?.success) throw new Error(faceErrors[face?.error] ?? 'processingError')
-  const { landmarks, blendshapes } = face
+  const { landmarks } = face
   const preset = presets[settings.presetId]
   const { edit, adjustments, autoExposure } = toPhotoParameters(settings)
   const session = autoExposure || hasPhotoEdits(edit) ? await editorSession(source, landmarks) : null
@@ -95,6 +95,36 @@ export async function runPhotoPipeline(source, settings, progress, cancelled) {
     ensureCurrent(source, cancelled)
     edit.exposure = source.exposure
   }
+
+  return { face, preset, edit, adjustments, session }
+}
+
+export async function previewPhotoSettings(source, settings, cancelled) {
+  const { face, preset, edit, adjustments, session } = await preparePhoto(source, settings, () => {}, cancelled)
+  let rendered
+  let crop
+  let preview
+  try {
+    // Preview uses the same edits and framing as export, at a smaller working size.
+    if (hasPhotoEdits(edit)) rendered = await session.render({ edit, preview: true, showMask: false })
+    ensureCurrent(source, cancelled)
+    crop = cropFace(rendered ?? source.bitmap, face.landmarks, preset, adjustments)
+    if (!crop.success) throw new Error('errOutOfBounds')
+    preview = await createImageBitmap(crop.canvas)
+    ensureCurrent(source, cancelled)
+    return preview
+  } catch (error) {
+    preview?.close()
+    throw error
+  } finally {
+    rendered?.close()
+    releaseCanvas(crop?.canvas)
+  }
+}
+
+export async function runPhotoPipeline(source, settings, progress, cancelled) {
+  const { face: { landmarks, blendshapes }, preset, edit, adjustments, session } =
+    await preparePhoto(source, settings, progress, cancelled)
 
   const { bitmap, matte } = await renderPhoto(source, edit, session, cancelled)
   ensureCurrent(source, cancelled)

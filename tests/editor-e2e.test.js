@@ -33,7 +33,14 @@ const resultTitle = page => main(page).getByRole('heading', { level: 1, name: ru
 
 async function upload(page, path = portrait) {
   await file(main(page)).setInputFiles(path)
-  await dialog(page).getByRole('img', { name: ru.editor.original }).waitFor()
+  await dialog(page).locator('[data-photo-preview] canvas').waitFor()
+}
+
+async function settingsPreview(page) {
+  await page.waitForFunction(() => document.querySelector('[data-photo-preview]')?.getAttribute('aria-busy') === 'false')
+  const canvas = dialog(page).getByRole('img', { name: copy.previewImage, exact: true })
+  assert.equal(await canvas.count(), 1, await dialog(page).innerText())
+  return canvas
 }
 
 async function processPhoto(page) {
@@ -311,7 +318,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         await checkDocumentCamera(camera, 'dv')
         await checkAxe(page)
         await button(camera, ru.cameraShoot).click()
-        await dialog(page).getByRole('img', { name: ru.editor.original }).waitFor()
+        await dialog(page).locator('[data-photo-preview] canvas').waitFor()
         assert.equal(await page.locator('[data-camera-guide]').count(), 0)
         await page.keyboard.press('Escape')
       })
@@ -327,7 +334,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         await page.waitForFunction(() => scrollY > 0)
         const [chooser] = await Promise.all([page.waitForEvent('filechooser'), trigger.click()])
         await chooser.setFiles(portrait)
-        await dialog(page).getByRole('img', { name: ru.editor.original }).waitFor()
+        await dialog(page).locator('[data-photo-preview] canvas').waitFor()
         assert.equal(await dialog(page).getAttribute('aria-modal'), 'true')
         assert.equal(await page.evaluate(() => getComputedStyle(document.body).overflowY), 'hidden')
         const parked = await page.evaluate(() => scrollY)
@@ -341,7 +348,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
           await page.keyboard.press('Tab')
           assert.ok(await dialog(page).evaluate(element => element.contains(document.activeElement)))
         }
-        assert.equal(await page.evaluate(() => photoQA.detections), 0)
+        await page.waitForFunction(() => photoQA.detections === 1)
         await page.keyboard.press('Escape')
         await dialog(page).waitFor({ state: 'hidden' })
         assert.ok(await trigger.evaluate(element => element === document.activeElement))
@@ -354,6 +361,78 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         await page.mouse.click(8, 8)
         await dialog(page).waitFor({ state: 'hidden' })
         assert.ok(await trigger.evaluate(element => element === document.activeElement))
+      })
+    })
+
+    await suite.test('settings preview shows the latest colors, tone, filter, framing and document without submitting', { skip: skipPortrait }, async () => {
+      await withPage(async page => {
+        await upload(page, await sourceFixture(page, 'colored'))
+        const fingerprint = async () => (await settingsPreview(page)).evaluate(node => node.toDataURL())
+        const initial = await fingerprint()
+        const compare = button(dialog(page), ru.editor.original)
+        await compare.click()
+        await dialog(page).getByRole('img', { name: ru.editor.original, exact: true }).waitFor()
+        assert.equal(await compare.getAttribute('aria-pressed'), 'true')
+        await background(page, 'custom').check()
+        assert.equal(await compare.getAttribute('aria-pressed'), 'false')
+        const color = dialog(page).locator('input[type=color]')
+        await color.fill('#e0a0c0')
+        await color.fill('#a0c0e0')
+        await color.fill('#c0e0f0')
+        const custom = await fingerprint()
+        assert.notEqual(custom, initial)
+        const corner = await (await settingsPreview(page)).evaluate(node =>
+          Array.from(node.getContext('2d').getImageData(0, 0, 1, 1).data).slice(0, 3))
+        closeColor(corner, [192, 224, 240])
+        await dialog(page).getByText(copy.advanced, { exact: true }).click()
+        const brightness = dialog(page).getByRole('slider', { name: ru.editor.brightness, exact: true })
+        await brightness.press('Home')
+        await brightness.press('End')
+        const light = await fingerprint()
+        assert.notEqual(light, custom)
+        await dialog(page).getByRole('slider', { name: ru.editor.contrast, exact: true }).press('End')
+        const contrast = await fingerprint()
+        assert.notEqual(contrast, light)
+        await dialog(page).getByLabel(ru.editor.filters, { exact: true }).selectOption('soft')
+        assert.notEqual(await fingerprint(), contrast)
+        await dialog(page).getByRole('switch', { name: copy.fixTilt }).uncheck()
+        const untilted = await fingerprint()
+        await dialog(page).getByRole('switch', { name: copy.fixTilt }).check()
+        assert.notEqual(await fingerprint(), untilted)
+        await changeDocument(page, 'dv')
+        const square = await settingsPreview(page)
+        assert.deepEqual(await square.evaluate(node => [node.width, node.height]), [520, 520])
+        assert.equal(await page.evaluate(() => photoQA.detections), 1)
+        assert.equal(await ready(page).count(), 0)
+        await checkAxe(page)
+        await processPhoto(page)
+        const output = await jpeg(page, 600, 600, 240000)
+        for (const pixel of output.corners) closeColor(pixel, [255, 255, 255])
+      })
+    })
+
+    await suite.test('replacing a photo cancels its preview and keeps errors recoverable', { skip: skipPortrait }, async () => {
+      await withPage(async page => {
+        await upload(page)
+        await settingsPreview(page)
+        await background(page, 'custom').check()
+        await dialog(page).locator('input[type=color]').fill('#a0c0e0')
+        await file(dialog(page)).setInputFiles({
+          name: 'blank.png', mimeType: 'image/png', buffer: fixturePng(synthSignature('blank', 400, 300)),
+        })
+        await dialog(page).getByText(copy.previewUnavailable + ' ' + ru.errNoFace, { exact: true }).waitFor()
+        assert.equal(await dialog(page).getByRole('img', { name: copy.previewImage, exact: true }).count(), 0)
+        assert.deepEqual(await dialog(page).locator('[data-photo-preview] canvas').evaluate(node => [node.width, node.height]), [400, 300])
+        assert.equal(await background(page, 'original').isEnabled(), true)
+        await file(dialog(page)).setInputFiles(portrait)
+        await settingsPreview(page)
+        await page.keyboard.press('Escape')
+        await dialog(page).waitFor({ state: 'hidden' })
+        await upload(page)
+        await settingsPreview(page)
+        await processPhoto(page)
+        await button(main(page), ru.btnNewPhoto).click()
+        await page.waitForFunction(() => photoQA.workers === 0 && photoQA.bitmaps === 0 && photoQA.urls.size === 0)
       })
     })
 
@@ -502,9 +581,11 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
     }, async () => {
       await withPage(async page => {
         await upload(page, astronaut)
+        const withoutSuit = await (await settingsPreview(page)).evaluate(node => node.toDataURL())
         await dialog(page).getByText(copy.advanced, { exact: true }).click()
         await button(dialog(page), ru.editor.female).click()
         await button(dialog(page), ru.editor.dark).click()
+        assert.notEqual(await (await settingsPreview(page)).evaluate(node => node.toDataURL()), withoutSuit)
         await processPhoto(page)
         const suit = await jpeg(page, 413, 531, 30000)
         await main(page).getByText(copy.framing, { exact: true }).click()
@@ -545,6 +626,8 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         await page.mouse.move(12, Math.round(geometry.windowHeight / 2))
         await page.mouse.wheel(0, 550)
         await page.waitForFunction(() => document.querySelector('dialog[open]').scrollTop > 0)
+        const previewBox = await (await settingsPreview(page)).boundingBox()
+        assert.ok(previewBox.y >= 0 && previewBox.y + previewBox.height < geometry.windowHeight)
         await checkAxe(page)
         await advanced.click()
         await background(page, 'original').check()

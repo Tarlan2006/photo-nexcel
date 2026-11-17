@@ -3,11 +3,12 @@ import { useLang } from '../../contexts/LangContext'
 import { photoCopy } from '../../content/photo-copy'
 import { presets } from '../../presets'
 import { backgroundChoices, toPhotoParameters } from '../../lib/photo-flow'
-import { photoMimeTypes } from '../../lib/photo'
+import { photoMimeTypes, supportsWasmSimd } from '../../lib/photo'
 import { primaryButton, secondaryButton } from '../editor/EditorControls'
 import { SuitPanel } from '../editor/EditorPanels'
 import { DocumentPicker } from './PhotoUpload'
 import PhotoCanvas from './PhotoCanvas'
+import usePhotoPreview from './usePhotoPreview'
 
 export function Slider({ label, min = -30, max = 30, value, onChange }) {
   return (
@@ -33,10 +34,15 @@ export default function PhotoSettings({ source, settings, status, error, chooseD
   const file = useRef(null)
   const documentButton = useRef(null)
   const [documentOpen, setDocumentOpen] = useState(chooseDocument)
+  const [previewSupported] = useState(supportsWasmSimd)
+  const [originalSettings, setOriginalSettings] = useState(null)
   const preset = presets[settings.presetId]
   const dv = preset.id === 'dv'
   const kzWarning = !dv && (settings.filter !== 'none' || settings.suit.enabled || settings.brightness !== 0 || settings.contrast !== 0)
   const busy = Boolean(status)
+  const preview = usePhotoPreview(source, settings, previewSupported && !busy)
+  const showOriginal = originalSettings === settings
+  const previewBitmap = showOriginal ? source?.bitmap : preview.bitmap ?? source?.bitmap
   const set = patch => onSettings({ ...settings, ...patch })
   useLayoutEffect(() => {
     const node = dialog.current
@@ -92,9 +98,26 @@ export default function PhotoSettings({ source, settings, status, error, chooseD
         </p>
         {error && <p role="alert" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">{photoMessage(t, copy, error, preset)}</p>}
         <div className="grid items-start gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
-          <div className="min-w-0 space-y-2">
-            {source && <PhotoCanvas bitmap={source.bitmap} label={t.editor.original}
-              className="mx-auto block h-auto max-h-48 w-auto max-w-full rounded-lg sm:max-h-72" />}
+          <div className="sticky top-0 z-10 min-w-0 space-y-2 rounded-lg bg-white pb-2 sm:top-4">
+            {source && (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm">{copy.preview}</h3>
+                  <button type="button" className={secondaryButton} aria-pressed={showOriginal}
+                    onClick={() => setOriginalSettings(showOriginal ? null : settings)}>{t.editor.original}</button>
+                </div>
+                <div data-photo-preview="" aria-busy={busy || preview.updating}
+                  className="grid min-h-24 place-items-center rounded-lg bg-paper p-2">
+                  <PhotoCanvas bitmap={previewBitmap} label={!showOriginal && preview.bitmap ? copy.previewImage : t.editor.original}
+                    className="block h-auto max-h-[25dvh] w-auto max-w-full rounded-sm sm:max-h-72" />
+                </div>
+                <p role="status" aria-live="polite" className={'text-xs leading-relaxed ' + (preview.error ? 'text-amber-950' : 'text-text-muted')}>
+                  {busy ? photoMessage(t, copy, status, preset) : preview.error
+                    ? copy.previewUnavailable + ' ' + photoMessage(t, copy, preview.error, preset)
+                    : preview.updating ? copy.previewUpdating : showOriginal ? t.editor.original : preview.bitmap ? copy.previewReady : ''}
+                </p>
+              </>
+            )}
             <input ref={file} type="file" hidden accept={photoMimeTypes.join(',')} aria-label={copy.changePhoto}
               onChange={event => { onFile(event.target.files?.[0]); event.target.value = '' }} />
             <button type="button" className={secondaryButton + ' w-full'} onClick={() => file.current.click()}>{copy.changePhoto}</button>
