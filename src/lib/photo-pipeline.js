@@ -29,10 +29,10 @@ async function detect(source) {
   return source.detection
 }
 
-async function editorSession(source, landmarks) {
+async function editorSession(source) {
   source.session ??= import('./editor/session.js').then(({ createEditorSession }) => {
     ensureCurrent(source, () => false)
-    return createEditorSession(source.bitmap, landmarks)
+    return createEditorSession(source.bitmap)
   })
   return source.session
 }
@@ -76,18 +76,16 @@ async function preparePhoto(source, settings, progress, cancelled) {
   const face = await detect(source)
   ensureCurrent(source, cancelled)
   if (!face?.success) throw new Error(faceErrors[face?.error] ?? 'processingError')
-  const { landmarks } = face
   const preset = presets[settings.presetId]
   const { edit, adjustments, autoExposure } = toPhotoParameters(settings)
-  const session = autoExposure || hasPhotoEdits(edit) ? await editorSession(source, landmarks) : null
+  const session = autoExposure || hasPhotoEdits(edit) ? await editorSession(source) : null
   ensureCurrent(source, cancelled)
 
-  if (edit.bg.enabled || edit.suit.enabled) {
+  if (edit.bg.enabled) {
     progress('processingBackground')
     const segmentation = await session.segment().catch(() => { throw new Error('modelError') })
     ensureCurrent(source, cancelled)
-    if (edit.bg.enabled && !segmentation.reliable) throw new Error('unreliableMask')
-    if (edit.suit.enabled && !segmentation.suitSupported) throw new Error('suitUnavailable')
+    if (!segmentation.reliable) throw new Error('unreliableMask')
   }
   if (autoExposure) {
     progress('processingLight')
@@ -155,8 +153,8 @@ export async function runPhotoPipeline(source, settings, progress, cancelled) {
 }
 
 export async function previewPhotoBackground(source, settings) {
-  const face = await detect(source)
-  const session = await editorSession(source, face.landmarks)
+  await detect(source)
+  const session = await editorSession(source)
   const { edit, autoExposure } = toPhotoParameters(settings)
   if (autoExposure) edit.exposure = source.exposure
   return session.render({ edit, preview: true, showMask: false })

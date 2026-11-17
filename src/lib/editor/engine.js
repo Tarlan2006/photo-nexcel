@@ -2,7 +2,6 @@ import { hasClosedArea, hasPhotoEdits } from './edit-state.js'
 import { applyBrushStrokes } from './brush.js'
 import { colorChannels, compositeRows, refineMask, resizeMask } from './mask.js'
 import { estimateExposure, scaledSize, sharpenRows, toneRows } from './pixels.js'
-import { blendSuitRows, findSuitAnchors, suitPlacement } from './suits.js'
 
 export const segmentInputLimit = 320
 
@@ -23,20 +22,12 @@ export function drawScaled(source, limit) {
   return canvas
 }
 
-export function suitTemplateId(suit) {
-  return suit.enabled && ['male', 'female'].includes(suit.gender) &&
-    ['dark', 'light'].includes(suit.styleId) ? suit.gender + '-' + suit.styleId : null
-}
-
-export function createEditorEngine(source, landmarks) {
+export function createEditorEngine(source) {
   const originals = new Map()
-  const templates = new Map()
   const refinedMasks = new Map()
   const correctedMasks = new Map()
-  const clothingMasks = new Map()
   const fullSize = scaledSize(source.width, source.height, 2000)
   let segmentation
-  let anchor
   let closed = false
 
   function original(limit) {
@@ -124,9 +115,7 @@ export function createEditorEngine(source, landmarks) {
     segmentation = value
     refinedMasks.clear()
     correctedMasks.clear()
-    clothingMasks.clear()
-    anchor = value.reliable ? findSuitAnchors(landmarks, value.categories, value.width, value.height) : null
-    return { reliable: value.reliable, coverage: value.coverage, suitSupported: Boolean(anchor) }
+    return { reliable: value.reliable, coverage: value.coverage }
   }
 
   async function render({ edit, preview, showMask }) {
@@ -148,22 +137,6 @@ export function createEditorEngine(source, landmarks) {
       if (edit.filter === 'sharp') {
         const soft = new Uint8ClampedArray(data)
         await rows(height, (start, end) => sharpenRows(data, soft, width, height, start, end))
-      }
-
-      const template = templates.get(suitTemplateId(edit.suit))
-      if (template && anchor) {
-        const overlay = makeCanvas(width, height)
-        const context = overlay.getContext('2d', { willReadFrequently: true })
-        const position = suitPlacement(anchor, width, height, edit.suit.scale, edit.suit.offset)
-        context.drawImage(template, position.x, position.y, position.width, position.height)
-        const dimensions = width + 'x' + height
-        if (!clothingMasks.has(dimensions)) {
-          const clothing = await resizeMask(segmentation.clothes, segmentation.width, segmentation.height, width, height, rows)
-          clothingMasks.set(dimensions, clothing)
-        }
-        const clothing = clothingMasks.get(dimensions)
-        const outfit = context.getImageData(0, 0, width, height).data
-        await rows(height, (start, end) => blendSuitRows(data, outfit, clothing, width, height, start, end, anchor.chin))
       }
 
       if (mask) {
@@ -193,24 +166,12 @@ export function createEditorEngine(source, landmarks) {
     exposure: () => estimateExposure(original(800).data),
     segmentInput: () => drawScaled(source, segmentInputLimit),
     setSegmentation,
-    setTemplate: ({ id, bitmap }) => {
-      if (closed) {
-        bitmap.close()
-        throw new Error('EDITOR_CLOSED')
-      }
-      templates.get(id)?.close()
-      templates.set(id, bitmap)
-    },
     close() {
       closed = true
-      for (const bitmap of templates.values()) bitmap.close()
-      templates.clear()
       originals.clear()
       refinedMasks.clear()
       correctedMasks.clear()
-      clothingMasks.clear()
       segmentation = null
-      anchor = null
     },
   }
 }

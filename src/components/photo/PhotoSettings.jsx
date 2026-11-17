@@ -5,7 +5,6 @@ import { presets } from '../../presets'
 import { backgroundChoices, toPhotoParameters } from '../../lib/photo-flow'
 import { photoMimeTypes, supportsWasmSimd } from '../../lib/photo'
 import { primaryButton, secondaryButton } from '../editor/EditorControls'
-import { SuitPanel } from '../editor/EditorPanels'
 import { DocumentPicker } from './PhotoUpload'
 import PhotoCanvas from './PhotoCanvas'
 import usePhotoPreview from './usePhotoPreview'
@@ -38,7 +37,7 @@ export default function PhotoSettings({ source, settings, status, error, chooseD
   const [originalSettings, setOriginalSettings] = useState(null)
   const preset = presets[settings.presetId]
   const dv = preset.id === 'dv'
-  const kzWarning = !dv && (settings.filter !== 'none' || settings.suit.enabled || settings.brightness !== 0 || settings.contrast !== 0)
+  const kzWarning = !dv && (settings.filter !== 'none' || settings.brightness !== 0 || settings.contrast !== 0)
   const busy = Boolean(status)
   const preview = usePhotoPreview(source, settings, previewSupported && !busy)
   const showOriginal = originalSettings === settings
@@ -182,11 +181,6 @@ export default function PhotoSettings({ source, settings, status, error, chooseD
                   className="min-h-11 w-full rounded-lg border border-grid-border bg-white p-2 text-sm">
                   {['none', 'soft', 'sharp'].map(key => <option key={key} value={key}>{t.editor[key]}</option>)}
                 </select>
-                <div className="border-t border-grid-border pt-3">
-                  <h3 className="mb-2 text-sm">{t.editor.suit}</h3>
-                  <SuitPanel suit={settings.suit} segmentation={{}} text={t.editor}
-                    update={apply => set({ suit: apply({ suit: settings.suit }).suit })} />
-                </div>
                 {dv && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-950">{copy.dvWarning}</p>}
                 {!dv && (
                   <div aria-live="polite">

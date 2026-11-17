@@ -17,7 +17,6 @@ export const initialEdit = {
     outline: [],
     strokes: [],
   },
-  suit: { enabled: false, gender: null, styleId: 'dark', scale: 0, offset: 0 },
 }
 
 const historyLimit = 30
@@ -48,7 +47,7 @@ export function redoEdit({ past, present, future, group }) {
 
 export function hasPhotoEdits(edit) {
   return Boolean(edit.brightness || edit.contrast || edit.temperature || edit.saturation ||
-    edit.exposure?.strength || edit.filter !== 'none' || edit.bg.enabled || edit.suit.enabled)
+    edit.exposure?.strength || edit.filter !== 'none' || edit.bg.enabled)
 }
 
 export function hasClosedArea(points) {

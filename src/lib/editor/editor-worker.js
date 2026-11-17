@@ -5,12 +5,11 @@ let engine
 let segmentation
 
 const operations = {
-  init({ bitmap, landmarks }) {
-    engine = createEditorEngine(bitmap, landmarks)
+  init({ bitmap }) {
+    engine = createEditorEngine(bitmap)
   },
   render: (args) => engine.render(args),
   exposure: () => engine.exposure(),
-  setTemplate: (args) => engine.setTemplate(args),
   setSegmentation: (value) => engine.setSegmentation(value),
   segment: () => {
     segmentation ??= segmentPortrait(engine.segmentInput(), makeCanvas)

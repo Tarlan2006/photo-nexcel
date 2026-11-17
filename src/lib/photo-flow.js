@@ -13,7 +13,7 @@ export function createPhotoSettings(presetId = 'kz_id') {
   return {
     presetId, background: 'recommended', customColor: backgroundColors.gray,
     fixTilt: true, autoExposure: true, brightness: 0, contrast: 0,
-    filter: 'none', suit: initialEdit.suit, strokes: [],
+    filter: 'none', strokes: [],
     scaleOffset: 0, offsetY: 0,
   }
 }
@@ -24,20 +24,19 @@ export function changePhotoDocument(settings, presetId) {
     ...settings, presetId,
     background: backgroundChoices(presetId).includes(settings.background) ? settings.background : 'recommended',
     filter: 'none',
-    suit: initialEdit.suit,
     scaleOffset: 0, offsetY: 0,
   }
 }
 
 export function toPhotoParameters(settings) {
-  const { presetId, background, customColor, brightness, contrast, filter, suit, strokes } = settings
+  const { presetId, background, customColor, brightness, contrast, filter, strokes } = settings
   const colorByChoice = { recommended: recommendedBackground[presetId], ...backgroundColors, natural: naturalWhite, custom: customColor }
   const color = colorByChoice[backgroundChoices(presetId).includes(background) ? background : 'recommended']
   return {
     autoExposure: settings.autoExposure,
     adjustments: { fixTilt: settings.fixTilt, scaleOffset: settings.scaleOffset, offsetY: settings.offsetY },
     edit: {
-      ...initialEdit, brightness, contrast, filter, suit,
+      ...initialEdit, brightness, contrast, filter,
       bg: { ...initialEdit.bg, enabled: Boolean(color), color: color || initialEdit.bg.color, strokes },
     },
   }

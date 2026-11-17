@@ -17,23 +17,19 @@ export async function segmentPortrait(input, createCanvas) {
       baseOptions: { modelAssetPath: modelPath, delegate: 'CPU' },
       runningMode: 'IMAGE',
       outputConfidenceMasks: true,
-      outputCategoryMask: true,
+      outputCategoryMask: false,
     })
     const start = performance.now()
     result = task.segment(input)
-    const [background, , , , clothing] = result.confidenceMasks ?? []
-    if (!background || !clothing || !result.categoryMask) throw new Error('NO_MASK')
+    const [background] = result.confidenceMasks ?? []
+    if (!background) throw new Error('NO_MASK')
 
     const { width, height } = background
-    const categories = new Uint8Array(result.categoryMask.getAsUint8Array())
     const backgroundScores = background.getAsFloat32Array()
-    const clothingScores = clothing.getAsFloat32Array()
     const person = new Uint8Array(width * height)
-    const clothes = new Uint8Array(person.length)
     for (let i = 0; i < person.length; i++) {
       const alpha = Math.min(1, Math.max(0, (1 - backgroundScores[i] - 0.08) / 0.84))
       person[i] = Math.round(alpha * alpha * (3 - 2 * alpha) * 255)
-      clothes[i] = categories[i] === 4 ? Math.round(clothingScores[i] * 255) : 0
     }
 
     const analysis = createCanvas(width, height)
@@ -42,7 +38,7 @@ export async function segmentPortrait(input, createCanvas) {
     const metrics = maskMetrics(person, context.getImageData(0, 0, width, height).data)
     performance.clearMeasures('photo-editor-segmentation')
     performance.measure('photo-editor-segmentation', { start })
-    return { width, height, categories, person, clothes, ...metrics }
+    return { width, height, person, ...metrics }
   } finally {
     result?.close()
     task?.close()

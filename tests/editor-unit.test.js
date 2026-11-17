@@ -8,7 +8,6 @@ import {
 } from '../src/lib/editor/edit-state.js'
 import { compositeRows, maskMetrics, refineMask, resizeMask } from '../src/lib/editor/mask.js'
 import { estimateExposure, luminance, toneRows } from '../src/lib/editor/pixels.js'
-import { findSuitAnchors, suitPlacement } from '../src/lib/editor/suits.js'
 
 const rows = async (height, work) => work(0, height)
 
@@ -169,27 +168,6 @@ test('editor history preserves more than ten edits, groups drag events, and supp
   assert.equal(recommendedBackground.kz_id, '#d9d9d9')
   assert.equal(recommendedBackground.dv, '#ffffff')
   assert.equal(initialEdit.bg.enabled, false)
-  assert.equal(initialEdit.suit.enabled, false)
-})
-
-test('suit collar stays below the chin and scales with visible shoulders', () => {
-  const size = 200
-  const categories = new Uint8Array(size * size)
-  const landmarks = []
-  landmarks[152] = {x:0.5,y:0.51}
-  landmarks[33] = {x:0.43,y:0.38}
-  landmarks[263] = {x:0.57,y:0.38}
-  landmarks[234] = {x:0.4,y:0.43}
-  landmarks[454] = {x:0.6,y:0.43}
-  for (let y = 105; y < 145; y++) categories.fill(4, y * size + 45, y * size + 155)
-  const anchor = findSuitAnchors(landmarks, categories, size, size)
-  assert.ok(anchor)
-  const placement = suitPlacement(anchor, size, size, 0, -10)
-  assert.ok(placement.y > landmarks[152].y * size)
-  assert.ok(suitPlacement(anchor, size, size, 20, 0).width > placement.width)
-  assert.ok(suitPlacement({...anchor, shoulderWidth:anchor.shoulderWidth / 2}, size, size, 0, 0).width < placement.width)
-  landmarks[33] = {x:0.43,y:0.27}
-  assert.equal(findSuitAnchors(landmarks, categories, size, size), null)
 })
 
 test('RU and KZ editor keys and placeholders agree', () => {

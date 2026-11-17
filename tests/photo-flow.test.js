@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { egovSignature, presets } from '../src/presets.js'
 import { requirements } from '../src/content/requirements.js'
 import { photoCopy } from '../src/content/photo-copy.js'
+import { hasPhotoEdits } from '../src/lib/editor/edit-state.js'
 import { backgroundChoices, changePhotoDocument, createPhotoSettings, initialPhotoFlow, photoFlow,
   releasePhoto, toPhotoParameters } from '../src/lib/photo-flow.js'
 
@@ -21,26 +22,30 @@ test('photo settings preserve explicit color, optional alignment and optional ex
   assert.equal(custom.autoExposure, true)
 })
 
-test('Kazakhstan photo settings offer gray and light backgrounds and default to no filter or suit', () => {
+test('Kazakhstan photo settings offer gray and light backgrounds and default to no filter', () => {
   const initial = createPhotoSettings('kz_id')
   assert.deepEqual(backgroundChoices('kz_id'), ['recommended', 'original', 'white', 'natural', 'gray', 'custom'])
   assert.equal(initial.filter, 'none')
-  assert.equal(initial.suit.enabled, false)
   assert.equal(toPhotoParameters({ ...initial, background: 'blue' }).edit.bg.color, '#d9d9d9')
-  const changed = changePhotoDocument({ ...createPhotoSettings('dv'), filter: 'soft', suit: { enabled: true } }, 'kz_id')
+  const changed = changePhotoDocument({ ...createPhotoSettings('dv'), filter: 'soft' }, 'kz_id')
   assert.equal(changed.filter, 'none')
-  assert.equal(changed.suit.enabled, false)
 })
 
-test('DV exposes only white colors and starts with filters and suit off', () => {
+test('DV exposes only white colors and starts with filters off', () => {
   const settings = changePhotoDocument({
-    ...createPhotoSettings(), background: 'custom', filter: 'sharp', suit: { enabled: true },
+    ...createPhotoSettings(), background: 'custom', filter: 'sharp',
   }, 'dv')
   assert.deepEqual(backgroundChoices('dv'), ['recommended', 'original', 'white', 'natural'])
   assert.equal(settings.background, 'recommended')
   assert.equal(settings.filter, 'none')
-  assert.equal(settings.suit.enabled, false)
   assert.equal(toPhotoParameters({ ...settings, background: 'natural' }).edit.bg.color, '#fafafa')
+})
+
+test('retired costume settings cannot enable edits in preview or export', () => {
+  const settings = { ...createPhotoSettings(), background: 'original', autoExposure: false }
+  const legacy = { ...settings, suit: { enabled: true, gender: 'male', styleId: 'dark', scale: 20, offset: 10 } }
+  assert.deepEqual(toPhotoParameters(legacy), toPhotoParameters(settings))
+  assert.equal(hasPhotoEdits(toPhotoParameters(legacy).edit), false)
 })
 
 test('each document has one main source and uses localized labels on approved HTTPS hosts', () => {

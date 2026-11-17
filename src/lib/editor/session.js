@@ -1,4 +1,4 @@
-import { createEditorEngine, drawScaled, makeCanvas, segmentInputLimit, suitTemplateId } from './engine.js'
+import { createEditorEngine, drawScaled, makeCanvas, segmentInputLimit } from './engine.js'
 
 function workerEndpoint() {
   const worker = new Worker(new URL('./editor-worker.js', import.meta.url))
@@ -52,12 +52,11 @@ async function mainSegmentation(bitmap) {
   return segmentPortrait(drawScaled(bitmap, segmentInputLimit), makeCanvas)
 }
 
-export function createEditorSession(bitmap, landmarks) {
+export function createEditorSession(bitmap) {
   let endpoint
   let local
   let disposed = false
   let segmentPromise
-  const templates = new Map()
 
   const ready = (async () => {
     if (typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined') {
@@ -66,7 +65,7 @@ export function createEditorSession(bitmap, landmarks) {
         endpoint = workerEndpoint()
         clone = await createImageBitmap(bitmap)
         if (disposed) throw new Error('EDITOR_CLOSED')
-        await endpoint.request('init', { bitmap: clone, landmarks }, [clone])
+        await endpoint.request('init', { bitmap: clone }, [clone])
         return
       } catch {
         clone?.close()
@@ -74,7 +73,7 @@ export function createEditorSession(bitmap, landmarks) {
         endpoint = null
       }
     }
-    if (!disposed) local = createEditorEngine(bitmap, landmarks)
+    if (!disposed) local = createEditorEngine(bitmap)
   })()
 
   async function request(action, args, transfer) {
@@ -83,35 +82,8 @@ export function createEditorSession(bitmap, landmarks) {
     return endpoint ? endpoint.request(action, args, transfer) : local[action](args)
   }
 
-  function loadTemplate(id) {
-    if (!templates.has(id)) {
-      const loading = (async () => {
-        const image = new Image()
-        image.src = '/suits/' + id + '.svg'
-        await image.decode()
-        if (disposed) throw new Error('EDITOR_CLOSED')
-        const template = await createImageBitmap(image)
-        try {
-          await request('setTemplate', { id, bitmap: template }, [template])
-        } catch (error) {
-          template.close()
-          throw error
-        }
-      })().catch((error) => {
-        templates.delete(id)
-        throw error
-      })
-      templates.set(id, loading)
-    }
-    return templates.get(id)
-  }
-
   return {
-    async render(args) {
-      const template = suitTemplateId(args.edit.suit)
-      if (template) await loadTemplate(template)
-      return request('render', args)
-    },
+    render: args => request('render', args),
     exposure: () => request('exposure'),
     segment() {
       segmentPromise ??= (async () => {
@@ -135,7 +107,6 @@ export function createEditorSession(bitmap, landmarks) {
       disposed = true
       endpoint?.close()
       local?.close()
-      templates.clear()
     },
   }
 }
