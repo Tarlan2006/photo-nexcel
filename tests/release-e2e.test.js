@@ -12,6 +12,7 @@ import { translations } from '../src/i18n.js'
 import { releaseCopy } from '../src/content/release-copy.js'
 import { requirements } from '../src/content/requirements.js'
 import { signatureCopy } from '../src/components/signature/copy.js'
+import sharedNavigation from '../src/content/shared-nav.json' with { type: 'json' }
 import { fixturePng, synthSignature } from './helpers/synthSignature.js'
 
 const chrome = [process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, chromium.executablePath(),
@@ -125,6 +126,28 @@ test('release metadata, privacy, language addresses and HEIC recovery', { timeou
         assert.ok(Date.parse(security.match(/Expires: (.+)/)[1]) > Date.now())
         assert.match(security, /Canonical: https:\/\/photo.nexcel.kz\/\.well-known\/security.txt/)
         assert.ok((await readFile(new URL('../public/robots.txt', import.meta.url),'utf8')).includes('Allow: /'))
+      })
+    })
+
+    await suite.test('the shared source drives desktop, mobile and footer links without browser requests to nexcel.kz', async () => {
+      await withPage('/', async page => {
+        const external = []
+        page.on('request', request => { if (request.url().startsWith('https://nexcel.kz/')) external.push(request.url()) })
+        const expectedServices = sharedNavigation.footer.columns[0].links.map(item => item.href)
+        const expectedPrimary = sharedNavigation.nav.filter(item => !expectedServices.includes(item.href) && !item.href.endsWith('/#calculator')).map(item => item.href)
+        await page.setViewportSize({ width:1280,height:900 })
+        await page.locator('header button[aria-controls=site-services]').click()
+        assert.deepEqual(await page.locator('#site-services a').evaluateAll(links=>links.map(link=>link.href)),[...expectedServices,'https://nexcel.kz/#calculator'])
+        const desktop=await page.locator('header nav').first().locator(':scope > a').evaluateAll(links=>links.map(link=>link.href))
+        assert.deepEqual(desktop,expectedPrimary)
+        await page.setViewportSize({width:320,height:844})
+        await page.locator('header button[aria-controls=site-mobile-menu]').click()
+        assert.deepEqual(await page.locator('#site-mobile-menu ul').first().locator('a').evaluateAll(links=>links.map(link=>link.href)),[...expectedServices,'https://nexcel.kz/#calculator'])
+        const footer=page.locator('footer:visible')
+        for(const item of sharedNavigation.footer.columns.flatMap(column=>column.links))assert.ok(await footer.locator('a[href="'+item.href+'"]').count())
+        assert.equal(await footer.getByText(sharedNavigation.footer.legal,{exact:true}).count(),1)
+        assert.ok(await page.locator('header img').evaluate(img=>img.complete&&img.naturalWidth>0&&img.src.startsWith('data:image/')))
+        assert.deepEqual(external,[])
       })
     })
 

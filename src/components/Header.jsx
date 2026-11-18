@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import headerLogo from '../assets/logo-96.png?url&no-inline'
+import sharedLogo from '../content/shared-logo.json' with { type: 'json' }
 import { useLang } from '../contexts/LangContext'
-import { companyPages, email, phone, servicePages, siteHome, siteLinks, whatsAppUrl } from '../siteLinks'
+import { brandFirst, brandRest, companyPages, ctaUrl, email, phone, servicePages, sharedNavigation, siteHome, siteLabel, siteLinks } from '../siteLinks'
+import { navigationText } from '../lib/shared-navigation'
 import SiteIcon from './SiteIcon'
 
-const serviceMenuPages = [...servicePages, 'calculator']
+const serviceMenuPages = [...servicePages, ...(siteLinks.calculator ? ['calculator'] : [])]
 const menuLink = 'flex min-h-11 items-center rounded px-3 py-2 text-sm hover:bg-paper hover:text-emerald-accent'
 
 export default function Header({ tool = 'photo' }) {
   const { lang, setLang, t: { site } } = useLang()
+  const servicesTitle = navigationText(sharedNavigation.footer.columns[0].title, lang, site.services)
+  const label = key => siteLabel(key, lang, key === 'photo' ? site.photoService : site.links[key])
+  const ctaLabel = lang === 'kz' && !sharedNavigation.cta.label.kk ? site.writeWhatsApp.replace('{phone}', phone)
+    : navigationText(sharedNavigation.cta.label, lang) + ': ' + phone
   const serviceName = tool === 'signature' ? site.signatureTab : site.photoService
   const [openPanel, setOpenPanel] = useState(null)
   const [logoFailed, setLogoFailed] = useState(false)
@@ -68,7 +73,7 @@ export default function Header({ tool = 'photo' }) {
                 <span className="grid size-full place-items-center rounded bg-dark-bg font-heading text-base font-extrabold text-white shadow-sm">N</span>
               ) : (
                 <img
-                  src={headerLogo}
+                  src={sharedLogo.dataUrl}
                   alt=""
                   width="36"
                   height="36"
@@ -79,7 +84,7 @@ export default function Header({ tool = 'photo' }) {
             </span>
             <span className="flex flex-col leading-tight">
               <span className="whitespace-nowrap font-heading text-sm font-extrabold tracking-tight sm:text-base">
-                Nexcel <span className="text-emerald-accent">Solutions</span>
+                {brandFirst} <span className="text-emerald-accent">{brandRest}</span>
               </span>
               <span className="mt-0.5 hidden whitespace-nowrap text-[10px] tracking-wide text-text-muted uppercase sm:block">
                 Engineering &amp; Solutions
@@ -100,7 +105,7 @@ export default function Header({ tool = 'photo' }) {
               onClick={() => setOpenPanel(servicesOpen ? null : 'services')}
               className="flex min-h-11 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded px-2 hover:text-emerald-accent xl:px-2.5"
             >
-              {site.services}
+              {servicesTitle}
               <SiteIcon name="chevron" className={`size-3.5 transition-transform ${servicesOpen ? 'rotate-180' : ''}`} />
             </button>
             <ul
@@ -109,13 +114,13 @@ export default function Header({ tool = 'photo' }) {
               className="absolute top-full left-0 mt-2 w-max max-w-xs rounded-lg border border-grid-border bg-white p-1.5 shadow-lg"
             >
               {serviceMenuPages.map((key) => (
-                <li key={key}><a href={siteLinks[key]} className={menuLink}>{site.links[key]}</a></li>
+                <li key={key}><a href={siteLinks[key]} className={menuLink}>{label(key)}</a></li>
               ))}
             </ul>
           </div>
           {companyPages.map((key) => (
             <a key={key} href={siteLinks[key]} className="flex min-h-11 items-center whitespace-nowrap rounded px-2 hover:text-emerald-accent xl:px-2.5">
-              {key === 'faq' ? 'FAQ' : site.links[key]}
+              {siteLabel(key, lang, key === 'faq' ? 'FAQ' : site.links[key])}
             </a>
           ))}
         </nav>
@@ -143,10 +148,10 @@ export default function Header({ tool = 'photo' }) {
             <SiteIcon name="email" className="size-3.5 text-emerald-accent" /> {email}
           </a>
           <a
-            href={whatsAppUrl}
+            href={ctaUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={site.writeWhatsApp.replace('{phone}', phone)}
+            aria-label={ctaLabel}
             className="hidden size-11 place-items-center rounded-[35%] bg-emerald-accent text-white shadow-sm hover:bg-emerald-accent-hover lg:grid"
           >
             <SiteIcon name="whatsapp" className="size-6" />
@@ -170,25 +175,25 @@ export default function Header({ tool = 'photo' }) {
               hidden={!mobileOpen}
               className="absolute inset-x-0 top-full max-h-[calc(100dvh-4rem)] overflow-y-auto border-y border-grid-border bg-white p-4 shadow-lg"
             >
-              <p className="px-3 py-2 text-xs font-semibold text-text-muted uppercase">{site.services}</p>
+              <p className="px-3 py-2 text-xs font-semibold text-text-muted uppercase">{servicesTitle}</p>
               <ul>
                 {serviceMenuPages.map((key) => (
-                  <li key={key}><a href={siteLinks[key]} className={menuLink}>{site.links[key]}</a></li>
+                  <li key={key}><a href={siteLinks[key]} className={menuLink}>{label(key)}</a></li>
                 ))}
               </ul>
               <ul className="my-2 border-y border-grid-border py-2">
                 {companyPages.map((key) => (
-                  <li key={key}><a href={siteLinks[key]} className={menuLink}>{site.links[key]}</a></li>
+                  <li key={key}><a href={siteLinks[key]} className={menuLink}>{label(key)}</a></li>
                 ))}
               </ul>
               <a href={`mailto:${email}`} className={`${menuLink} gap-2`}>
                 <SiteIcon name="email" className="size-4 text-emerald-accent" /> {email}
               </a>
               <a
-                href={whatsAppUrl}
+                href={ctaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={site.writeWhatsApp.replace('{phone}', phone)}
+                aria-label={ctaLabel}
                 className={`${menuLink} gap-2`}
               >
                 <SiteIcon name="whatsapp" className="size-4 text-emerald-accent" /> WhatsApp
