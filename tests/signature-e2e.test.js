@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
@@ -11,7 +11,7 @@ import { signatureCopy } from '../src/components/signature/copy.js'
 import { photoCopy } from '../src/content/photo-copy.js'
 import { processSignature } from '../src/lib/signature.js'
 import { translations } from '../src/i18n.js'
-import { fixturePng, synthSignature } from './helpers/synthSignature.js'
+import { fixturePng, fixtureY4m, synthSignature } from './helpers/synthSignature.js'
 
 const ru = signatureCopy.ru
 const kz = signatureCopy.kz
@@ -52,6 +52,15 @@ async function download(page, white = false) {
   return bytes
 }
 
+async function downloadEgov(page, copy = ru) {
+  const link = main(page).getByRole('link', { name: copy.downloadEgov, exact: true })
+  await link.waitFor()
+  const [saved] = await Promise.all([page.waitForEvent('download'), link.click()])
+  const bytes = await readFile(await saved.path())
+  assert.equal(bytes.subarray(0, 3).toString('hex'), 'ffd8ff')
+  return bytes
+}
+
 async function inspectImage(page, bytes, type = 'image/png') {
   return page.evaluate(async ({ base64, type }) => {
     const blob = new Blob([Uint8Array.from(atob(base64), char => char.charCodeAt(0))], { type })
@@ -64,7 +73,7 @@ async function inspectImage(page, bytes, type = 'image/png') {
       const corners = [[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]].map(
         ([x, y]) => Array.from(ctx.getImageData(x, y, 1, 1).data))
       const data = ctx.getImageData(0, 0, width, height).data
-      let opacity = 0
+      let opacity = 0, coloredInk = 0
       let left = width
       let right = -1
       let top = height
@@ -72,6 +81,7 @@ async function inspectImage(page, bytes, type = 'image/png') {
       for (let i = 0; i < data.length; i += 4) {
         opacity = Math.max(opacity, data[i + 3])
         if (data[i + 3] < 128 || Math.min(data[i], data[i + 1], data[i + 2]) > 180) continue
+        if (Math.max(data[i], data[i + 1], data[i + 2]) - Math.min(data[i], data[i + 1], data[i + 2]) > 3) coloredInk++
         const x = (i / 4) % width
         const y = Math.floor(i / 4 / width)
         left = Math.min(left, x)
@@ -79,7 +89,7 @@ async function inspectImage(page, bytes, type = 'image/png') {
         top = Math.min(top, y)
         bottom = Math.max(bottom, y)
       }
-      return { corners, opacity, width, height, inkWidth: right - left + 1, inkHeight: bottom - top + 1 }
+      return { corners, opacity, width, height, coloredInk, left, right, top, bottom, inkWidth: right - left + 1, inkHeight: bottom - top + 1 }
     } finally {
       image.close()
     }
@@ -99,7 +109,7 @@ async function checkSignatureCamera(page, lang = 'ru') {
   const error = camera.getByRole('alert')
   await guide.or(error).first().waitFor()
   if (await error.isVisible()) assert.fail(await error.innerText())
-  await camera.getByText(labels.cameraSignatureGuide, { exact: true }).waitFor()
+  await camera.getByText(signatureCopy[lang].captureTips[1], { exact: true }).waitFor()
   assert.equal(await camera.locator('[data-camera-silhouette], [data-camera-eye-line], [data-camera-outside]').count(), 0)
   assert.equal(await guide.locator('path, ellipse, line').count(), 0)
   assert.equal(await camera.getByText(labels.cameraGuideFace, { exact: true }).count(), 0)
@@ -107,10 +117,19 @@ async function checkSignatureCamera(page, lang = 'ru') {
   assert.equal(await guide.locator('[data-camera-frame]').count(), 1)
   const frame = await guide.locator('[data-camera-frame]').boundingBox()
   const video = await camera.locator('video').boundingBox()
-  assert.ok(frame.width > 100 && Math.abs(frame.width - frame.height) < 1)
+  const ratio = await guide.locator('[data-camera-frame]').evaluate(el => el.width.baseVal.value / el.height.baseVal.value)
+  assert.ok(frame.width > 100 && Math.abs(ratio - 550 / 124) < 1e-6, JSON.stringify({ frame, video }))
   assert.ok(Math.abs(frame.x + frame.width / 2 - video.x - video.width / 2) < 1)
   assert.ok(Math.abs(frame.y + frame.height / 2 - video.y - video.height / 2) < 1)
   assert.ok(frame.width < video.width && frame.height < video.height)
+  assert.equal(await camera.locator('[data-signature-safe]').count(), 1)
+  assert.equal(await camera.locator('video').evaluate(el => getComputedStyle(el).transform), 'none')
+  const toggle = camera.getByRole('button', { name: signatureCopy[lang].contour, exact: true })
+  await toggle.click()
+  assert.equal(await guide.count(), 0)
+  await toggle.click()
+  await guide.waitFor()
+  assert.equal(await page.evaluate(() => signatureQA.media.at(-1).video.facingMode), 'environment')
   return camera
 }
 
@@ -122,9 +141,13 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
     .match(/^  Content-Security-Policy: (.+)$/m)[1].trim()
   let browser
   try {
+    await mkdir(new URL('../test-results/', import.meta.url), { recursive: true })
+    const cameraFile = fileURLToPath(new URL('../test-results/signature-camera.y4m', import.meta.url))
+    await writeFile(cameraFile, fixtureY4m(synthSignature('clean', 640, 480)))
     browser = await chromium.launch({
       executablePath: chrome,
-      args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'],
+      args: ['--enable-unsafe-swiftshader', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream',
+        `--use-file-for-fake-video-capture=${cameraFile}`],
     })
     async function withPage(run, options = {}, path = '/signature') {
       const context = await browser.newContext({ locale: 'ru-RU', viewport: { width: 1366, height: 900 }, ...options })
@@ -141,7 +164,11 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
       })
       page.on('request', request => requests.push({ url: request.url(), method: request.method() }))
       await page.addInitScript(() => {
-        window.signatureQA = { violations: [], tasks: [], workers: 0, exports: 0, urls: new Set() }
+        window.signatureQA = { violations: [], tasks: [], workers: 0, exports: 0, urls: new Set(), media: [] }
+        if (navigator.mediaDevices) {
+          const getMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
+          navigator.mediaDevices.getUserMedia = constraints => { signatureQA.media.push(constraints); return getMedia(constraints) }
+        }
         document.addEventListener('securitypolicyviolation', event => signatureQA.violations.push(event.violatedDirective))
         new PerformanceObserver(list => signatureQA.tasks.push(...list.getEntries().map(task => task.duration)))
           .observe({ type: 'longtask', buffered: true })
@@ -266,7 +293,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
       })
     })
 
-    await suite.test('eGov mode fills the white JPEG with the signature and preserves PNG', async () => {
+    await suite.test('eGov mode frames black ink with margins in white JPEG and preserves PNG', async () => {
       const { defaultBrowserType, ...mobile } = devices['iPhone 13']
       await withPage(async page => {
         await upload(page, png('blue', 360, 260))
@@ -279,7 +306,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         assert.equal(await source.getAttribute('href'), 'https://zan.gov.kz/client/#!/doc/140840/rus/158')
         assert.equal(await source.getAttribute('target'), '_blank')
         assert.equal(await source.getAttribute('rel'), 'noopener noreferrer')
-        assert.ok(await main(page).getByText(ru.egovSmall, { exact: true }).isVisible())
+        assert.ok(await main(page).getByText(ru.lowResolution, { exact: true }).first().isVisible())
         assert.equal(await main(page).getByLabel(ru.width, { exact: true }).count(), 0)
         const [saved] = await Promise.all([page.waitForEvent('download'), link.click()])
         assert.equal(saved.suggestedFilename(), 'signature-egov.jpg')
@@ -289,16 +316,175 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         assert.ok(jpeg.width >= 550)
         assert.ok(jpeg.height >= 124)
         assert.ok(jpeg.corners.every(pixel => pixel.every(channel => channel >= 253)))
-        assert.ok(jpeg.inkWidth / jpeg.width > 0.85 && jpeg.inkHeight / jpeg.height > 0.55, JSON.stringify(jpeg))
+        assert.equal(jpeg.width / jpeg.height, 550 / 124)
+        assert.equal(jpeg.coloredInk, 0)
+        assert.ok(jpeg.inkWidth / jpeg.width > .25 && jpeg.inkHeight / jpeg.height > .4, JSON.stringify(jpeg))
+        assert.ok(jpeg.top / jpeg.height >= .18 && (jpeg.height - jpeg.bottom - 1) / jpeg.height >= .18, JSON.stringify(jpeg))
+        await main(page).getByRole('heading', { name: ru.rulesTitle, exact: true }).waitFor()
+        await main(page).getByRole('heading', { name: ru.checksTitle, exact: true }).waitFor()
+        const adilet = main(page).getByRole('link', { name: ru.adiletSource, exact: true })
+        assert.equal(await adilet.getAttribute('href'), 'https://old.adilet.zan.kz/rus/docs/V2000020192')
+        assert.equal(await adilet.getAttribute('rel'), 'noopener noreferrer')
         assert.ok(await page.evaluate(() => innerWidth === 390 && document.documentElement.scrollWidth <= innerWidth))
         await accessibility(page)
         await page.getByRole('button', { name: 'KZ', exact: true }).click()
         await main(page).getByRole('link', { name: kz.downloadEgov, exact: true }).waitFor()
-        assert.ok(await main(page).getByText(kz.egovSmall, { exact: true }).isVisible())
+        assert.ok(await main(page).getByText(kz.lowResolution, { exact: true }).first().isVisible())
+        await main(page).getByRole('heading', { name: kz.rulesTitle, exact: true }).waitFor()
         await accessibility(page)
         await main(page).getByLabel(kz.outputFormat).selectOption('png')
         assert.deepEqual(await download(page), original)
       }, mobile)
+    })
+
+    await suite.test('rules and local A4 PDF download work in both languages before upload', async () => {
+      await withPage(async page => {
+        await mkdir('test-results', { recursive: true })
+        for (const [lang, copy] of [['ru', ru], ['kz', kz]]) {
+          if (lang === 'kz') await page.getByRole('button', { name: 'KZ', exact: true }).click()
+          await main(page).getByRole('heading', { name: copy.rulesTitle, exact: true }).waitFor()
+          for (const [title, description] of copy.rules) {
+            await main(page).getByRole('heading', { name: title, exact: true }).waitFor()
+            await main(page).getByText(description, { exact: true }).waitFor()
+          }
+          assert.match(await main(page).getByText(copy.revisionNote, { exact: true }).innerText(), /30\.06\.2026 № 456/)
+          for (const name of [copy.officialSource, copy.adiletSource]) {
+            const source = main(page).getByRole('link', { name, exact: true })
+            assert.equal(await source.getAttribute('target'), '_blank')
+            assert.equal(await source.getAttribute('rel'), 'noopener noreferrer')
+          }
+          const [pdf] = await Promise.all([page.waitForEvent('download'), button(page, copy.templateDownload).click()])
+          assert.equal(pdf.suggestedFilename(), 'signature-template-a4.pdf')
+          const bytes = await readFile(await pdf.path())
+          assert.equal(bytes.subarray(0, 8).toString(), '%PDF-1.4')
+          assert.match(bytes.toString('latin1'), /\/MediaBox \[0 0 595\.2755905511812 841\.8897637795277\]/)
+          assert.ok(bytes.length > 50000)
+          await copyFile(await pdf.path(), `test-results/signature-template-${lang}.pdf`)
+          await accessibility(page)
+        }
+      })
+    })
+
+    await suite.test('contour toggle, buttons, range, wheel, pan, fit and centre change the exported frame', async () => {
+      await withPage(async page => {
+        await upload(page)
+        const guide = main(page).locator('[data-signature-guide]')
+        const ratio = await guide.locator('[data-signature-frame]').evaluate(el => el.width.baseVal.value / el.height.baseVal.value)
+        assert.ok(Math.abs(ratio - 550 / 124) < 1e-6)
+        assert.equal(await guide.locator('[data-signature-safe]').count(), 1)
+        await button(page, ru.contour).click()
+        assert.equal(await guide.count(), 0)
+        await button(page, ru.contour).click()
+        await guide.waitFor()
+        await button(page, ru.finish).click()
+        const pngBefore = await download(page)
+        await main(page).getByLabel(ru.outputFormat).selectOption('egov')
+        const baseline = await downloadEgov(page)
+        const slider = main(page).getByRole('slider', { name: ru.zoom, exact: true })
+        const initial = Number(await slider.inputValue())
+        const image = main(page).getByRole('img', { name: ru.framingImage, exact: true })
+        const initialPreview = await image.evaluate(el => el.toDataURL())
+        await button(page, ru.zoomIn).click()
+        assert.equal(Number(await slider.inputValue()), initial + 10)
+        assert.notEqual(await image.evaluate(el => el.toDataURL()), initialPreview)
+        assert.notDeepEqual(await downloadEgov(page), baseline)
+        await button(page, ru.zoomOut).click()
+        assert.equal(Number(await slider.inputValue()), initial)
+        await slider.press('End')
+        assert.equal(await slider.inputValue(), '400')
+        assert.notDeepEqual(await downloadEgov(page), baseline)
+        await slider.press('Home')
+        assert.equal(await slider.inputValue(), '25')
+        assert.notDeepEqual(await downloadEgov(page), baseline)
+        await button(page, ru.centerSignature).click()
+        assert.deepEqual(await downloadEgov(page), baseline)
+        const pan = button(page, ru.panImage)
+        await pan.scrollIntoViewIfNeeded()
+        await pan.hover()
+        await page.mouse.wheel(0, -160)
+        await page.waitForFunction(({ name, initial }) => Number(document.querySelector(`input[aria-label="${name}"]`).value) > initial, { name: ru.zoom, initial })
+        const wheel = await downloadEgov(page)
+        assert.notDeepEqual(wheel, baseline)
+        await pan.scrollIntoViewIfNeeded()
+        const box = await pan.boundingBox()
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+        await page.mouse.down(); await page.mouse.move(box.x + box.width / 2 + 20, box.y + box.height / 2 + 5, { steps: 4 }); await page.mouse.up()
+        assert.notDeepEqual(await downloadEgov(page), wheel)
+        await button(page, ru.fitFrame).click()
+        assert.equal(await slider.inputValue(), '100')
+        assert.notDeepEqual(await downloadEgov(page), baseline)
+        await button(page, ru.centerSignature).click()
+        assert.deepEqual(await downloadEgov(page), baseline)
+        assert.equal(await main(page).locator('[data-check="format"]').getAttribute('data-status'), 'pass')
+        await accessibility(page)
+        await page.screenshot({ path: 'test-results/signature-egov-desktop.png', fullPage: true })
+        await main(page).getByLabel(ru.outputFormat).selectOption('png')
+        assert.deepEqual(await download(page), pngBefore)
+      })
+    })
+
+    await suite.test('mobile pinch and pan update JPEG; 390 px layout and KZ remain accessible', async () => {
+      const { defaultBrowserType, ...mobile } = devices['iPhone 13']
+      await withPage(async page => {
+        await upload(page)
+        assert.equal(await button(page, ru.contour).getAttribute('aria-pressed'), 'true')
+        await button(page, ru.finish).click()
+        await main(page).getByLabel(ru.outputFormat).selectOption('egov')
+        const before = await downloadEgov(page)
+        const pan = button(page, ru.panImage)
+        await pan.scrollIntoViewIfNeeded()
+        let rect = await pan.boundingBox(), x = rect.x + rect.width / 2, y = rect.y + rect.height / 2
+        const slider = main(page).getByRole('slider', { name: ru.zoom, exact: true })
+        const initial = Number(await slider.inputValue())
+        const cdp = await page.context().newCDPSession(page)
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 1, x: x - 35, y }, { id: 2, x: x + 35, y }] })
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 1, x: x - 55, y }, { id: 2, x: x + 55, y }] })
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+        assert.ok(Number(await slider.inputValue()) > initial)
+        const pinched = await downloadEgov(page)
+        assert.notDeepEqual(pinched, before)
+        await pan.scrollIntoViewIfNeeded()
+        rect = await pan.boundingBox(); x = rect.x + rect.width / 2; y = rect.y + rect.height / 2
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ id: 1, x, y }] })
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ id: 1, x: x + 12, y: y + 4 }] })
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+        assert.notDeepEqual(await downloadEgov(page), pinched)
+        await button(page, ru.centerSignature).click()
+        assert.deepEqual(await downloadEgov(page), before)
+        await accessibility(page)
+        await page.getByRole('button', { name: 'KZ', exact: true }).click()
+        await main(page).getByRole('heading', { name: kz.rulesTitle, exact: true }).waitFor()
+        assert.ok(await page.evaluate(() => innerWidth === 390 && document.documentElement.scrollWidth <= innerWidth))
+        await accessibility(page)
+        await page.screenshot({ path: 'test-results/signature-egov-mobile-kz.png', fullPage: true })
+      }, mobile)
+    })
+
+    await suite.test('two edge lines offer a crop; three or four are automatically cropped out of the eGov file', async () => {
+      for (const edges of [2, 3, 4]) {
+      await withPage(async page => {
+        const image = synthSignature('clean', 550, 124)
+        for (let y = 0; y < 124; y++) for (let x = 0; x < 550; x++) {
+          if (y > 1 && y < 122 && !(edges >= 3 && x < 2) && !(edges === 4 && x > 547)) continue
+          image.data.set([0, 0, 0, 255], (y * 550 + x) * 4)
+        }
+        await upload(page, { name: 'framed.png', mimeType: 'image/png', buffer: fixturePng(image) })
+        await button(page, ru.fitFrame).click()
+        await button(page, ru.finish).click()
+        await main(page).getByLabel(ru.outputFormat).selectOption('egov')
+        let bytes = await downloadEgov(page)
+        if (edges === 2) {
+          assert.equal(await main(page).locator('[data-check="frame"]').getAttribute('data-status'), 'warn')
+          await button(page, ru.cropFrame).click()
+          bytes = await downloadEgov(page)
+        }
+        const jpeg = await inspectImage(page, bytes, 'image/jpeg')
+        await main(page).getByText(ru.frameRemoved, { exact: true }).waitFor()
+        assert.equal(await main(page).locator('[data-check="frame"]').getAttribute('data-status'), 'pass')
+        assert.ok(jpeg.corners.every(pixel => pixel.every(channel => channel >= 253)))
+        assert.ok(jpeg.inkWidth > 0)
+      })
+      }
     })
 
     await suite.test('result crop is reversible and custom dimensions reach both PNGs and eGov JPEG', async () => {
@@ -362,7 +548,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         const [saved] = await Promise.all([page.waitForEvent('download'), link.click()])
         const jpeg = await inspectImage(page, await readFile(await saved.path()), 'image/jpeg')
         assert.ok(jpeg.width >= 550 && jpeg.height >= 124)
-        assert.ok(Math.abs(jpeg.width / jpeg.height - croppedSize.width / croppedSize.height) < 0.03)
+        assert.equal(jpeg.width / jpeg.height, 550 / 124)
         await main(page).getByLabel(ru.outputFormat).selectOption('png')
         await main(page).getByLabel(ru.limit, { exact: true }).selectOption('0')
         await main(page).getByLabel(ru.width, { exact: true }).selectOption('0')
@@ -601,7 +787,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
     })
 
     for (const lang of ['ru', 'kz']) {
-      await suite.test(`signature camera has only a square after leaving the photo camera on mobile (${lang})`, async () => {
+      await suite.test(`signature camera has a 550:124 contour after leaving the photo camera on mobile (${lang})`, async () => {
         const { defaultBrowserType, ...mobile } = devices['iPhone 13']
         await withPage(async (page, { context }) => {
           await context.grantPermissions(['camera'], { origin })
@@ -626,7 +812,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
       })
     }
 
-    await suite.test('signature camera uses a square, captures into crop, and processes large uploads', async () => {
+    await suite.test('signature camera uses a 550:124 contour, captures into crop, and processes large uploads', async () => {
       await withPage(async (page, { context }) => {
         await context.grantPermissions(['camera'], { origin })
         await button(page, ru.camera).click()

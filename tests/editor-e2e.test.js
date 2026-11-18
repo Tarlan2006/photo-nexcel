@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
-import { mkdtemp, open, readFile, rmdir, unlink } from 'node:fs/promises'
+import { mkdir, mkdtemp, open, readFile, rmdir, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -11,7 +11,7 @@ import { preview } from 'vite'
 import { photoCopy } from '../src/content/photo-copy.js'
 import { requirements } from '../src/content/requirements.js'
 import { translations } from '../src/i18n.js'
-import { fixturePng, synthSignature } from './helpers/synthSignature.js'
+import { fixturePng, fixtureY4m, synthSignature } from './helpers/synthSignature.js'
 
 const ru = translations.ru
 const copy = photoCopy.ru
@@ -157,9 +157,13 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
     .match(/^  Content-Security-Policy: (.+)$/m)[1].trim()
   let browser
   try {
+    await mkdir(new URL('../test-results/', import.meta.url), { recursive: true })
+    const cameraFile = fileURLToPath(new URL('../test-results/photo-camera.y4m', import.meta.url))
+    await writeFile(cameraFile, fixtureY4m(synthSignature('clean', 640, 480)))
     browser = await chromium.launch({
       executablePath: chromePath,
-      args: ['--enable-unsafe-swiftshader', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'],
+      args: ['--enable-unsafe-swiftshader', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream',
+        `--use-file-for-fake-video-capture=${cameraFile}`],
     })
     async function withPage(run, options = {}) {
       const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'ru-RU', ...options })

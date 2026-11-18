@@ -1,15 +1,8 @@
 import { photoHeadLayout } from '../lib/crop'
+import SignatureContour from './signature/SignatureContour'
 
-export function SignatureCameraGuide({ size: { width, height } }) {
-  const side = Math.min(width, height) * 0.76
-  return (
-    <svg aria-hidden="true" data-camera-guide="signature" viewBox={`0 0 ${width} ${height}`}
-      className="pointer-events-none absolute inset-0 h-full w-full drop-shadow-[0_1px_2px_#000]"
-      fill="none" stroke="white" strokeWidth="2">
-      <rect data-camera-frame="" x={(width - side) / 2} y={(height - side) / 2}
-        width={side} height={side} rx={side * 0.025} vectorEffect="non-scaling-stroke" />
-    </svg>
-  )
+export function SignatureCameraGuide({ size }) {
+  return <SignatureContour size={size} percent={80} camera />
 }
 
 export default function CameraGuide({ size, preset, mode }) {

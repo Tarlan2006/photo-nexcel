@@ -1,13 +1,15 @@
 import { applyBrushStrokes } from './editor/brush.js'
 import { scaledSize } from './editor/pixels.js'
-import { prepareSignature, renderSignature, signatureBounds, signatureMask } from './signature.js'
+import { fullPaper, prepareSignature, renderSignature, signatureBounds, signatureMask } from './signature.js'
 import { exportSignature } from './signature-png.js'
-import { exportEgovSignature } from './signature-jpeg.js'
+import { exportFramedEgovSignature } from './signature-jpeg.js'
 import { cropSignatureImage } from './signature-crop.js'
+import { checkSignature } from './signature-checks.js'
 
 let photo
 let cache
 let finalImage
+let framedImage
 
 function getPixels(bitmap, left, top, width, height, limit) {
   const size = scaledSize(width, height, limit)
@@ -32,13 +34,14 @@ async function load(file, mimeType) {
     photo = await createImageBitmap(full)
     cache = null
     finalImage = null
+    framedImage = null
     return getPixels(photo, 0, 0, photo.width, photo.height, 800)
   } finally {
     bitmap.close()
   }
 }
 
-async function extract({ crop, options, strokes }, preview) {
+async function extract({ crop, options, strokes }, preview, preservePaper = false) {
   const key = JSON.stringify([crop, preview])
   const x = Math.floor(photo.width * crop.left)
   const y = Math.floor(photo.height * crop.top)
@@ -64,10 +67,12 @@ async function extract({ crop, options, strokes }, preview) {
     }))
     await applyBrushStrokes(brush, source.width, source.height, localStrokes, (rows, run) => run(0, rows))
   }
-  const bounds = signatureBounds(mask.alpha, source.width, source.height, preview ? null : brush)
-  const result = renderSignature(source, mask, bounds, options.color, brush)
+  const found = signatureBounds(mask.alpha, source.width, source.height, preview ? null : brush)
+  const bounds = preservePaper ? { x: 0, y: 0, width: source.width, height: source.height } : found
+  const result = renderSignature(source, mask, bounds, preservePaper ? 'black' : options.color, brush)
   return {
     ...result,
+    ...(preservePaper ? { raw: { data: source.data, width: source.width, height: source.height } } : {}),
     region: {
       left: left + bounds.x / source.width * widthInPaper,
       top: top + bounds.y / source.height * heightInPaper,
@@ -84,9 +89,14 @@ self.onmessage = async ({ data: { id, action, ...payload } }) => {
     let result
     if (action === 'load') {
       const { data, width, height } = await load(payload.file, payload.mimeType)
-      result = { data, width, height }
+      result = { data, width, height, sourceWidth: photo.width, sourceHeight: photo.height }
     } else if (action === 'preview') {
       result = await extract(payload, true)
+    } else if (action === 'export' && payload.output.format === 'egov') {
+      const key = JSON.stringify([payload.options, payload.strokes])
+      if (framedImage?.key !== key) framedImage = { key, image: await extract({ ...payload, crop: fullPaper }, false, true) }
+      const image = framedImage.image
+      result = await exportFramedEgovSignature(image, image.raw, payload.output.frame, payload.output.removeFrame)
     } else {
       const key = JSON.stringify([payload.crop, payload.options, payload.strokes])
       if (finalImage?.key !== key) finalImage = { key, image: await extract(payload, false) }
@@ -96,9 +106,15 @@ self.onmessage = async ({ data: { id, action, ...payload } }) => {
         result = { data: data.slice(), width, height }
       } else {
         const image = payload.output.crop ? cropSignatureImage(finalImage.image, payload.output.crop) : finalImage.image
-        result = payload.output.format === 'egov'
-          ? await exportEgovSignature(image)
-          : await exportSignature(image, payload.output)
+        result = await exportSignature(image, payload.output)
+        const bitmap = await createImageBitmap(result.transparent)
+        try {
+          const checkCanvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+          const context = checkCanvas.getContext('2d', { willReadFrequently: true })
+          context.drawImage(bitmap, 0, 0)
+          result.checks = checkSignature(context.getImageData(0, 0, bitmap.width, bitmap.height), { format: 'image/png' })
+          checkCanvas.width = checkCanvas.height = 1
+        } finally { bitmap.close() }
       }
     }
     self.postMessage({ id, result }, result.data ? [result.data.buffer] : [])

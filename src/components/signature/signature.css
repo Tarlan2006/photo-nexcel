@@ -194,6 +194,26 @@
 }
 .signature-output-crop { margin-top: 1rem; }
 
+.signature-framing, .signature-rules { margin-block: 1rem; }
+.signature-frame-stage { position: relative; overflow: hidden; border: 1px solid #b5c2ba; border-radius: .5rem; }
+.signature-frame-stage canvas { display: block; width: 100%; height: auto; }
+.signature-pan { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; background: transparent; }
+.signature-pan:active { cursor: grabbing; }
+.signature-pan:focus-visible { outline: 3px solid #1b6b44; outline-offset: -4px; }
+.signature-zoom { display: flex; align-items: center; gap: .75rem; }
+.signature-zoom > button { flex-shrink: 0; min-width: 44px; }
+.signature-rule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: .75rem; margin-top: 1rem; }
+.signature-rule { padding: .9rem; border: 1px solid var(--color-grid-border); border-radius: .6rem; background: #fbfcfb; }
+.signature-rule h3 { font-size: .875rem; font-weight: 750; margin-bottom: .35rem; }
+.signature-rule p { color: var(--color-text-muted); font-size: .875rem; line-height: 1.55; }
+.signature-sources { display: grid; gap: .5rem; margin-top: 1rem; }
+.signature-sources a { color: var(--color-emerald-accent); font-weight: 650; text-decoration: underline; overflow-wrap: anywhere; }
+.signature-checks { border-top: 1px solid var(--color-grid-border); padding-top: 1rem; }
+.signature-check-list { display: grid; gap: .65rem; margin-block: 1rem; }
+.signature-check-list li { border-left: 3px solid #1b6b44; padding: .5rem .75rem; background: #f4f8f5; border-radius: .25rem; font-size: .875rem; }
+.signature-check-list [data-status="warn"] { border-color: #99600a; background: #fff9ef; }
+.signature-check-list [data-status="fail"] { border-color: #b53627; background: #fff3ef; }
+
 @media (min-width: 52rem) {
   .signature-upload { grid-template-columns: 1.13fr 1fr; }
   .signature-grid { grid-template-columns: 1fr 1fr; }

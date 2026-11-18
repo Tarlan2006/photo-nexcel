@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import CameraCapture from '../CameraCapture'
 import Footer from '../Footer'
-import SourceLink from '../SourceLink'
 import { useLang } from '../../contexts/LangContext'
-import { requirements } from '../../content/requirements'
 import { identifyPhoto, photoFileError, photoMimeTypes } from '../../lib/photo'
 import { fullPaper, signatureDefaults } from '../../lib/signature'
 import { signatureOutputBounds } from '../../lib/signature-crop'
+import { centerSignatureFrame } from '../../lib/signature-frame'
 import { egovSignature } from '../../presets'
 import { signatureCopy } from './copy'
 import { BrushCanvas, PaperCrop, SignatureCanvas } from './SignatureImages'
+import SignatureFraming from './SignatureFraming'
+import SignatureRules, { SignatureChecks } from './SignatureRules'
 import './signature.css'
 
 const defaultDraft = { crop: fullPaper, square: false, options: signatureDefaults, strokes: [] }
@@ -104,7 +105,7 @@ function Upload({ copy, busy, onFile }) {
         <p className="mt-4 border-t border-grid-border pt-4 text-sm leading-relaxed text-text-main">{copy.legal}</p>
       </section>
       {camera && (
-        <CameraCapture mode="signature" onClose={closeCamera}
+        <CameraCapture mode="signature" signatureGuideCopy={copy} onClose={closeCamera}
           onCapture={file => { setCamera(false); onFile(file) }}
           onSelectFile={() => { closeCamera(); input.current.click() }} />
       )}
@@ -112,7 +113,7 @@ function Upload({ copy, busy, onFile }) {
   )
 }
 
-function Edit({ copy, photo, draft, setDraft, preview, busy, finish, restart }) {
+function Edit({ copy, photo, draft, setDraft, preview, busy, finish, restart, frame, setFrame }) {
   const [background, setBackground] = useState('checker')
   const [before, setBefore] = useState(false)
   const [brush, setBrush] = useState(null)
@@ -123,10 +124,12 @@ function Edit({ copy, photo, draft, setDraft, preview, busy, finish, restart }) 
     setBrush(null)
     setBackground('checker')
     setDraft(defaultDraft)
+    setFrame(null)
   }
 
   return (
     <>
+      <SignatureFraming photo={photo} region={preview?.region} frame={frame} onChange={setFrame} copy={copy} />
       <div className="signature-grid">
         <PaperCrop photo={photo} crop={draft.crop} square={draft.square} copy={copy}
           onCrop={(crop, square) => setDraft(current => current.crop === crop && current.square === square
@@ -253,8 +256,8 @@ function EgovDownload({ copy, result }) {
           style={{ '--signature-aspect': result.width / result.height }} />}
       </div>
       <p className="signature-help mt-2">{copy.size.replace('{width}', result.width).replace('{height}', result.height)}</p>
-      {result.tooSmall && <p role="status" className="signature-alert">{copy.egovSmall}</p>}
-      {href && (
+      {result.tooSmall && <p role="status" className="signature-alert">{copy.lowResolution}</p>}
+      {href && result.checks?.content !== 'fail' && (
         <div className="signature-downloads">
           <a className="signature-button signature-primary" download="signature-egov.jpg" href={href}>{copy.downloadEgov}</a>
         </div>
@@ -292,6 +295,8 @@ export default function SignaturePage() {
   const [draft, setDraft] = useState(defaultDraft)
   const [load, setLoad] = useState({ busy: false, error: null })
   const [preview, setPreview] = useState(null)
+  const [framing, setFraming] = useState(null)
+  const [removeFrame, setRemoveFrame] = useState(false)
   const [finished, setFinished] = useState(null)
   const [exportImage, setExportImage] = useState(null)
   const [outputCrop, setOutputCrop] = useState(fullPaper)
@@ -303,6 +308,7 @@ export default function SignaturePage() {
   const [custom, setCustom] = useState('50')
   const maxKb = Number(limit === 'custom' ? custom : limit)
   const egov = format === 'egov'
+  const frame = useMemo(() => framing ?? (photo ? centerSignatureFrame(photo, preview?.result?.region) : null), [framing, photo, preview?.result])
   const cropSize = exportImage && signatureOutputBounds(exportImage, outputCrop)
   const customHeight = cropSize && customWidth !== '' ? Math.max(1, Math.round(Number(customWidth) * cropSize.height / cropSize.width)) : ''
   const exactSize = fixedWidth === 'custom'
@@ -310,8 +316,9 @@ export default function SignaturePage() {
   const invalidSize = !egov && exactSize && (!Number.isInteger(width) || width < 1 || width > 4096 || customHeight > 4096)
   const invalidLimit = !egov && limit === 'custom' && (!Number.isInteger(maxKb) || maxKb < 1 || maxKb > 50000)
   const invalidOutput = invalidLimit || invalidSize
-  const output = useMemo(() => egov ? { format, crop: outputCrop } : { format, crop: outputCrop, width, maxKb, exactSize },
-    [egov, format, outputCrop, width, maxKb, exactSize])
+  const egovOutput = useMemo(() => ({ format: 'egov', frame, removeFrame }), [frame, removeFrame])
+  const pngOutput = useMemo(() => ({ format: 'png', crop: outputCrop, width, maxKb, exactSize }), [outputCrop, width, maxKb, exactSize])
+  const output = egov ? egovOutput : pngOutput
   const hasCurrentExport = finished?.draft === draft && finished?.output === output && Boolean(finished.result)
 
   useEffect(() => () => {
@@ -366,6 +373,8 @@ export default function SignaturePage() {
     setPhoto(null)
     setDraft(defaultDraft)
     setPreview(null)
+    setFraming(null)
+    setRemoveFrame(false)
     setFinished(null)
     exportSource.current = null
     setExportImage(null)
@@ -444,7 +453,7 @@ export default function SignaturePage() {
         {step === 1 && <Upload copy={copy} busy={load.busy} onFile={handleFile} />}
         {step === 2 && (
           <Edit copy={copy} photo={photo} draft={draft} setDraft={setDraft} preview={preview?.result}
-            busy={previewing} finish={finish} restart={restart} />
+            busy={previewing} finish={finish} restart={restart} frame={frame} setFrame={setFraming} />
         )}
         {step === 3 && (
           <>
@@ -512,12 +521,11 @@ export default function SignaturePage() {
                   <p className="signature-help">
                     {copy.egovDetails.replace('{width}', egovSignature.width).replace('{height}', egovSignature.height)}
                   </p>
-                  <p className="signature-help">{copy.source}{' '}<SourceLink source={requirements.kz_id.sources[0]} lang={lang} /></p>
                 </div>
               )}
               {invalidLimit && <p id="signature-invalid-limit" className="signature-alert">{copy.invalidLimit}</p>}
               {invalidSize && <p role="alert" className="signature-alert">{copy.invalidSize}</p>}
-              <div className="signature-actions mt-3">
+              {!egov && <div className="signature-actions mt-3">
                 <button ref={cropButton} type="button" className="signature-button" disabled={!exportImage}
                   aria-expanded={cropping} aria-controls="signature-result-crop" onClick={() => setCropping(!cropping)}>
                   {copy.cropResult}
@@ -525,17 +533,21 @@ export default function SignaturePage() {
                 {outputCrop !== fullPaper && !cropping && (
                   <button type="button" className="signature-button" onClick={() => setOutputCrop(fullPaper)}>{copy.resetOutputCrop}</button>
                 )}
-              </div>
+              </div>}
               <div id="signature-result-crop">
-                {cropping && exportImage && (
+                {!egov && cropping && exportImage && (
                   <ResultCrop copy={copy} image={exportImage} crop={outputCrop} onCancel={closeCrop}
                     onApply={crop => { setOutputCrop(crop); closeCrop() }} />
                 )}
               </div>
-              {!cropping && !exporting && !invalidOutput && finished?.result && (
-                egov
-                  ? <EgovDownload copy={copy} result={finished.result} />
-                  : <Downloads copy={copy} result={finished.result} maxKb={maxKb} locale={lang === 'kz' ? 'kk-KZ' : 'ru-RU'} />
+              {egov && <SignatureFraming photo={photo} region={preview?.result?.region} frame={frame} onChange={setFraming} copy={copy} />}
+              {(egov || !cropping) && !exporting && !invalidOutput && finished?.result && (
+                <>
+                  {egov
+                    ? <EgovDownload copy={copy} result={finished.result} />
+                    : <Downloads copy={copy} result={finished.result} maxKb={maxKb} locale={lang === 'kz' ? 'kk-KZ' : 'ru-RU'} />}
+                  <SignatureChecks copy={copy} result={finished.result} onCropFrame={egov ? () => setRemoveFrame(true) : undefined} />
+                </>
               )}
             </section>
             <div className="signature-actions signature-controls">
@@ -544,6 +556,7 @@ export default function SignaturePage() {
             </div>
           </>
         )}
+        {(step === 1 || step === 3) && <SignatureRules copy={copy} />}
       </main>
       <Footer />
     </div>

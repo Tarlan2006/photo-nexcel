@@ -3,7 +3,7 @@ import { useLang } from '../contexts/LangContext'
 import { presets } from '../presets'
 import CameraGuide, { SignatureCameraGuide } from './CameraGuide'
 
-export default function CameraCapture({ onClose, onCapture, onSelectFile, mode }) {
+export default function CameraCapture({ onClose, onCapture, onSelectFile, mode, signatureGuideCopy }) {
   const { t } = useLang()
   const signature = mode === 'signature'
   const facingMode = signature ? 'environment' : 'user'
@@ -17,7 +17,8 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, mode }
   const [errorType, setErrorType] = useState(null)
   const [camera, setCamera] = useState(null)
   const [nextCamera, setNextCamera] = useState(null)
-  const [mirrored, setMirrored] = useState(true)
+  const [mirrored, setMirrored] = useState(!signature)
+  const [showContour, setShowContour] = useState(true)
   const [countdown, setCountdown] = useState(null)
   const [encoding, setEncoding] = useState(false)
   const [videoSize, setVideoSize] = useState(null)
@@ -265,7 +266,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, mode }
 
         {videoReady && (
           <p className="px-4 py-2 text-center text-xs font-medium leading-relaxed text-text-muted">
-            {signature ? t.cameraSignatureGuide : t.cameraGuideFace}
+            {signature ? signatureGuideCopy.captureTips[0] : t.cameraGuideFace}
           </p>
         )}
         {/* Video / Camera Viewport */}
@@ -281,7 +282,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, mode }
               const video = event.currentTarget
               setVideoSize({ width: video.videoWidth, height: video.videoHeight })
             }}
-            className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-300 ${mirrored ? '-scale-x-100' : ''} ${
+            className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-300 ${!signature && mirrored ? '-scale-x-100' : ''} ${
               isLoading || errorType ? 'opacity-0' : 'opacity-100'
             }`}
           />
@@ -364,7 +365,7 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, mode }
           )}
 
           {videoReady && (signature
-            ? <SignatureCameraGuide size={videoSize} />
+            ? showContour && <SignatureCameraGuide size={videoSize} />
             : <CameraGuide size={videoSize} preset={presets[mode]} mode={mode} />)}
 
           {/* Countdown display over video */}
@@ -376,6 +377,17 @@ export default function CameraCapture({ onClose, onCapture, onSelectFile, mode }
             </div>
           )}
         </div>
+
+        {signature && videoReady && (
+          <div className="px-4 py-3 space-y-2">
+            <button type="button" className="signature-button" aria-pressed={showContour}
+              onClick={() => setShowContour(!showContour)}>{signatureGuideCopy.contour}</button>
+            <p className="signature-help">{signatureGuideCopy.contourWidth.replace('{percent}', '80')}</p>
+            <p className="signature-help">{signatureGuideCopy.captureTips[1]}</p>
+            <p className="signature-help">{signatureGuideCopy.captureTips[2]}</p>
+            <p className="signature-help">{signatureGuideCopy.safeZone}</p>
+          </div>
+        )}
 
         {/* Controls Footer */}
         {!errorType && (

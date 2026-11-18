@@ -165,3 +165,26 @@ export function fixturePng({ data, width, height }) {
     pngChunk('IHDR', header), pngChunk('IDAT', deflateSync(scanlines, { level: 3 })), pngChunk('IEND', Buffer.alloc(0)),
   ])
 }
+
+// A reproducible local camera source for Chromium. A single I420 frame loops
+// through --use-file-for-fake-video-capture, without a physical camera or GPU.
+export function fixtureY4m({ data, width, height }) {
+  if (width % 2 || height % 2) throw new Error('Y4M needs even dimensions')
+  const size = width * height
+  const yuv = Buffer.alloc(size * 3 / 2)
+  const value = number => Math.max(0, Math.min(255, Math.round(number)))
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const p = (y * width + x) * 4
+    yuv[y * width + x] = value(16 + .257 * data[p] + .504 * data[p + 1] + .098 * data[p + 2])
+    if (x % 2 || y % 2) continue
+    let r = 0, g = 0, b = 0
+    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+      const sample = ((y + dy) * width + x + dx) * 4
+      r += data[sample] / 4; g += data[sample + 1] / 4; b += data[sample + 2] / 4
+    }
+    const chroma = y / 2 * width / 2 + x / 2
+    yuv[size + chroma] = value(128 - .148 * r - .291 * g + .439 * b)
+    yuv[size * 5 / 4 + chroma] = value(128 + .439 * r - .368 * g - .071 * b)
+  }
+  return Buffer.concat([Buffer.from(`YUV4MPEG2 W${width} H${height} F30:1 Ip A1:1 C420jpeg\nFRAME\n`), yuv])
+}
