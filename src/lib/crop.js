@@ -124,6 +124,11 @@ export function cropFace(source, landmarks, preset, adjustments = {}, background
   // 5. Check if canvas corners lie inside original image
   const cosA = Math.cos(angle)
   const sinA = Math.sin(angle)
+  // Source-pixel to output-pixel affine transform, exposed for independent
+  // calibration measurements. It does not change the drawing or head estimate.
+  const transform = [s * cosA, -s * sinA, s * sinA, s * cosA,
+    canvasEyeMidX - s * (cosA * cx + sinA * cy),
+    canvasEyeMidY - s * (-sinA * cx + cosA * cy)]
 
   function canvasToImage(xc, yc) {
     const dx = (xc - canvasEyeMidX) / s
@@ -151,6 +156,7 @@ export function cropFace(source, landmarks, preset, adjustments = {}, background
     return {
       success: false,
       error: 'OUT_OF_BOUNDS',
+      transform,
       headPct,
       chinY: chinCanvasY,
       chinPct,
@@ -177,6 +183,7 @@ export function cropFace(source, landmarks, preset, adjustments = {}, background
 
   return {
     success: true,
+    transform,
     canvas: drawAligned(source),
     backgroundMatte: backgroundMatte ? drawAligned(backgroundMatte) : null,
     width: targetW,

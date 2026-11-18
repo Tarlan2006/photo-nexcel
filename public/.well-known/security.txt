@@ -1,3 +1,4 @@
 Contact: mailto:info@nexcel.kz
 Expires: 2027-11-01T00:00:00Z
 Preferred-Languages: ru, kk
+Canonical: https://photo.nexcel.kz/.well-known/security.txt

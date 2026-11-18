@@ -280,7 +280,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         assert.ok(await ruleCount() >= 16)
         assert.equal(await disclosure.count(), 0)
         assert.equal(await panel.getByRole('link').count(), 1)
-        assert.ok(await panel.getByText(copy.checkSource, { exact: true }).isVisible())
+        assert.ok(await panel.getByText(requirements.dv.edition.ru, { exact: true }).isVisible())
         await assertSource(panel, dvPrimary, 'ru')
         await page.getByRole('button', { name: 'KZ', exact: true }).click()
         await panel.getByText(/Дәл 600 × 600/).waitFor()

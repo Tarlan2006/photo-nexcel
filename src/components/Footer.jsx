@@ -1,6 +1,7 @@
 import { useLang } from '../contexts/LangContext'
 import { email, mapUrl, phone, servicePages, siteLinks, socials, whatsAppUrl } from '../siteLinks'
 import SiteIcon from './SiteIcon'
+import { releaseCopy } from '../content/release-copy'
 
 const companyPages = ['about', 'news', 'templates', 'partners', 'faq']
 const footerLink = 'inline-flex min-h-11 min-w-11 items-center rounded hover:text-emerald-400 lg:min-h-7 lg:min-w-0'
@@ -20,7 +21,8 @@ function FooterLinks({ heading, pages, labels }) {
 }
 
 export default function Footer() {
-  const { t: { site } } = useLang()
+  const { lang, t: { site } } = useLang()
+  const copy = releaseCopy[lang]
 
   return (
     <footer className="border-t border-slate-800 bg-dark-bg text-xs text-slate-400">
@@ -88,7 +90,12 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 border-t border-slate-800 pt-5 leading-relaxed">
+        <section className="mt-8 border-t border-slate-800 pt-5 leading-relaxed text-slate-300">
+          <h2 className={columnHeading}>{copy.privacyTitle}</h2>
+          <p>{copy.privacy}</p>
+          <p className="mt-2">{copy.unofficial}</p>
+        </section>
+        <div className="mt-5 border-t border-slate-800 pt-5 leading-relaxed">
           <p className="text-[13px]">
             ТОО «Nexcel Solutions» · БИН 260940035710 · {site.legalAddress} Казахстан, г. Астана, район Нұра, ул. Әбікен Бектұров, д. 19, кв. 15, 010000 · {site.director} Абенов Нурбол Муханулы
           </p>

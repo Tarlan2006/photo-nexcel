@@ -401,6 +401,10 @@ export default function SignaturePage() {
     try {
       const mimeType = await identifyPhoto(file)
       if (!current()) return
+      if (mimeType === 'image/heic') {
+        setLoad({ busy: false, error: 'errHeic' })
+        return
+      }
       if (!mimeType) {
         setLoad({ busy: false, error: file.type ? 'errRead' : 'errUnsupportedFormat' })
         return

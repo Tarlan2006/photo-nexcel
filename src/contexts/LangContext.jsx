@@ -1,11 +1,14 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { translations } from '../i18n'
+import { languageFromSearch, updateLanguageUrl } from '../lib/locale'
 
 const LangContext = createContext(null)
 
 const STORAGE_KEY = 'photo_nexcel_lang'
 
 function getInitialLang() {
+  const explicit = languageFromSearch(window.location.search, window.location.pathname)
+  if (explicit) return explicit
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved === 'ru' || saved === 'kz') {
@@ -36,6 +39,7 @@ export function LangProvider({ children }) {
   const setLang = (newLang) => {
     if (newLang !== 'ru' && newLang !== 'kz') return
     setLangState(newLang)
+    updateLanguageUrl(newLang)
     try {
       localStorage.setItem(STORAGE_KEY, newLang)
     } catch {
@@ -47,8 +51,19 @@ export function LangProvider({ children }) {
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.lang = lang === 'kz' ? 'kk' : 'ru'
+      updateLanguageUrl(lang)
     }
   }, [lang])
+
+  useEffect(() => {
+    const restore = () => {
+      const next = languageFromSearch(window.location.search, window.location.pathname) ?? 'ru'
+      setLangState(next)
+      try { localStorage.setItem(STORAGE_KEY, next) } catch { /* Storage can be disabled. */ }
+    }
+    window.addEventListener('popstate', restore)
+    return () => window.removeEventListener('popstate', restore)
+  }, [])
 
   return (
     <LangContext.Provider value={{ lang, setLang, t }}>

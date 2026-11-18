@@ -3,17 +3,13 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import Header from './components/Header'
 import { LangProvider, useLang } from './contexts/LangContext'
+import { releaseCopy } from './content/release-copy'
+import { localizedPath } from './lib/locale'
 
 const PhotoWizard = lazy(() => import('./App.jsx'))
 const SignaturePage = lazy(() => import('./components/signature/SignaturePage.jsx'))
 const paths = { photo: '/', signature: '/signature/' }
-const readTool = () => /^\/signature(?:\/|$)/.test(window.location.pathname) ? 'signature' : 'photo'
-const photoMetadata = {
-  title: 'Фото на удостоверение РК и Green Card | Nexcel',
-  description: 'Подгоним размер и кадр под требования к фото на удостоверение личности РК и Green Card. Бесплатно, фото не покидает ваше устройство.',
-  image: '/og-image.png',
-  locale: 'ru_RU',
-}
+const readTool = () => /^\/(?:kk\/)?signature(?:\/|$)/.test(window.location.pathname) ? 'signature' : 'photo'
 
 function Tools() {
   const { lang, t } = useLang()
@@ -37,17 +33,27 @@ function Tools() {
       description: t.site.signatureSeoDescription,
       image: '/og-signature.png',
       locale: lang === 'kz' ? 'kk_KZ' : 'ru_RU',
-    } : photoMetadata
+    } : {
+      title: releaseCopy[lang].photoSeoTitle,
+      description: releaseCopy[lang].photoSeoDescription,
+      image: '/og-image.png',
+      locale: lang === 'kz' ? 'kk_KZ' : 'ru_RU',
+    }
     const site = 'https://photo.nexcel.kz'
     document.title = title
-    document.querySelector('link[rel="canonical"]').href = site + paths[tool]
+    const canonical = site + localizedPath(paths[tool], lang)
+    document.querySelector('link[rel="canonical"]').href = canonical
+    for (const [code, language] of [['ru', 'ru'], ['kk', 'kz'], ['x-default', 'ru']]) {
+      document.querySelector(`link[rel="alternate"][hreflang="${code}"]`)?.setAttribute('href', site + localizedPath(paths[tool], language))
+    }
     const tags = {
       'name="description"': description,
       'property="og:title"': title,
       'property="og:description"': description,
-      'property="og:url"': site + paths[tool],
+      'property="og:url"': canonical,
       'property="og:image"': site + image,
       'property="og:locale"': locale,
+      'property="og:locale:alternate"': lang === 'kz' ? 'ru_RU' : 'kk_KZ',
       'name="twitter:title"': title,
       'name="twitter:description"': description,
       'name="twitter:image"': site + image,
@@ -64,7 +70,7 @@ function Tools() {
     if (tool === 'photo') savedPhotoHistory.current = window.history.state?.photoResult
     const saved = savedPhotoHistory.current
     const state = next === 'photo' && saved ? { photoResult: saved } : null
-    window.history.pushState(state, '', paths[next])
+    window.history.pushState(state, '', localizedPath(paths[next], lang))
     window.scrollTo(0, 0)
     if (next === 'photo') setVisitedPhoto(true)
     setTool(next)
@@ -76,7 +82,7 @@ function Tools() {
       <nav aria-label={t.site.toolNavigation} className="mt-16 border-b border-grid-border bg-white">
         <div className="mx-auto flex max-w-7xl gap-5 px-4 sm:gap-7 sm:px-6 lg:px-8">
           {Object.entries({ photo: t.site.photoService, signature: t.site.signatureTab }).map(([key, label]) => (
-            <a key={key} href={paths[key]} aria-current={tool === key ? 'page' : undefined}
+            <a key={key} href={localizedPath(paths[key], lang)} aria-current={tool === key ? 'page' : undefined}
               onClick={event => navigate(event, key)}
               className="flex min-h-12 items-center border-b-2 border-transparent px-1 text-sm font-semibold text-text-muted hover:text-emerald-accent aria-[current=page]:border-emerald-accent aria-[current=page]:text-emerald-accent">
               {label}

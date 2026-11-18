@@ -3,6 +3,7 @@ export const translations = {
 
     cameraStarting: 'Подключение камеры…',
     errUploadTooLarge: 'Выберите фото размером не более 50 МБ.',
+    errHeic: 'HEIC/HEIF пока не поддерживается. Сохраните как JPEG или снимите на камеру сайта.',
     exportPreparing: 'Подготовка JPEG…',
     exportFailedTitle: 'Не удалось подготовить JPEG',
     checkingPhoto: 'Выполняется проверка параметров…',
@@ -197,6 +198,7 @@ export const translations = {
 
     cameraStarting: 'Камера қосылып жатыр…',
     errUploadTooLarge: 'Көлемі 50 МБ-тан аспайтын фотоны таңдаңыз.',
+    errHeic: 'HEIC/HEIF әзірге қолдау көрсетілмейді. JPEG ретінде сақтаңыз немесе сайт камерасымен түсіріңіз.',
     exportPreparing: 'JPEG дайындалып жатыр…',
     exportFailedTitle: 'JPEG файлын дайындау мүмкін болмады',
     checkingPhoto: 'Параметрлер тексеріліп жатыр…',

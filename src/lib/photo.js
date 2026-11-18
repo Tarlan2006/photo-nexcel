@@ -7,6 +7,8 @@ export const photoMimeTypes = [...Object.keys(signatures), 'image/webp']
 export function photoFileError(file) {
   if (!file.size) return 'errRead'
   if (file.size > 50 * 1024 * 1024) return 'errUploadTooLarge'
+  if (/^image\/hei[cf](?:-sequence)?$/i.test(file.type) ||
+      (!photoMimeTypes.includes(file.type) && /\.hei[cf]$/i.test(file.name ?? ''))) return 'errHeic'
   if (file.type && !photoMimeTypes.includes(file.type)) return 'errUnsupportedFormat'
   return null
 }
@@ -22,11 +24,17 @@ export function supportsWasmSimd() {
 }
 
 export async function identifyPhoto(file) {
-  const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+  const bytes = new Uint8Array(await file.slice(0, 64).arrayBuffer())
   for (const [type, signature] of Object.entries(signatures)) {
     if (signature.every((value, index) => bytes[index] === value)) return type
   }
-  const header = String.fromCharCode(...bytes)
+  const header = String.fromCharCode(...bytes.subarray(0, 12))
+  if (header.slice(4, 8) === 'ftyp') {
+    const brands = []
+    for (let i = 8; i + 4 <= bytes.length; i += 4) if (i !== 12) brands.push(String.fromCharCode(...bytes.subarray(i, i + 4)))
+    if (!brands.some(brand => ['avif', 'avis'].includes(brand)) &&
+        brands.some(brand => /^(hei[cxms]|hev[cx]|mif1|msf1)$/.test(brand))) return 'image/heic'
+  }
   return header.startsWith('RIFF') && header.endsWith('WEBP') ? 'image/webp' : null
 }
 

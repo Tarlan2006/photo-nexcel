@@ -12,7 +12,7 @@ import PhotoSettings, { photoMessage } from './components/photo/PhotoSettings'
 const PhotoResult = lazy(() => import('./components/photo/PhotoResult.jsx'))
 
 function writeHistory(method, photoResult) {
-  if (window.location.pathname === '/') window.history[method]({ ...window.history.state, photoResult }, '')
+  if (/^\/(?:kk\/?)?$/.test(window.location.pathname)) window.history[method]({ ...window.history.state, photoResult }, '')
 }
 
 export default function App({ active }) {
@@ -38,7 +38,7 @@ export default function App({ active }) {
   useEffect(() => {
     writeHistory('replaceState', null)
     function onPopState(event) {
-      if (window.location.pathname !== '/') return
+      if (!/^\/(?:kk\/?)?$/.test(window.location.pathname)) return
       if (!loading.current) token.current++
       setCamera(false)
       dispatch({ type: 'history', result: Boolean(result.current && event.state?.photoResult === result.current.sourceId) })
@@ -81,6 +81,7 @@ export default function App({ active }) {
       if (error) return fail(error)
       const mime = await identifyPhoto(file)
       if (id !== token.current) return
+      if (mime === 'image/heic') return fail('errHeic')
       if (!mime) return fail(file.type ? 'errRead' : 'errUnsupportedFormat')
       if (simd) import('./lib/detector.js').then(({ prepareFaceDetector }) => prepareFaceDetector()).catch(() => {})
       bitmap = await decodePhoto(file, mime)

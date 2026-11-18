@@ -28,3 +28,5 @@ playwright-report/
 !public/og-signature.png
 !src/assets/logo-96.png
 tests/fixtures/
+# Private calibration photos, annotations, crops and review pages must stay local.
+tests/fixtures/selfies/

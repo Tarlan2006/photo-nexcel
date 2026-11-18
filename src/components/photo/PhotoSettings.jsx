@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useLang } from '../../contexts/LangContext'
 import { photoCopy } from '../../content/photo-copy'
+import { requirements } from '../../content/requirements'
+import SourceLink from '../SourceLink'
 import { presets } from '../../presets'
 import { backgroundChoices, toPhotoParameters } from '../../lib/photo-flow'
 import { photoMimeTypes, supportsWasmSimd } from '../../lib/photo'
@@ -181,7 +183,10 @@ export default function PhotoSettings({ source, settings, status, error, chooseD
                   className="min-h-11 w-full rounded-lg border border-grid-border bg-white p-2 text-sm">
                   {['none', 'soft', 'sharp'].map(key => <option key={key} value={key}>{t.editor[key]}</option>)}
                 </select>
-                {dv && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-950">{copy.dvWarning}</p>}
+                {dv && <div className="rounded-lg bg-amber-50 p-2 text-sm text-amber-950">
+                  <p>{copy.dvWarning}</p>
+                  <SourceLink source={requirements.dv.sources[0]} lang={lang} />
+                </div>}
                 {!dv && (
                   <div aria-live="polite">
                     {kzWarning && <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-950">{copy.kzManipulation}</p>}

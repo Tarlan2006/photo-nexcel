@@ -113,6 +113,10 @@ export const requirements = {
     ],
   },
   dv: {
+    edition: {
+      ru: 'Правила могут меняться, сверяйтесь на travel.state.gov.',
+      kz: 'Қағидалар өзгеруі мүмкін, travel.state.gov сайтынан тексеріңіз.',
+    },
     intro: {
       ru: 'Требования к фото для онлайн-заявки Diversity Visa (Green Card) и собеседования.',
       kz: 'Diversity Visa (Green Card) онлайн өтінімі мен сұхбатқа арналған фото талаптары.',

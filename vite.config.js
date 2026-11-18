@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { releaseCopy } from './src/content/release-copy.js'
+import { translations } from './src/i18n.js'
 
 const require = createRequire(import.meta.url)
 const visionPackage = '@mediapipe/tasks-vision'
@@ -51,6 +53,14 @@ export default defineConfig({
   appType: 'mpa',
   plugins: [
     react(), tailwindcss(), mediaPipeAssets,
+    { name: 'kazakh-html-metadata', transformIndexHtml(html, context) {
+      if (!context.path.startsWith('/kk/')) return html
+      const signature = context.path.includes('/signature/')
+      const title = signature ? translations.kz.site.signatureSeoTitle : releaseCopy.kz.photoSeoTitle
+      const description = signature ? translations.kz.site.signatureSeoDescription : releaseCopy.kz.photoSeoDescription
+      const escape = value => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;')
+      return html.replaceAll('__LOCAL_TITLE__', escape(title)).replaceAll('__LOCAL_DESCRIPTION__', escape(description))
+    } },
     { name: 'signature-entry', configureServer: serveSignatureEntry, configurePreviewServer: serveSignatureEntry },
   ],
   define: { __MEDIAPIPE_WASM_PATH__: JSON.stringify(visionWasmPath) },
@@ -71,6 +81,8 @@ export default defineConfig({
       input: {
         photo: fileURLToPath(new URL('./index.html', import.meta.url)),
         signature: fileURLToPath(new URL('./signature/index.html', import.meta.url)),
+        photoKz: fileURLToPath(new URL('./kk/index.html', import.meta.url)),
+        signatureKz: fileURLToPath(new URL('./kk/signature/index.html', import.meta.url)),
       },
     },
   },
