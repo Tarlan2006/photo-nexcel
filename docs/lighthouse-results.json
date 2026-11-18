@@ -1,5 +1,5 @@
 {
-  "note": "Лабораторная мобильная эмуляция, не проверка физического телефона. Production-final будет измерен после публикации.",
+  "note": "Лабораторная мобильная эмуляция, не проверка физического телефона. Production-final измерен после публикации кода 7e24dcb.",
   "reports": [
     {
       "stage": "before",
@@ -120,6 +120,66 @@
         "cls": 0.0001237827203819595
       },
       "sourceFile": "test-results/lighthouse-final-local-signature.json"
+    },
+    {
+      "stage": "production-final",
+      "page": "photo",
+      "url": "https://photo.nexcel.kz/",
+      "lighthouseVersion": "13.6.0",
+      "fetchTime": "2026-11-18T14:46:01.237Z",
+      "formFactor": "mobile",
+      "throttlingMethod": "simulate",
+      "screenEmulation": {
+        "mobile": true,
+        "width": 412,
+        "height": 823,
+        "deviceScaleFactor": 1.75,
+        "disabled": false
+      },
+      "hostUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "scores": {
+        "performance": 96,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "fcpMs": 987.659,
+        "lcpMs": 2093.659,
+        "tbtMs": 111.00000000000011,
+        "cls": 0.0001237827203819595
+      },
+      "sourceFile": "test-results/lighthouse-final-production-photo.json"
+    },
+    {
+      "stage": "production-final",
+      "page": "signature",
+      "url": "https://photo.nexcel.kz/signature/",
+      "lighthouseVersion": "13.6.0",
+      "fetchTime": "2026-11-18T14:46:44.718Z",
+      "formFactor": "mobile",
+      "throttlingMethod": "simulate",
+      "screenEmulation": {
+        "mobile": true,
+        "width": 412,
+        "height": 823,
+        "deviceScaleFactor": 1.75,
+        "disabled": false
+      },
+      "hostUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "scores": {
+        "performance": 98,
+        "accessibility": 100,
+        "best-practices": 100,
+        "seo": 100
+      },
+      "metrics": {
+        "fcpMs": 898.263,
+        "lcpMs": 2098.263,
+        "tbtMs": 123.99999999999989,
+        "cls": 0
+      },
+      "sourceFile": "test-results/lighthouse-final-production-signature.json"
     }
   ]
 }
