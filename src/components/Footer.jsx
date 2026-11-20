@@ -104,7 +104,11 @@ export default function Footer() {
             {footer.legal}
           </p>
           <div className="mt-2 flex flex-col gap-x-4 lg:flex-row lg:flex-wrap lg:items-center">
-            <p>{text(footer.copyright, site.copyright)}</p>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
+              <p>{text(footer.copyright, site.copyright)}</p>
+              <a href="https://nexcel.kz/free" aria-label={copy.madeBy}
+                className={`${footerLink} max-w-full whitespace-normal underline underline-offset-2`}>{copy.madeBy}</a>
+            </div>
             <a className={`${footerLink} underline underline-offset-2`} href={footer.privacy.href}>{text(footer.privacy.label, site.privacy)}</a>
             <p className="lg:ml-auto">{text(footer.paymentTerms, site.paymentTerms)}</p>
           </div>

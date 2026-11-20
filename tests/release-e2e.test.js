@@ -94,6 +94,31 @@ test('release metadata, privacy, language addresses and HEIC recovery', { timeou
       })
     })
 
+    await suite.test('local footer credit is translated on both tools and wraps within 390 px', async () => {
+      for (const path of ['/', '/signature/', '/kk/', '/kk/signature/']) {
+        await withPage(path, async page => {
+          const lang = path.startsWith('/kk/') ? 'kz' : 'ru'
+          const expected = lang === 'kz' ? 'Nexcel Solutions командасы жасаған' : 'Сделано командой Nexcel Solutions'
+          const footer = page.locator('footer:visible')
+          const credit = footer.getByRole('link', { name: expected, exact: true })
+          assert.equal(await credit.count(), 1)
+          assert.equal((await credit.innerText()).trim(), expected)
+          assert.equal(await credit.getAttribute('href'), 'https://nexcel.kz/free')
+          assert.equal(await credit.getAttribute('aria-label'), expected)
+          assert.equal(await credit.getAttribute('target'), null)
+          assert.equal(await credit.getAttribute('rel'), null)
+          const copyright = lang === 'kz' ? sharedNavigation.footer.copyright.kk || translations.kz.site.copyright
+            : sharedNavigation.footer.copyright.ru
+          assert.equal(await credit.locator('..').getByText(copyright, { exact: true }).count(), 1)
+          await credit.scrollIntoViewIfNeeded()
+          const bounds = await credit.boundingBox()
+          assert.equal(await page.evaluate(() => innerWidth), 390)
+          assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 390, JSON.stringify(bounds))
+          assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+        })
+      }
+    })
+
     await suite.test('HEIC and renamed HEIF show useful guidance in RU/KZ on both tools', async () => {
       const heic = Buffer.alloc(24)
       heic.writeUInt32BE(24); heic.write('ftyp',4); heic.write('heic',8); heic.write('mif1',16)
