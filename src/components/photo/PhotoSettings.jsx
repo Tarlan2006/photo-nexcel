@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useLang } from '../../contexts/LangContext'
+import { releaseCopy } from '../../content/release-copy'
 import { photoCopy } from '../../content/photo-copy'
 import { requirements } from '../../content/requirements'
 import SourceLink from '../SourceLink'
@@ -197,7 +198,7 @@ export default function PhotoSettings({ source, settings, status, error, chooseD
           </fieldset>
         </div>
         <button type="submit" className={primaryButton + ' mt-5 w-full'} disabled={!source || busy}>{copy.process}</button>
-        <p className="mt-2 text-center text-xs text-text-muted">{copy.privacy}</p>
+        <p className="mt-2 text-center text-xs text-text-muted">{releaseCopy[lang].privacyShort}</p>
       </form>
     </dialog>
   )

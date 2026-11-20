@@ -12,6 +12,7 @@ yarn-error.log*
 test-photos/
 test-results/
 playwright-report/
+.review/
 *.jpg
 *.jpeg
 *.heic

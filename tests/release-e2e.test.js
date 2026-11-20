@@ -14,6 +14,7 @@ import { requirements } from '../src/content/requirements.js'
 import { signatureCopy } from '../src/components/signature/copy.js'
 import sharedNavigation from '../src/content/shared-nav.json' with { type: 'json' }
 import { fixturePng, synthSignature } from './helpers/synthSignature.js'
+import { pageMetadata } from '../src/lib/seo.js'
 
 const chrome = [process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH, chromium.executablePath(),
   'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(path => path && existsSync(path))
@@ -85,12 +86,16 @@ test('release metadata, privacy, language addresses and HEIC recovery', { timeou
         await page.getByRole('navigation', { name: translations.kz.site.toolNavigation }).getByRole('link', { name: translations.kz.site.signatureTab, exact: true }).click()
         await page.waitForURL(origin + '/kk/signature/')
         await page.locator('#signature-main').getByRole('heading', { name: signatureCopy.kz.title, exact: true }).waitFor()
+        await page.waitForFunction(expected => JSON.parse(document.getElementById('webapplication-jsonld').textContent).url === expected, pageMetadata('signature', 'kz').url)
+        assert.deepEqual(JSON.parse(await page.locator('#webapplication-jsonld').textContent()), pageMetadata('signature', 'kz').application)
         await page.reload()
         await page.locator('#signature-main').getByRole('heading', { name: signatureCopy.kz.title, exact: true }).waitFor()
         assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'), 'https://photo.nexcel.kz/kk/signature/')
         await page.getByRole('button', { name: 'RU', exact: true }).click()
         await page.waitForURL(origin + '/signature/')
         await page.locator('#signature-main').getByRole('heading', { name: signatureCopy.ru.title, exact: true }).waitFor()
+        await page.waitForFunction(expected => JSON.parse(document.getElementById('webapplication-jsonld').textContent).url === expected, pageMetadata('signature', 'ru').url)
+        assert.deepEqual(JSON.parse(await page.locator('#webapplication-jsonld').textContent()), pageMetadata('signature', 'ru').application)
       })
     })
 
@@ -159,15 +164,16 @@ test('release metadata, privacy, language addresses and HEIC recovery', { timeou
         const external = []
         page.on('request', request => { if (request.url().startsWith('https://nexcel.kz/')) external.push(request.url()) })
         const expectedServices = sharedNavigation.footer.columns[0].links.map(item => item.href)
+        const expectedServiceMenu = [...expectedServices, ...sharedNavigation.nav.filter(item => item.href.endsWith('/#calculator')).map(item => item.href)]
         const expectedPrimary = sharedNavigation.nav.filter(item => !expectedServices.includes(item.href) && !item.href.endsWith('/#calculator')).map(item => item.href)
         await page.setViewportSize({ width:1280,height:900 })
         await page.locator('header button[aria-controls=site-services]').click()
-        assert.deepEqual(await page.locator('#site-services a').evaluateAll(links=>links.map(link=>link.href)),[...expectedServices,'https://nexcel.kz/#calculator'])
+        assert.deepEqual(await page.locator('#site-services a').evaluateAll(links=>links.map(link=>link.href)),expectedServiceMenu)
         const desktop=await page.locator('header nav').first().locator(':scope > a').evaluateAll(links=>links.map(link=>link.href))
         assert.deepEqual(desktop,expectedPrimary)
         await page.setViewportSize({width:320,height:844})
         await page.locator('header button[aria-controls=site-mobile-menu]').click()
-        assert.deepEqual(await page.locator('#site-mobile-menu ul').first().locator('a').evaluateAll(links=>links.map(link=>link.href)),[...expectedServices,'https://nexcel.kz/#calculator'])
+        assert.deepEqual(await page.locator('#site-mobile-menu ul').first().locator('a').evaluateAll(links=>links.map(link=>link.href)),expectedServiceMenu)
         const footer=page.locator('footer:visible')
         for(const item of sharedNavigation.footer.columns.flatMap(column=>column.links))assert.ok(await footer.locator('a[href="'+item.href+'"]').count())
         assert.equal(await footer.getByText(sharedNavigation.footer.legal,{exact:true}).count(),1)

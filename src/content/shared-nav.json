@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-18T15:10:50.391Z",
+  "updatedAt": "2026-11-20T09:26:34.200Z",
   "logo": {
     "href": "https://nexcel.kz/",
     "src": "https://nexcel.kz/assets/logo.svg",
@@ -44,31 +44,10 @@
     },
     {
       "label": {
-        "ru": "GEO-оптимизация",
+        "ru": "GEO-аудит и продвижение",
         "kk": ""
       },
       "href": "https://nexcel.kz/seo"
-    },
-    {
-      "label": {
-        "ru": "Фото на документы",
-        "kk": ""
-      },
-      "href": "https://photo.nexcel.kz/"
-    },
-    {
-      "label": {
-        "ru": "Калькулятор окупаемости",
-        "kk": ""
-      },
-      "href": "https://nexcel.kz/#calculator"
-    },
-    {
-      "label": {
-        "ru": "Шаблоны",
-        "kk": ""
-      },
-      "href": "https://nexcel.kz/templates"
     },
     {
       "label": {
@@ -90,6 +69,13 @@
         "kk": ""
       },
       "href": "https://nexcel.kz/faq"
+    },
+    {
+      "label": {
+        "ru": "Бесплатно",
+        "kk": ""
+      },
+      "href": "https://nexcel.kz/free"
     }
   ],
   "cta": {
@@ -144,17 +130,10 @@
           },
           {
             "label": {
-              "ru": "GEO-оптимизация",
+              "ru": "GEO-аудит и продвижение",
               "kk": ""
             },
             "href": "https://nexcel.kz/seo"
-          },
-          {
-            "label": {
-              "ru": "Фото на документы",
-              "kk": ""
-            },
-            "href": "https://photo.nexcel.kz/"
           }
         ]
       },
@@ -180,13 +159,6 @@
           },
           {
             "label": {
-              "ru": "Шаблоны",
-              "kk": ""
-            },
-            "href": "https://nexcel.kz/templates"
-          },
-          {
-            "label": {
               "ru": "С какими продуктами работаем",
               "kk": ""
             },
@@ -198,6 +170,13 @@
               "kk": ""
             },
             "href": "https://nexcel.kz/faq"
+          },
+          {
+            "label": {
+              "ru": "Бесплатно",
+              "kk": ""
+            },
+            "href": "https://nexcel.kz/free"
           }
         ]
       }
@@ -208,7 +187,7 @@
         "kk": ""
       },
       "location": {
-        "ru": "Астана",
+        "ru": "Астана, просп. Мангилик Ел, 55/1, Экспо, 5 этаж, офис NS (Международный центр ИИ Alem.ai)",
         "kk": ""
       },
       "email": "info@nexcel.kz",
@@ -219,6 +198,13 @@
           "kk": ""
         },
         "href": "https://wa.me/77711369095"
+      },
+      "map": {
+        "label": {
+          "ru": "Мы на Google Картах",
+          "kk": ""
+        },
+        "href": "https://maps.app.goo.gl/thGZ4ix5PoamNvnD9"
       }
     },
     "social": [
@@ -283,7 +269,7 @@
         "href": "https://www.threads.com/@nexcel.solutions"
       }
     ],
-    "legal": "Товарищество с ограниченной ответственностью «Nexcel Solutions» БИН: 260940035710",
+    "legal": "Товарищество с ограниченной ответственностью «Nexcel Solutions» БИН: 260940035710 Адрес: Казахстан, г. Астана, просп. Мангилик Ел, 55/1, Экспо, 5 этаж, офис NS",
     "description": {
       "ru": "Автоматизируем отчёты, учёт и заявки для бизнеса в Казахстане. Разрабатываем Telegram-ботов, внедряем ИИ и поставляем лицензии на ПО.",
       "kk": ""

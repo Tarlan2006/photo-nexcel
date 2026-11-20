@@ -1,6 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useLang } from '../../contexts/LangContext'
 import { photoCopy } from '../../content/photo-copy'
+import { requirements } from '../../content/requirements'
+import SourceLink from '../SourceLink'
+import { BusinessCta, ResultDisclaimer } from '../ResultNotice'
 import { presets } from '../../presets'
 import { primaryButton, secondaryButton } from '../editor/EditorControls'
 import PhotoCanvas from './PhotoCanvas'
@@ -109,6 +112,8 @@ export default function PhotoResult({ result, source, heading, onSettings, onPro
             <button type="button" className={secondaryButton} onClick={event => onSettings(event.currentTarget, true)}>{t.btnOtherDoc}</button>
             <button type="button" className={secondaryButton} onClick={onReset}>{t.btnNewPhoto}</button>
           </div>
+          <BusinessCta />
+          <ResultDisclaimer><SourceLink source={requirements[preset.id].sources[0]} lang={lang} /></ResultDisclaimer>
         </section>
         <section className="min-w-0 rounded-xl border border-grid-border bg-white p-4 sm:p-5">
           <h2 className="mb-2 text-base">{t.checksTitle}</h2>

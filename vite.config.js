@@ -6,8 +6,11 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { releaseCopy } from './src/content/release-copy.js'
-import { translations } from './src/i18n.js'
+import { pageMetadata } from './src/lib/seo.js'
+import { buildDateFor, datedSitemap } from './scripts/lib/build-metadata.js'
+
+const buildDate = buildDateFor(new Date())
+const sitemap = datedSitemap(readFileSync(new URL('./scripts/templates/sitemap.xml', import.meta.url), 'utf8'), buildDate)
 
 const require = createRequire(import.meta.url)
 const visionPackage = '@mediapipe/tasks-vision'
@@ -53,17 +56,31 @@ export default defineConfig({
   appType: 'mpa',
   plugins: [
     react(), tailwindcss(), mediaPipeAssets,
-    { name: 'kazakh-html-metadata', transformIndexHtml(html, context) {
-      if (!context.path.startsWith('/kk/')) return html
-      const signature = context.path.includes('/signature/')
-      const title = signature ? translations.kz.site.signatureSeoTitle : releaseCopy.kz.photoSeoTitle
-      const description = signature ? translations.kz.site.signatureSeoDescription : releaseCopy.kz.photoSeoDescription
+    { name: 'release-metadata', transformIndexHtml(html, context) {
+      const lang = context.path.startsWith('/kk/') ? 'kz' : 'ru'
+      const tool = context.path.includes('/signature/') ? 'signature' : 'photo'
+      const { title, description, application } = pageMetadata(tool, lang)
       const escape = value => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;')
-      return html.replaceAll('__LOCAL_TITLE__', escape(title)).replaceAll('__LOCAL_DESCRIPTION__', escape(description))
+      return {
+        html: html.replaceAll('__LOCAL_TITLE__', escape(title)).replaceAll('__LOCAL_DESCRIPTION__', escape(description)),
+        tags: [
+          { tag: 'script', attrs: { type: 'application/ld+json', id: 'webapplication-jsonld' },
+            children: JSON.stringify(application).replaceAll('<', '\\u003c'), injectTo: 'head' },
+          { tag: 'meta', attrs: { name: 'build-date', content: buildDate }, injectTo: 'head' },
+        ],
+      }
+    },
+    generateBundle() { this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: sitemap }) },
+    configureServer(server) {
+      server.middlewares.use((request, response, next) => {
+        if (request.url?.split('?')[0] !== '/sitemap.xml') return next()
+        response.setHeader('Content-Type', 'application/xml; charset=utf-8')
+        response.end(sitemap)
+      })
     } },
     { name: 'signature-entry', configureServer: serveSignatureEntry, configurePreviewServer: serveSignatureEntry },
   ],
-  define: { __MEDIAPIPE_WASM_PATH__: JSON.stringify(visionWasmPath) },
+  define: { __MEDIAPIPE_WASM_PATH__: JSON.stringify(visionWasmPath), __BUILD_DATE__: JSON.stringify(buildDate) },
   preview: {
     headers: {
       'X-Frame-Options': 'DENY',

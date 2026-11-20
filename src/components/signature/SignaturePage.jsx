@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import CameraCapture from '../CameraCapture'
 import Footer from '../Footer'
 import { useLang } from '../../contexts/LangContext'
+import { releaseCopy } from '../../content/release-copy'
+import { BusinessCta, ResultDisclaimer } from '../ResultNotice'
 import { identifyPhoto, photoFileError, photoMimeTypes } from '../../lib/photo'
 import { fullPaper, signatureDefaults } from '../../lib/signature'
 import { signatureOutputBounds } from '../../lib/signature-crop'
@@ -60,6 +62,7 @@ function createWorker() {
 }
 
 function Upload({ copy, busy, onFile }) {
+  const { lang } = useLang()
   const input = useRef(null)
   const cameraButton = useRef(null)
   const [dragging, setDragging] = useState(false)
@@ -94,6 +97,7 @@ function Upload({ copy, busy, onFile }) {
             </button>
           )}
         </div>
+        <p className="signature-help mt-2">{releaseCopy[lang].privacyShort}</p>
         <p className="signature-help mt-3">{copy.drop}</p>
         <p className="signature-help mt-1">{copy.formats}</p>
       </div>
@@ -550,6 +554,8 @@ export default function SignaturePage() {
                   {egov
                     ? <EgovDownload copy={copy} result={finished.result} />
                     : <Downloads copy={copy} result={finished.result} maxKb={maxKb} locale={lang === 'kz' ? 'kk-KZ' : 'ru-RU'} />}
+                  <BusinessCta />
+                  <ResultDisclaimer />
                   <SignatureChecks copy={copy} result={finished.result} onCropFrame={egov ? () => setRemoveFrame(true) : undefined} />
                 </>
               )}

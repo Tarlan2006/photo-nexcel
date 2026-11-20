@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { buildDateFor, datedSitemap } from '../scripts/lib/build-metadata.js'
 import { cropFace, HEAD_TOP_FACTOR } from '../src/lib/crop.js'
 import { presets } from '../src/presets.js'
 import { photoFileError, identifyPhoto } from '../src/lib/photo.js'
@@ -15,6 +16,14 @@ function face(angle = 0) {
   }
   return landmarks
 }
+
+test('build date uses Kazakhstan time and is shared by every sitemap URL', () => {
+  const date = buildDateFor(new Date('2026-11-19T19:30:00Z'))
+  assert.equal(date, '2026-11-20')
+  assert.equal(buildDateFor(new Date('2026-11-19T18:59:59Z')), '2026-11-19')
+  assert.equal(datedSitemap('<lastmod>__BUILD_DATE__</lastmod><lastmod>__BUILD_DATE__</lastmod>', date),
+    '<lastmod>2026-11-20</lastmod><lastmod>2026-11-20</lastmod>')
+})
 
 test('calibration uses an independent reviewed crown, never the factor-derived target percentage', t => {
   const previous = globalThis.document

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import Header from './components/Header'
 import { LangProvider, useLang } from './contexts/LangContext'
-import { releaseCopy } from './content/release-copy'
+import { pageMetadata } from './lib/seo'
 import { localizedPath } from './lib/locale'
 
 const PhotoWizard = lazy(() => import('./App.jsx'))
@@ -28,17 +28,7 @@ function Tools() {
   }, [])
 
   useEffect(() => {
-    const { title, description, image, locale } = tool === 'signature' ? {
-      title: t.site.signatureSeoTitle,
-      description: t.site.signatureSeoDescription,
-      image: '/og-signature.png',
-      locale: lang === 'kz' ? 'kk_KZ' : 'ru_RU',
-    } : {
-      title: releaseCopy[lang].photoSeoTitle,
-      description: releaseCopy[lang].photoSeoDescription,
-      image: '/og-image.png',
-      locale: lang === 'kz' ? 'kk_KZ' : 'ru_RU',
-    }
+    const { title, description, image, locale, application } = pageMetadata(tool, lang)
     const site = 'https://photo.nexcel.kz'
     document.title = title
     const canonical = site + localizedPath(paths[tool], lang)
@@ -61,6 +51,7 @@ function Tools() {
     for (const [selector, content] of Object.entries(tags)) {
       document.querySelector(`meta[${selector}]`)?.setAttribute('content', content)
     }
+    document.getElementById('webapplication-jsonld').textContent = JSON.stringify(application)
   }, [lang, t, tool])
 
   function navigate(event, next) {

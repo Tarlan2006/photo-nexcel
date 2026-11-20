@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useLang } from '../../contexts/LangContext'
+import { releaseCopy } from '../../content/release-copy'
 import { photoCopy } from '../../content/photo-copy'
 import { requirements } from '../../content/requirements'
 import { presetList } from '../../presets'
@@ -139,9 +140,9 @@ export default function PhotoUpload({ presetId, onDocument, onFile, onCamera, ca
             {cameraAvailable && <button type="button" className={primaryButton} onClick={event => onCamera(event.currentTarget)}>{t.btnShootCamera}</button>}
             <button type="button" ref={picker} className={cameraAvailable ? secondaryButton : primaryButton} onClick={() => input.current.click()}>{t.btnChooseFile}</button>
           </div>
+          <p className="mt-2 text-xs font-medium text-emerald-accent">{releaseCopy[lang].privacyShort}</p>
           <p className="mt-3 text-sm text-text-muted">{t.uploadDrag}</p>
           <p className="mt-1 text-xs text-text-muted">{t.uploadHint}</p>
-          <p className="mt-3 text-sm font-medium text-emerald-accent">{t.photoPrivacy}</p>
         </div>
       </div>
       <Requirements key={presetId} initialDocument={presetId} />

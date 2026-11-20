@@ -97,6 +97,11 @@ export default function Footer() {
         <section className="mt-8 border-t border-slate-800 pt-5 leading-relaxed text-slate-300">
           <h2 className={columnHeading}>{copy.privacyTitle}</h2>
           <p>{copy.privacy}</p>
+          <p className="mt-2">{copy.privacyStorage}</p>
+          <p className="mt-2">{copy.privacyTracking}</p>
+          <p className="mt-2">{copy.privacySession}</p>
+          <p className="mt-2">{copy.privacyHosting}</p>
+          <a href="https://nexcel.kz/privacy" className={`${footerLink} mt-1 underline underline-offset-2`}>{copy.privacyMore}</a>
           <p className="mt-2">{copy.unofficial}</p>
         </section>
         <div className="mt-5 border-t border-slate-800 pt-5 leading-relaxed">
