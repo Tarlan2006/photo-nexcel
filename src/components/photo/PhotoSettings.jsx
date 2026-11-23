@@ -9,6 +9,7 @@ import { backgroundChoices, toPhotoParameters } from '../../lib/photo-flow'
 import { photoMimeTypes, supportsWasmSimd } from '../../lib/photo'
 import { primaryButton, secondaryButton } from '../editor/EditorControls'
 import { DocumentPicker } from './PhotoUpload'
+import { photoPageCopy } from '../../content/photo-page-copy'
 import PhotoCanvas from './PhotoCanvas'
 import usePhotoPreview from './usePhotoPreview'
 
@@ -125,13 +126,12 @@ export default function PhotoSettings({ source, settings, status, error, chooseD
             <button type="button" className={secondaryButton + ' w-full'} onClick={() => file.current.click()}>{copy.changePhoto}</button>
           </div>
           <fieldset disabled={busy} className="min-w-0 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-grid-border bg-paper p-3">
-              <div>
-                <p className="text-xs font-semibold text-text-muted">{copy.document}</p>
-                <p className="text-sm font-bold">{preset.name[lang]}</p>
-              </div>
-              <button ref={documentButton} type="button" className={secondaryButton} aria-expanded={documentOpen} onClick={() => setDocumentOpen(!documentOpen)}>{copy.changeDocument}</button>
-            </div>
+            <p className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-grid-border bg-paper px-3 py-2 text-sm">
+              <span><span className="text-text-muted">{photoPageCopy[lang].currentDocument}</span> <b>{photoPageCopy[lang].docs[preset.id].pill}</b></span>
+              <button ref={documentButton} type="button" aria-expanded={documentOpen}
+                className="inline-flex min-h-11 items-center font-semibold text-emerald-accent underline underline-offset-4"
+                onClick={() => setDocumentOpen(!documentOpen)}>{copy.changeDocument}</button>
+            </p>
             {documentOpen && <DocumentPicker name="settings-document" value={preset.id} onChange={id => {
               onDocument(id)
               setDocumentOpen(false)

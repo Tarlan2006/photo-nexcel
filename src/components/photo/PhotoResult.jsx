@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useLang } from '../../contexts/LangContext'
 import { photoCopy } from '../../content/photo-copy'
+import { photoPageCopy } from '../../content/photo-page-copy'
+import { localizedPath } from '../../lib/locale'
 import { requirements } from '../../content/requirements'
 import SourceLink from '../SourceLink'
 import { BusinessCta, ResultDisclaimer } from '../ResultNotice'
@@ -112,8 +114,13 @@ export default function PhotoResult({ result, source, heading, onSettings, onPro
             <button type="button" className={secondaryButton} onClick={event => onSettings(event.currentTarget, true)}>{t.btnOtherDoc}</button>
             <button type="button" className={secondaryButton} onClick={onReset}>{t.btnNewPhoto}</button>
           </div>
-          <BusinessCta />
+          <BusinessCta inline />
           <ResultDisclaimer><SourceLink source={requirements[preset.id].sources[0]} lang={lang} /></ResultDisclaimer>
+          <p className="mt-3 flex flex-col gap-1 text-sm font-semibold sm:flex-row sm:gap-5">
+            <button type="button" className="inline-flex min-h-11 items-center text-left text-emerald-accent underline underline-offset-4"
+              onClick={event => onSettings(event.currentTarget, true)}>{photoPageCopy[lang].otherDocumentLink}</button>
+            <a href={localizedPath('/signature/', lang)} className="inline-flex min-h-11 items-center text-emerald-accent underline underline-offset-4">{photoPageCopy[lang].signatureLink}</a>
+          </p>
         </section>
         <section className="min-w-0 rounded-xl border border-grid-border bg-white p-4 sm:p-5">
           <h2 className="mb-2 text-base">{t.checksTitle}</h2>
