@@ -7,6 +7,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { pageMetadata } from './src/lib/seo.js'
+import { routeFromPath } from './src/lib/routes.js'
 import { buildDateFor, datedSitemap } from './scripts/lib/build-metadata.js'
 
 const buildDate = buildDateFor(new Date())
@@ -45,9 +46,8 @@ const mediaPipeAssets = {
 
 function serveSignatureEntry(server) {
   server.middlewares.use((request, _response, next) => {
-    if ((request.method === 'GET' || request.method === 'HEAD') && /^\/signature(?:\?|$)/.test(request.url)) {
-      request.url = request.url.replace('/signature', '/signature/')
-    }
+    const match = (request.method === 'GET' || request.method === 'HEAD') && /^(\/(?:kk\/)?(?:signature|green-card))(?:\?|$)/.exec(request.url)
+    if (match) request.url = request.url.replace(match[1], match[1] + '/')
     next()
   })
 }
@@ -58,8 +58,8 @@ export default defineConfig({
     react(), tailwindcss(), mediaPipeAssets,
     { name: 'release-metadata', transformIndexHtml(html, context) {
       const lang = context.path.startsWith('/kk/') ? 'kz' : 'ru'
-      const tool = context.path.includes('/signature/') ? 'signature' : 'photo'
-      const { title, description, application } = pageMetadata(tool, lang)
+      const { tool, doc } = routeFromPath(context.path)
+      const { title, description, application } = pageMetadata(tool, lang, doc ?? 'kz_id')
       const escape = value => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;')
       return {
         html: html.replaceAll('__LOCAL_TITLE__', escape(title)).replaceAll('__LOCAL_DESCRIPTION__', escape(description)),
@@ -98,7 +98,9 @@ export default defineConfig({
       input: {
         photo: fileURLToPath(new URL('./index.html', import.meta.url)),
         signature: fileURLToPath(new URL('./signature/index.html', import.meta.url)),
+        greenCard: fileURLToPath(new URL('./green-card/index.html', import.meta.url)),
         photoKz: fileURLToPath(new URL('./kk/index.html', import.meta.url)),
+        greenCardKz: fileURLToPath(new URL('./kk/green-card/index.html', import.meta.url)),
         signatureKz: fileURLToPath(new URL('./kk/signature/index.html', import.meta.url)),
       },
     },

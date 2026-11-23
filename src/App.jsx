@@ -4,6 +4,7 @@ import { photoCopy } from './content/photo-copy'
 import { presets } from './presets'
 import { decodePhoto, identifyPhoto, photoFileError, supportsWasmSimd } from './lib/photo'
 import { changePhotoDocument, initialPhotoFlow, photoFlow, releasePhoto } from './lib/photo-flow'
+import { isPhotoPath } from './lib/routes'
 import Footer from './components/Footer'
 import CameraCapture from './components/CameraCapture'
 import PhotoUpload from './components/photo/PhotoUpload'
@@ -12,13 +13,13 @@ import PhotoSettings, { photoMessage } from './components/photo/PhotoSettings'
 const PhotoResult = lazy(() => import('./components/photo/PhotoResult.jsx'))
 
 function writeHistory(method, photoResult) {
-  if (/^\/(?:kk\/?)?$/.test(window.location.pathname)) window.history[method]({ ...window.history.state, photoResult }, '')
+  if (isPhotoPath(window.location.pathname)) window.history[method]({ ...window.history.state, photoResult }, '')
 }
 
-export default function App({ active }) {
+export default function App({ active, doc = 'kz_id', onDocument }) {
   const { lang, t } = useLang()
   const copy = photoCopy[lang]
-  const [state, dispatch] = useReducer(photoFlow, undefined, () => initialPhotoFlow())
+  const [state, dispatch] = useReducer(photoFlow, undefined, () => initialPhotoFlow(doc))
   const [chooseDocument, setChooseDocument] = useState(false)
   const [camera, setCamera] = useState(false)
   const [simd] = useState(supportsWasmSimd)
@@ -32,13 +33,16 @@ export default function App({ active }) {
   const loading = useRef(false)
   const lastScreen = useRef('upload')
   const set = settings => dispatch({ type: 'settings', settings })
-  const selectDocument = id => set(changePhotoDocument(state.settings, id))
+  const selectDocument = id => {
+    set(changePhotoDocument(state.settings, id))
+    onDocument?.(id)
+  }
   const showResult = state.screen === 'result' && state.result && state.source
 
   useEffect(() => {
     writeHistory('replaceState', null)
     function onPopState(event) {
-      if (!/^\/(?:kk\/?)?$/.test(window.location.pathname)) return
+      if (!isPhotoPath(window.location.pathname)) return
       if (!loading.current) token.current++
       setCamera(false)
       dispatch({ type: 'history', result: Boolean(result.current && event.state?.photoResult === result.current.sourceId) })
@@ -53,6 +57,11 @@ export default function App({ active }) {
       result.current = null
     }
   }, [])
+
+  useEffect(() => {
+    // Back/forward or a direct link changed the document in the URL.
+    if (doc !== state.settings.presetId) dispatch({ type: 'settings', settings: changePhotoDocument(state.settings, doc) })
+  }, [doc]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!active) {

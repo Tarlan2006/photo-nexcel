@@ -164,7 +164,7 @@ test('SEO, privacy and result notices work in RU/KZ at 360, 390 and 1440 px with
     const datedUrls = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map(([, body]) => ({
       loc: body.match(/<loc>(.*?)<\/loc>/)[1], lastmod: body.match(/<lastmod>(.*?)<\/lastmod>/)?.[1],
     }))
-    assert.deepEqual(datedUrls.map(({ loc }) => loc).sort(), ['/', '/signature/', '/kk/', '/kk/signature/'].map(path => 'https://photo.nexcel.kz' + path).sort())
+    assert.deepEqual(datedUrls.map(({ loc }) => loc).sort(), ['/', '/green-card/', '/signature/', '/kk/', '/kk/green-card/', '/kk/signature/'].map(path => 'https://photo.nexcel.kz' + path).sort())
     const date = datedUrls[0].lastmod
     assert.match(date, /^\d{4}-\d{2}-\d{2}$/)
     assert.ok(Number.isFinite(Date.parse(date)))

@@ -15,6 +15,12 @@
 /signature/
   Cache-Control: public, max-age=0, must-revalidate, no-transform
 
+/green-card
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+
+/green-card/
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+
 /kk
   Cache-Control: public, max-age=0, must-revalidate, no-transform
 
@@ -25,6 +31,18 @@
   Cache-Control: public, max-age=0, must-revalidate, no-transform
 
 /kk/signature/
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+
+/kk/green-card
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+
+/kk/green-card/
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+
+/green-card
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+
+/green-card/
   Cache-Control: public, max-age=0, must-revalidate, no-transform
 
 /assets/*

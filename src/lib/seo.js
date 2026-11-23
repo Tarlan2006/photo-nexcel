@@ -1,13 +1,16 @@
 import { translations } from '../i18n.js'
 import { releaseCopy } from '../content/release-copy.js'
 import { localizedPath } from './locale.js'
+import { pathFor } from './routes.js'
 
-export function pageMetadata(tool, lang) {
+export function pageMetadata(tool, lang, doc = 'kz_id') {
   const signature = tool === 'signature'
   const site = translations[lang].site
-  const title = signature ? site.signatureSeoTitle : releaseCopy[lang].photoSeoTitle
-  const description = signature ? site.signatureSeoDescription : releaseCopy[lang].photoSeoDescription
-  const url = 'https://photo.nexcel.kz' + localizedPath(signature ? '/signature/' : '/', lang)
+  const dv = !signature && doc === 'dv'
+  const copy = releaseCopy[lang]
+  const title = signature ? site.signatureSeoTitle : dv ? copy.dvSeoTitle : copy.photoSeoTitle
+  const description = signature ? site.signatureSeoDescription : dv ? copy.dvSeoDescription : copy.photoSeoDescription
+  const url = 'https://photo.nexcel.kz' + localizedPath(pathFor(tool, doc), lang)
   return {
     title, description, url,
     image: signature ? '/og-signature.png' : '/og-image.png',
