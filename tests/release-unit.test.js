@@ -75,7 +75,7 @@ test('KZ review covers every copy group, keeps source text and leaves all human 
   assert.equal(parsed.length, rows.length + 1)
   assert.deepEqual(parsed.slice(1), rows)
   assert.equal(new Set(rows.map(row => row[0])).size, rows.length)
-  for (const prefix of ['translations.', 'photoCopy.questions.', 'requirements.kz_id.', 'requirements.dv.', 'signatureCopy.rules.', 'releaseCopy.']) {
+  for (const prefix of ['translations.', 'photoPageCopy.docs.', 'requirements.kz_id.', 'requirements.dv.', 'signatureCopy.rules.', 'releaseCopy.']) {
     assert.ok(rows.some(row => row[0].startsWith(prefix)), prefix)
   }
   assert.ok(rows.every(row => row[1] && row[2] && row[3] === '' && row[4] === ''))

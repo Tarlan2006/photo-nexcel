@@ -74,7 +74,7 @@ export default function App({ active, doc = 'kz_id', onDocument }) {
     window.scrollTo(0, 0)
   }, [active, state.screen])
 
-  async function selectFile(file, trigger) {
+  async function selectFile(file, trigger, options) {
     if (!file) return
     if (trigger) returning.current = trigger
     setChooseDocument(false)
@@ -101,7 +101,7 @@ export default function App({ active, doc = 'kz_id', onDocument }) {
       result.current = null
       if (window.history.state?.photoResult) writeHistory('replaceState', null)
       bitmap = null
-      dispatch({ type: 'loaded', source: next })
+      dispatch({ type: 'loaded', source: next, settings: options?.demo ? { background: 'original' } : undefined })
     } catch {
       fail('errRead')
     } finally {

@@ -8,6 +8,7 @@ import { test } from 'node:test'
 import axe from 'axe-core'
 import { chromium, devices } from 'playwright'
 import { preview } from 'vite'
+import { photoPageCopy } from '../src/content/photo-page-copy.js'
 import { photoCopy } from '../src/content/photo-copy.js'
 import { requirements } from '../src/content/requirements.js'
 import { translations } from '../src/i18n.js'
@@ -15,6 +16,7 @@ import { fixturePng, fixtureY4m, synthSignature } from './helpers/synthSignature
 
 const ru = translations.ru
 const copy = photoCopy.ru
+const pageRu = photoPageCopy.ru
 const portrait = fileURLToPath(new URL('./fixtures/portrait.jpg', import.meta.url))
 const astronaut = fileURLToPath(new URL('./fixtures/astronaut.png', import.meta.url))
 const skipPortrait = existsSync(portrait) ? false : 'Local portrait fixture unavailable'
@@ -241,10 +243,10 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
 
     await suite.test('opening shows documents, upload, rules, FAQs and no step UI; models are lazy', async () => {
       await withPage(async (page, requests, context) => {
-        await main(page).getByRole('heading', { name: ru.step1Title }).waitFor()
+        await main(page).getByRole('heading', { level: 1, name: pageRu.docs.kz_id.h1 }).waitFor()
         assert.equal(await main(page).locator('input[name=upload-document]').count(), 2)
-        await main(page).getByRole('heading', { name: copy.requirements }).waitFor()
-        const panel = main(page).getByRole('tabpanel')
+        const panel = main(page).locator('#photo-all-requirements')
+        await panel.locator('summary').first().click()
         const ruleCount = () => panel.getByRole('list').first().getByRole('listitem').count()
         async function assertSource(container, source, lang) {
           const link = container.getByRole('link', { name: source.label[lang], exact: true })
@@ -275,7 +277,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         assert.equal(await disclosure.getByRole('link').count(), 2)
         for (const source of kzDocuments) await assertSource(disclosure, source, 'ru')
         await checkAxe(page)
-        await main(page).getByRole('tab', { name: 'Green Card (DV)', exact: true }).click()
+        await main(page).locator('label:has(input[name=upload-document][value=dv])').click()
         await panel.getByText(/Ровно 600 × 600/).waitFor()
         assert.ok(await ruleCount() >= 16)
         assert.equal(await disclosure.count(), 0)
@@ -286,7 +288,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         await panel.getByText(/Дәл 600 × 600/).waitFor()
         assert.ok(await ruleCount() >= 16)
         await assertSource(panel, dvPrimary, 'kz')
-        await main(page).getByRole('tab', { name: 'ҚР жеке куәлігі', exact: true }).click()
+        await main(page).locator('label:has(input[name=upload-document][value=kz_id])').click()
         await panel.getByText(requirements.kz_id.intro.kz, { exact: true }).waitFor()
         assert.equal(await ruleCount(), 13)
         assert.ok(await panel.getByText(requirements.kz_id.edition.kz, { exact: true }).isVisible())
@@ -296,10 +298,11 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         await checkAxe(page)
         await page.getByRole('button', { name: 'RU', exact: true }).click()
         assert.doesNotMatch(await main(page).innerText(), /TODO|Шаг 1/)
-        assert.equal(await main(page).getByRole('heading', { name: copy.faq, exact: true }).locator('..').locator('details').count(), 4)
-        assert.equal(await main(page).getByText(copy.examples, { exact: true }).count(), 1)
-        assert.equal(await main(page).getByRole('heading', { level: 2, name: copy.examples, exact: true }).count(), 1)
-        assert.equal(await main(page).getByRole('link', { name: copy.shootingTips }).getAttribute('href'), '#photo-examples')
+        await main(page).locator('#photo-faq summary').click()
+        assert.equal(await main(page).locator('#photo-faq').getByRole('heading', { level: 3 }).count(), 6)
+        assert.equal(await main(page).locator('summary').filter({ hasText: copy.examples }).count(), 1)
+        await main(page).getByRole('button', { name: pageRu.howTo }).click()
+        assert.ok(await main(page).locator('#photo-examples').evaluate(element => element.open))
         assert.ok(!requests.some(({ url }) => /face_landmarker|detector-|\/models\/|\/wasm\//.test(url)))
         await checkAxe(page)
         await context.grantPermissions(['camera'], { origin })
@@ -314,7 +317,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
     await suite.test('Green Card camera shows one silhouette with a blurred exterior on desktop and mobile', async () => {
       await withPage(async (page, _, context) => {
         await context.grantPermissions(['camera'], { origin })
-        await main(page).locator('input[name=upload-document][value=dv]').check()
+        await main(page).locator('label:has(input[name=upload-document][value=dv])').click()
         await button(main(page), ru.btnShootCamera).click()
         const camera = page.getByRole('dialog', { name: ru.cameraModalTitle })
         await checkDocumentCamera(camera, 'dv')
@@ -531,7 +534,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
 
     await suite.test('DV filters default to off and settings have no clothing controls', { skip: skipPortrait }, async () => {
       await withPage(async page => {
-        await main(page).locator('input[name=upload-document][value=dv]').check()
+        await main(page).locator('label:has(input[name=upload-document][value=dv])').click()
         await upload(page)
         await dialog(page).getByText(copy.advanced, { exact: true }).click()
         const filter = dialog(page).getByLabel(ru.editor.filters, { exact: true })

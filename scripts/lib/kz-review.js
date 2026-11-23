@@ -1,4 +1,5 @@
 import { translations } from '../../src/i18n.js'
+import { photoPageCopy } from '../../src/content/photo-page-copy.js'
 import { photoCopy } from '../../src/content/photo-copy.js'
 import { requirements } from '../../src/content/requirements.js'
 import { presets } from '../../src/presets.js'
@@ -20,7 +21,7 @@ export function collectKzReview() {
     if (Object.hasOwn(value, 'ru') && Object.hasOwn(value, 'kz')) paired(value.ru, value.kz, path)
     else for (const [key, child] of Object.entries(value)) scan(child, path + '.' + key)
   }
-  for (const [name, value] of Object.entries({ translations, photoCopy, requirements, presets, signatureCopy, releaseCopy })) scan(value, name)
+  for (const [name, value] of Object.entries({ translations, photoCopy, photoPageCopy, requirements, presets, signatureCopy, releaseCopy })) scan(value, name)
   return rows.sort((a, b) => a[0].localeCompare(b[0], 'en'))
 }
 

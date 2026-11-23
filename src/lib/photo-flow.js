@@ -58,7 +58,7 @@ export function photoFlow(state, action) {
     case 'loaded':
       return {
         ...state, screen: 'upload', status: null, source: action.source, result: null, error: null,
-        settings: { ...state.settings, strokes: [], scaleOffset: 0, offsetY: 0 },
+        settings: { ...state.settings, ...action.settings, strokes: [], scaleOffset: 0, offsetY: 0 },
       }
     case 'open':
       return { ...state, dialog: true, error: null }
