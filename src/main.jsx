@@ -33,7 +33,7 @@ function Tools() {
   }, [])
 
   useEffect(() => {
-    const { title, description, image, locale, application } = pageMetadata(tool, lang, photoDoc)
+    const { title, description, image, locale, application, faq, breadcrumbs } = pageMetadata(tool, lang, photoDoc)
     const site = 'https://photo.nexcel.kz'
     document.title = title
     const canonical = site + localizedPath(path, lang)
@@ -56,7 +56,20 @@ function Tools() {
     for (const [selector, content] of Object.entries(tags)) {
       document.querySelector(`meta[${selector}]`)?.setAttribute('content', content)
     }
-    document.getElementById('webapplication-jsonld').textContent = JSON.stringify(application)
+    const writeLd = (id, data) => {
+      let node = document.getElementById(id)
+      if (!data) return node?.remove()
+      if (!node) {
+        node = document.createElement('script')
+        node.type = 'application/ld+json'
+        node.id = id
+        document.head.append(node)
+      }
+      node.textContent = JSON.stringify(data)
+    }
+    writeLd('webapplication-jsonld', application)
+    writeLd('breadcrumb-jsonld', breadcrumbs)
+    writeLd('faq-jsonld', faq)
   }, [lang, t, tool, photoDoc, path])
 
   function navigate(event, next) {

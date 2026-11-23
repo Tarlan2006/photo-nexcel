@@ -59,13 +59,15 @@ export default defineConfig({
     { name: 'release-metadata', transformIndexHtml(html, context) {
       const lang = context.path.startsWith('/kk/') ? 'kz' : 'ru'
       const { tool, doc } = routeFromPath(context.path)
-      const { title, description, application } = pageMetadata(tool, lang, doc ?? 'kz_id')
+      const { title, description, application, faq, breadcrumbs } = pageMetadata(tool, lang, doc ?? 'kz_id')
+      const ld = (id, data) => ({ tag: 'script', attrs: { type: 'application/ld+json', id }, children: JSON.stringify(data).replaceAll('<', '\\u003c'), injectTo: 'head' })
       const escape = value => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;')
       return {
         html: html.replaceAll('__LOCAL_TITLE__', escape(title)).replaceAll('__LOCAL_DESCRIPTION__', escape(description)),
         tags: [
-          { tag: 'script', attrs: { type: 'application/ld+json', id: 'webapplication-jsonld' },
-            children: JSON.stringify(application).replaceAll('<', '\\u003c'), injectTo: 'head' },
+          ld('webapplication-jsonld', application),
+          ld('breadcrumb-jsonld', breadcrumbs),
+          ...(faq ? [ld('faq-jsonld', faq)] : []),
           { tag: 'meta', attrs: { name: 'build-date', content: buildDate }, injectTo: 'head' },
         ],
       }

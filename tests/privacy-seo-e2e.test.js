@@ -200,16 +200,21 @@ test('SEO, privacy and result notices work in RU/KZ at 360, 390 and 1440 px with
           assert.equal(await page.locator('meta[name=description]').getAttribute('content'), metadata.description)
           assert.equal(await page.locator('meta[name=build-date]').getAttribute('content'), date)
           const scripts = page.locator('head script[type="application/ld+json"]')
-          assert.equal(await scripts.count(), 1)
-          assert.deepEqual(JSON.parse(await scripts.textContent()), metadata.application)
+          assert.equal(await scripts.count(), tool === 'photo' ? 3 : 2)
+          const ld = id => page.locator('#' + id).textContent().then(JSON.parse)
+          assert.deepEqual(await ld('webapplication-jsonld'), metadata.application)
+          assert.deepEqual(await ld('breadcrumb-jsonld'), metadata.breadcrumbs)
+          if (tool === 'photo') assert.deepEqual(await ld('faq-jsonld'), metadata.faq)
           const staticHtml = await response.text()
           const staticMetadata = await page.evaluate(html => {
             const head = new DOMParser().parseFromString(html, 'text/html').head
             return { title: head.querySelector('title').textContent,
               description: head.querySelector('meta[name=description]').content,
-              json: JSON.parse(head.querySelector('script[type="application/ld+json"]').textContent) }
+              json: JSON.parse(head.querySelector('#webapplication-jsonld').textContent),
+              breadcrumbs: JSON.parse(head.querySelector('#breadcrumb-jsonld').textContent),
+              faq: head.querySelector('#faq-jsonld') ? JSON.parse(head.querySelector('#faq-jsonld').textContent) : null }
           }, staticHtml)
-          assert.deepEqual(staticMetadata, { title: metadata.title, description: metadata.description, json: metadata.application })
+          assert.deepEqual(staticMetadata, { title: metadata.title, description: metadata.description, json: metadata.application, breadcrumbs: metadata.breadcrumbs, faq: metadata.faq })
           const footer = page.locator('footer:visible')
           for (const key of ['privacy', 'privacyStorage', 'privacyTracking', 'privacySession', 'privacyHosting']) await footer.getByText(copy[key], { exact: true }).waitFor()
           assert.equal(await footer.getByRole('link', { name: copy.privacyMore, exact: true }).getAttribute('href'), 'https://nexcel.kz/privacy')
@@ -241,14 +246,15 @@ test('SEO, privacy and result notices work in RU/KZ at 360, 390 and 1440 px with
           await notice.getByText(copy.resultDisclaimer.replace('{date}', date), { exact: true }).waitFor()
           const cta = main.locator('[data-business-cta]')
           assert.equal(await cta.count(), 1)
-          assert.equal(await cta.getAttribute('open'), null)
+          const collapsible = await cta.locator('summary').count() > 0
+          if (collapsible) assert.equal(await cta.getAttribute('open'), null)
           assert.ok(await cta.evaluate((element, download) => Boolean(element.compareDocumentPosition(download) & Node.DOCUMENT_POSITION_PRECEDING), await download.elementHandle()))
           const before = await download.evaluate(element => element.getBoundingClientRect().top + scrollY)
-          await cta.locator('summary').click()
+          if (collapsible) await cta.locator('summary').click()
           for (const [label, href] of [[copy.businessWhatsApp, 'https://wa.me/77711369095'], [copy.businessTelegram, 'https://t.me/nexcel_kz']]) {
             const link = cta.getByRole('link', { name: label, exact: true })
             assert.equal(await link.getAttribute('href'), href)
-            assert.equal(await link.getAttribute('target'), null)
+            assert.equal(await link.getAttribute('target'), collapsible ? null : '_blank')
             const bounds = await link.boundingBox()
             assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width)
           }
@@ -258,7 +264,7 @@ test('SEO, privacy and result notices work in RU/KZ at 360, 390 and 1440 px with
           await checkLayoutAndAxe()
           await download.scrollIntoViewIfNeeded()
           await screenshot('result')
-          await cta.locator('summary').click()
+          if (collapsible) await cta.locator('summary').click()
           await screenshot('result-collapsed')
         } finally { await context.close() }
       })
