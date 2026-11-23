@@ -14,8 +14,8 @@
     "calibrate": "node scripts/calibrate.js",
     "export:kz": "node scripts/export-kz-review.js",
     "check:production-deps": "node scripts/check-production-deps.js",
-    "test": "node tests/run-all-tests.js && node --test --test-concurrency=1 tests/editor-unit.test.js tests/photo-flow.test.js tests/signature-unit.test.js tests/signature-rules-unit.test.js tests/release-unit.test.js tests/shared-nav.test.js && npm run test:e2e",
-    "test:e2e": "npm run build && node --test --test-concurrency=1 tests/editor-e2e.test.js tests/signature-e2e.test.js tests/release-e2e.test.js tests/privacy-seo-e2e.test.js"
+    "test": "node tests/run-all-tests.js && node --test --test-concurrency=1 tests/editor-unit.test.js tests/photo-flow.test.js tests/signature-unit.test.js tests/signature-rules-unit.test.js tests/release-unit.test.js tests/shared-nav.test.js tests/routes-unit.test.js && npm run test:e2e",
+    "test:e2e": "npm run build && node --test --test-concurrency=1 tests/editor-e2e.test.js tests/signature-e2e.test.js tests/release-e2e.test.js tests/privacy-seo-e2e.test.js tests/routes-e2e.test.js"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.2.3",

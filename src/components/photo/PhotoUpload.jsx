@@ -170,8 +170,8 @@ export default function PhotoUpload({ presetId, onDocument, onFile, onCamera, ca
     setTipsOpen(true)
     requestAnimationFrame(() => tips.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }))
   }
-  const accordion = 'rounded-2xl border border-grid-border bg-white px-4 sm:px-5'
-  const summary = 'flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden'
+  const accordion = 'group rounded-2xl border border-grid-border bg-white px-4 sm:px-5'
+  const summary = 'flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden after:text-xl after:font-normal after:text-text-muted after:content-["+"] group-open:after:content-["–"]'
   return (
     <>
       <div className="border-b border-grid-border bg-white">
