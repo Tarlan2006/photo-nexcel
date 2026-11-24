@@ -1,5 +1,5 @@
 import { useLang } from '../contexts/LangContext'
-import { brandFirst, brandRest, email, footerCompanyPages, mapUrl, phone, servicePages, sharedNavigation, siteLabel, siteLinks, socials, whatsAppUrl } from '../siteLinks'
+import { brandFirst, brandRest, email, footerColumns, mapUrl, phone, sharedNavigation, siteLabel, siteLinks, socials, whatsAppUrl } from '../siteLinks'
 import { navigationText } from '../lib/shared-navigation'
 import SiteIcon from './SiteIcon'
 import { releaseCopy } from '../content/release-copy'
@@ -31,7 +31,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-slate-800 bg-dark-bg text-xs text-slate-400">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-        <div className="grid grid-cols-2 gap-x-5 gap-y-7 md:grid-cols-5 lg:gap-8">
+        <div className={`grid grid-cols-2 gap-x-5 gap-y-7 ${footerColumns.length > 2 ? 'md:grid-cols-6' : 'md:grid-cols-5'} lg:gap-8`}>
           <div className="col-span-2">
             <p className="font-heading text-lg font-extrabold tracking-tight text-white">
               {brandFirst} <span className="text-emerald-400">{brandRest}</span>
@@ -68,8 +68,9 @@ export default function Footer() {
             </nav>
           </div>
 
-          <FooterLinks heading={text(footer.columns[0].title, site.services)} pages={servicePages} labels={{ ...site.links, ...site.footerServices }} />
-          <FooterLinks heading={text(footer.columns[1].title, site.company)} pages={footerCompanyPages} labels={site.links} />
+          {footerColumns.map((column, index) => (
+            <FooterLinks key={column.title.ru} heading={text(column.title, index === footerColumns.length - 1 ? site.company : footerColumns.length === 2 ? site.services : undefined)} pages={column.pages} labels={{ ...site.links, ...site.footerServices }} />
+          ))}
 
           <div className="col-span-2 md:col-span-1">
             <h2 className={columnHeading}>{text(footer.contacts.title, site.contacts)}</h2>

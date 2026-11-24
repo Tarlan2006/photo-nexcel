@@ -164,7 +164,7 @@ test('release metadata, privacy, language addresses and HEIC recovery', { timeou
       await withPage('/', async page => {
         const external = []
         page.on('request', request => { if (request.url().startsWith('https://nexcel.kz/')) external.push(request.url()) })
-        const expectedServices = sharedNavigation.footer.columns[0].links.map(item => item.href)
+        const expectedServices = sharedNavigation.footer.columns.slice(0, -1).flatMap(column => column.links).map(item => item.href)
         const expectedServiceMenu = [...expectedServices, ...sharedNavigation.nav.filter(item => item.href.endsWith('/#calculator')).map(item => item.href)]
         const expectedPrimary = sharedNavigation.nav.filter(item => !expectedServices.includes(item.href) && !item.href.endsWith('/#calculator')).map(item => item.href)
         await page.setViewportSize({ width:1280,height:900 })

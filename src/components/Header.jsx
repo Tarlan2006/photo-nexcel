@@ -10,7 +10,7 @@ const menuLink = 'flex min-h-11 items-center rounded px-3 py-2 text-sm hover:bg-
 
 export default function Header({ tool = 'photo' }) {
   const { lang, setLang, t: { site } } = useLang()
-  const servicesTitle = navigationText(sharedNavigation.footer.columns[0].title, lang, site.services)
+  const servicesTitle = sharedNavigation.footer.columns.length > 2 ? site.services : navigationText(sharedNavigation.footer.columns[0].title, lang, site.services)
   const label = key => siteLabel(key, lang, key === 'photo' ? site.photoService : site.links[key])
   const ctaLabel = lang === 'kz' && !sharedNavigation.cta.label.kk ? site.writeWhatsApp.replace('{phone}', phone)
     : navigationText(sharedNavigation.cta.label, lang) + ': ' + phone

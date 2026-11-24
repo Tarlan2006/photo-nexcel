@@ -17,8 +17,8 @@ test('a new source service automatically appears in both menus and footer with r
   assert.equal(model.label(item.href,'ru'),item.label.ru)
   assert.equal(model.label(item.href,'kz',undefined,true),item.label.ru)
   // Menu membership follows the published source, including removals and renamed sections.
-  assert.deepEqual(model.servicePages.map(key => model.links[key]), data.footer.columns[0].links.map(link => link.href))
-  assert.deepEqual(model.footerCompanyPages.map(key => model.links[key]), data.footer.columns[1].links.map(link => link.href))
+  assert.deepEqual(model.servicePages.map(key => model.links[key]), data.footer.columns.slice(0, -1).flatMap(column => column.links).map(link => link.href))
+  assert.deepEqual(model.footerCompanyPages.map(key => model.links[key]), data.footer.columns.at(-1).links.map(link => link.href))
 })
 
 test('source labels override old Russian labels; existing KZ is retained until kk is supplied', () => {

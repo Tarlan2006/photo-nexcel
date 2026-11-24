@@ -13,6 +13,7 @@ export const siteLinks = navigation.links
 export const servicePages = navigation.servicePages
 export const companyPages = navigation.companyPages
 export const footerCompanyPages = navigation.footerCompanyPages
+export const footerColumns = navigation.footerColumns
 export const siteLabel = navigation.label
 const networkNames = { telegram: 'Telegram', linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook', threads: 'Threads' }
 export const socials = snapshot.footer.social.map(item => [item.id, networkNames[item.id] || item.title.ru, item.href, item.label])
