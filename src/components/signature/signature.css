@@ -232,3 +232,6 @@
 
 .signature-drop:hover { border-color: var(--color-emerald-accent); }
 .signature-upload { margin-top: 1.5rem; }
+
+.signature-link { min-height: 2.75rem; padding: 0 .25rem; background: none; border: 0; color: var(--color-emerald-accent); font-size: .875rem; font-weight: 700; cursor: pointer; }
+.signature-link:hover { text-decoration: underline; }

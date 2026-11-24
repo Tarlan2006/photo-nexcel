@@ -117,7 +117,7 @@ function Upload({ copy, busy, onFile }) {
   )
 }
 
-function Edit({ copy, photo, draft, setDraft, preview, busy, finish, restart, frame, setFrame }) {
+function Edit({ copy, photo, draft, setDraft, preview, busy, frame, setFrame, hidePaper, left, right }) {
   const [background, setBackground] = useState('checker')
   const [before, setBefore] = useState(false)
   const [brush, setBrush] = useState(null)
@@ -132,13 +132,9 @@ function Edit({ copy, photo, draft, setDraft, preview, busy, finish, restart, fr
   }
 
   return (
-    <>
-      <SignatureFraming photo={photo} region={preview?.region} frame={frame} onChange={setFrame} copy={copy} />
-      <div className="signature-grid">
-        <PaperCrop photo={photo} crop={draft.crop} square={draft.square} copy={copy}
-          onCrop={(crop, square) => setDraft(current => current.crop === crop && current.square === square
-            ? current : { ...current, crop, square })} />
-        <section className="signature-card">
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:items-start">
+      <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-4 lg:col-span-7">
+        <section className="signature-card order-1 lg:order-none">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2>{copy.preview}</h2>
             <button type="button" className="signature-button" disabled={!preview && !before} aria-pressed={before}
@@ -166,40 +162,48 @@ function Edit({ copy, photo, draft, setDraft, preview, busy, finish, restart, fr
           </div>
           <p id="signature-brush-hint" className="signature-help mt-2" hidden={!brush || before}>{copy.brushHint}</p>
         </section>
+        <div className="order-5 lg:order-none"><SignatureFraming photo={photo} region={preview?.region} frame={frame} onChange={setFrame} copy={copy} /></div>
+        {!hidePaper && (
+          <div className="order-6 lg:order-none"><PaperCrop photo={photo} crop={draft.crop} square={draft.square} copy={copy}
+            onCrop={(crop, square) => setDraft(current => current.crop === crop && current.square === square
+              ? current : { ...current, crop, square })} /></div>
+        )}
+        {left}
       </div>
-      <section className="signature-card">
-        <h2>{copy.settings}</h2>
-        <div className="signature-options">
-          {ranges.map(([name, min, max]) => (
-            <label key={name} className="signature-field">
-              <span>{copy[name]} <span aria-hidden="true" className="float-right text-text-muted">
-                {options[name]} {name === 'thickness' ? copy.px : '%'}
-              </span></span>
-              <input type="range" min={min} max={max} value={options[name]} onChange={event => change(name, event.target.valueAsNumber)} />
-            </label>
-          ))}
-          <div className="signature-field">
-            <label htmlFor="signature-color">{copy.color}</label>
-            <select id="signature-color" value={options.color} onChange={event => change('color', event.target.value)}>
-              {colors.map((color, i) => <option key={color} value={color}>{copy.colors[i]}</option>)}
-            </select>
+      <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-4 lg:col-span-5">
+        <section className="signature-card order-2 lg:order-none">
+          <div className="flex items-center justify-between gap-2">
+            <h2>{copy.settings}</h2>
+            <button type="button" className="signature-link" onClick={reset}>{copy.reset}</button>
           </div>
-          <label className="flex min-h-11 items-center gap-3 self-end text-sm font-semibold">
-            <input type="checkbox" checked={options.lines} onChange={event => change('lines', event.target.checked)} />
-            {copy.lines}
-          </label>
-        </div>
-      </section>
-      <div className="signature-actions signature-controls">
-        <button type="button" className="signature-button" onClick={restart}>{copy.new}</button>
-        <button type="button" className="signature-button" onClick={reset}>{copy.reset}</button>
-        <button type="button" className="signature-button signature-primary" disabled={busy || !preview} onClick={finish}>{copy.finish}</button>
+          <div className="signature-options">
+            {ranges.map(([name, min, max]) => (
+              <label key={name} className="signature-field">
+                <span>{copy[name]} <span aria-hidden="true" className="float-right text-text-muted">
+                  {options[name]} {name === 'thickness' ? copy.px : '%'}
+                </span></span>
+                <input type="range" min={min} max={max} value={options[name]} onChange={event => change(name, event.target.valueAsNumber)} />
+              </label>
+            ))}
+            <div className="signature-field">
+              <label htmlFor="signature-color">{copy.color}</label>
+              <select id="signature-color" value={options.color} onChange={event => change('color', event.target.value)}>
+                {colors.map((color, i) => <option key={color} value={color}>{copy.colors[i]}</option>)}
+              </select>
+            </div>
+            <label className="flex min-h-11 items-center gap-3 self-end text-sm font-semibold">
+              <input type="checkbox" checked={options.lines} onChange={event => change('lines', event.target.checked)} />
+              {copy.lines}
+            </label>
+          </div>
+        </section>
+        {right}
       </div>
-    </>
+    </div>
   )
 }
 
-function Downloads({ copy, result, maxKb, locale }) {
+function Downloads({ copy, result, maxKb, locale, onSaved }) {
   const [urls, setUrls] = useState(null)
   const [copyStatus, setCopyStatus] = useState('')
   const canCopy = typeof ClipboardItem !== 'undefined' && !!navigator.clipboard?.write &&
@@ -230,10 +234,10 @@ function Downloads({ copy, result, maxKb, locale }) {
       {result.exceedsLimit && <p role="alert" className="signature-alert">{copy.tooLarge.replace('{limit}', maxKb)}</p>}
       {urls && (
         <div className="signature-downloads">
-          <a className="signature-button signature-primary" download="signature.png" href={urls.transparent}>
+          <a className="signature-button signature-primary" download="signature.png" href={urls.transparent} onClick={onSaved}>
             {copy.download} · {format.format(result.transparent.size / 1000)} {copy.kb}
           </a>
-          <a className="signature-button" download="signature-white.png" href={urls.white}>
+          <a className="signature-button" download="signature-white.png" href={urls.white} onClick={onSaved}>
             {copy.downloadWhite} · {format.format(result.white.size / 1000)} {copy.kb}
           </a>
           {canCopy && <button type="button" className="signature-button" onClick={copyPng}>{copy.copy}</button>}
@@ -244,7 +248,7 @@ function Downloads({ copy, result, maxKb, locale }) {
   )
 }
 
-function EgovDownload({ copy, result }) {
+function EgovDownload({ copy, result, onSaved }) {
   const [url, setUrl] = useState(null)
   useEffect(() => {
     const href = URL.createObjectURL(result.jpeg)
@@ -263,7 +267,7 @@ function EgovDownload({ copy, result }) {
       {result.tooSmall && <p role="status" className="signature-alert">{copy.lowResolution}</p>}
       {href && result.checks?.content !== 'fail' && (
         <div className="signature-downloads">
-          <a className="signature-button signature-primary" download="signature-egov.jpg" href={href}>{copy.downloadEgov}</a>
+          <a className="signature-button signature-primary" download="signature-egov.jpg" href={href} onClick={onSaved}>{copy.downloadEgov}</a>
         </div>
       )}
     </>
@@ -295,6 +299,7 @@ export default function SignaturePage() {
   const exportSource = useRef(null)
   const cropButton = useRef(null)
   const [step, setStep] = useState(1)
+  const [saved, setSaved] = useState(false)
   const [photo, setPhoto] = useState(null)
   const [draft, setDraft] = useState(defaultDraft)
   const [load, setLoad] = useState({ busy: false, error: null })
@@ -346,7 +351,7 @@ export default function SignaturePage() {
   }, [photo, draft, step])
 
   useEffect(() => {
-    if (step !== 3 || invalidOutput || hasCurrentExport) return
+    if (step !== 2 || invalidOutput || hasCurrentExport) return
     let active = true
     const timer = setTimeout(async () => {
       try {
@@ -355,15 +360,23 @@ export default function SignaturePage() {
           if (!active) return
           exportSource.current = { draft, image }
           setExportImage(image)
+          setOutputCrop(fullPaper)
+          setCropping(false)
         }
         const result = await worker.current.run('export', { ...draft, output })
         if (active) setFinished({ draft, output, result })
       } catch (error) {
         if (active) setFinished({ draft, output, error: errorLabels[error.message] ?? 'processingError' })
       }
-    }, 50)
+    }, 120)
     return () => { active = false; clearTimeout(timer) }
   }, [draft, output, step, invalidOutput, hasCurrentExport])
+
+  useEffect(() => {
+    if (!saved) return
+    const timer = setTimeout(() => setSaved(false), 5000)
+    return () => clearTimeout(timer)
+  }, [saved])
 
   const go = next => {
     setStep(next)
@@ -385,6 +398,7 @@ export default function SignaturePage() {
     setOutputCrop(fullPaper)
     setCropping(false)
     setLoad({ busy: false, error: null })
+    setSaved(false)
     setFormat('png')
     setFixedWidth(0)
     setCustomWidth('600')
@@ -431,16 +445,9 @@ export default function SignaturePage() {
   }
 
   const previewing = step === 2 && preview?.draft !== draft
-  const exporting = step === 3 && !invalidOutput && (finished?.draft !== draft || finished?.output !== output)
-  const error = step === 1 ? load.error : step === 2 ? !previewing && preview?.error : !exporting && !invalidOutput && finished?.error
+  const exporting = step === 2 && !invalidOutput && (finished?.draft !== draft || finished?.output !== output)
+  const error = step === 1 ? load.error : (!previewing && preview?.error) || (!exporting && !invalidOutput && finished?.error)
 
-  function finish() {
-    if (exportSource.current?.draft !== draft) {
-      setOutputCrop(fullPaper)
-      setExportImage(null)
-    }
-    go(3)
-  }
   function closeCrop() {
     setCropping(false)
     cropButton.current?.focus({ preventScroll: true })
@@ -455,14 +462,9 @@ export default function SignaturePage() {
               <svg aria-hidden="true" className="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" /></svg> {copy.trust}
             </p>
           )}
-          <h1 ref={heading} tabIndex={-1} className="text-3xl leading-tight tracking-tight focus:outline-none sm:text-4xl">{copy.title}</h1>
-          <p className={`mt-2 max-w-2xl text-base leading-relaxed text-text-muted ${step === 1 ? 'mx-auto' : ''}`}>{copy.subtitle}</p>
+          <h1 ref={heading} tabIndex={-1} className={`leading-tight tracking-tight focus:outline-none ${step === 1 ? 'text-3xl sm:text-4xl' : 'mb-3 text-2xl'}`}>{copy.title}</h1>
+          {step === 1 && <p className="mx-auto mt-2 max-w-2xl text-base leading-relaxed text-text-muted">{copy.subtitle}</p>}
         </div>
-        {step !== 1 && (
-          <ol aria-label={copy.stepLabel} className="signature-steps">
-            {copy.steps.map((label, i) => <li key={label} aria-current={i + 1 === step ? 'step' : undefined}>{label}</li>)}
-          </ol>
-        )}
         <p role="status" className="signature-status" aria-live="polite">
           {(load.busy || previewing || exporting) ? copy.processing : ''}
         </p>
@@ -470,114 +472,118 @@ export default function SignaturePage() {
         {step === 1 && <Upload copy={copy} busy={load.busy} onFile={handleFile} />}
         {step === 2 && (
           <Edit copy={copy} photo={photo} draft={draft} setDraft={setDraft} preview={preview?.result}
-            busy={previewing} finish={finish} restart={restart} frame={frame} setFrame={setFraming} />
-        )}
-        {step === 3 && (
-          <>
-            <section className="signature-card">
-              <h2>{copy.export}</h2>
-              <div className="signature-options">
-                <div className="signature-field">
-                  <label htmlFor="signature-format">{copy.outputFormat}</label>
-                  <select id="signature-format" value={format} onChange={event => setFormat(event.target.value)}>
-                    <option value="png">{copy.pngMode}</option>
-                    <option value="egov">{copy.egovMode}</option>
-                  </select>
-                </div>
-                {!egov && (
-                  <>
-                    <div className="signature-field">
-                      <label htmlFor="signature-width">{copy.width}</label>
-                      <select id="signature-width" value={fixedWidth}
-                        onChange={event => setFixedWidth(event.target.value === 'custom' ? 'custom' : Number(event.target.value))}>
-                        <option value="0">{copy.autoWidth}</option>
-                        {[300, 600, 1000].map(width => <option key={width} value={width}>{width} {copy.px}</option>)}
-                        <option value="custom">{copy.customSize}</option>
-                      </select>
-                    </div>
-                    <div className="signature-field">
-                      <label htmlFor="signature-limit">{copy.limit}</label>
-                      <select id="signature-limit" value={limit} onChange={event => setLimit(event.target.value)}>
-                        <option value="0">{copy.noLimit}</option>
-                        {[50, 100, 200].map(kb => <option key={kb} value={kb}>{kb} {copy.kb}</option>)}
-                        <option value="custom">{copy.custom}</option>
-                      </select>
-                    </div>
-                    {limit === 'custom' && (
-                      <label className="signature-field">
-                        <span>{copy.customLimit}</span>
-                        <input type="number" min="1" max="50000" value={custom} aria-invalid={invalidLimit}
-                          aria-describedby={invalidLimit ? 'signature-invalid-limit' : undefined}
-                          onChange={event => setCustom(event.target.value)} />
-                      </label>
-                    )}
-                  </>
-                )}
+            busy={previewing} frame={frame} setFrame={setFraming} hidePaper={cropping}
+            left={<>
+          {!exporting && !invalidOutput && finished?.result && (
+            <div className="order-7 lg:order-none"><SignatureChecks copy={copy} result={finished.result} onCropFrame={egov ? () => setRemoveFrame(true) : undefined} /></div>
+          )}
+            </>}
+            right={<>
+          <section className="signature-card order-3 lg:order-none">
+            <h2>{copy.export}</h2>
+            <div className="signature-options">
+              <div className="signature-field">
+                <label htmlFor="signature-format">{copy.outputFormat}</label>
+                <select id="signature-format" value={format} onChange={event => setFormat(event.target.value)}>
+                  <option value="png">{copy.pngMode}</option>
+                  <option value="egov">{copy.egovMode}</option>
+                </select>
               </div>
-              {!egov && exactSize && (
+              {!egov && (
                 <>
-                  <div className="signature-options">
-                    <label className="signature-field">
-                      <span>{copy.pixelWidth}</span>
-                      <input type="number" min="1" max="4096" step="1" value={customWidth} aria-invalid={invalidSize}
-                        aria-describedby="signature-size-hint" onChange={event => setCustomWidth(event.target.value)} />
-                    </label>
-                    <label className="signature-field">
-                      <span>{copy.pixelHeight}</span>
-                      <input type="number" min="1" max="4096" step="1" value={customHeight} aria-invalid={invalidSize}
-                        aria-describedby="signature-size-hint" disabled={!cropSize}
-                        onChange={event => setCustomWidth(event.target.value === '' ? '' :
-                          String(Math.round(event.target.valueAsNumber * cropSize.width / cropSize.height)))} />
-                    </label>
+                  <div className="signature-field">
+                    <label htmlFor="signature-width">{copy.width}</label>
+                    <select id="signature-width" value={fixedWidth}
+                      onChange={event => setFixedWidth(event.target.value === 'custom' ? 'custom' : Number(event.target.value))}>
+                      <option value="0">{copy.autoWidth}</option>
+                      {[300, 600, 1000].map(width => <option key={width} value={width}>{width} {copy.px}</option>)}
+                      <option value="custom">{copy.customSize}</option>
+                    </select>
                   </div>
-                  <p id="signature-size-hint" className="signature-help mt-2">{copy.sizeHint}</p>
+                  <div className="signature-field">
+                    <label htmlFor="signature-limit">{copy.limit}</label>
+                    <select id="signature-limit" value={limit} onChange={event => setLimit(event.target.value)}>
+                      <option value="0">{copy.noLimit}</option>
+                      {[50, 100, 200].map(kb => <option key={kb} value={kb}>{kb} {copy.kb}</option>)}
+                      <option value="custom">{copy.custom}</option>
+                    </select>
+                  </div>
+                  {limit === 'custom' && (
+                    <label className="signature-field">
+                      <span>{copy.customLimit}</span>
+                      <input type="number" min="1" max="50000" value={custom} aria-invalid={invalidLimit}
+                        aria-describedby={invalidLimit ? 'signature-invalid-limit' : undefined}
+                        onChange={event => setCustom(event.target.value)} />
+                    </label>
+                  )}
                 </>
               )}
-              {egov && (
-                <div className="my-3 space-y-1">
-                  <p className="signature-help">
-                    {copy.egovDetails.replace('{width}', egovSignature.width).replace('{height}', egovSignature.height)}
-                  </p>
-                </div>
-              )}
-              {invalidLimit && <p id="signature-invalid-limit" className="signature-alert">{copy.invalidLimit}</p>}
-              {invalidSize && <p role="alert" className="signature-alert">{copy.invalidSize}</p>}
-              {!egov && <div className="signature-actions mt-3">
-                <button ref={cropButton} type="button" className="signature-button" disabled={!exportImage}
-                  aria-expanded={cropping} aria-controls="signature-result-crop" onClick={() => setCropping(!cropping)}>
-                  {copy.cropResult}
-                </button>
-                {outputCrop !== fullPaper && !cropping && (
-                  <button type="button" className="signature-button" onClick={() => setOutputCrop(fullPaper)}>{copy.resetOutputCrop}</button>
-                )}
-              </div>}
-              <div id="signature-result-crop">
-                {!egov && cropping && exportImage && (
-                  <ResultCrop copy={copy} image={exportImage} crop={outputCrop} onCancel={closeCrop}
-                    onApply={crop => { setOutputCrop(crop); closeCrop() }} />
-                )}
-              </div>
-              {egov && <SignatureFraming photo={photo} region={preview?.result?.region} frame={frame} onChange={setFraming} copy={copy} />}
-              {(egov || !cropping) && !exporting && !invalidOutput && finished?.result && (
-                <>
-                  {egov
-                    ? <EgovDownload copy={copy} result={finished.result} />
-                    : <Downloads copy={copy} result={finished.result} maxKb={maxKb} locale={lang === 'kz' ? 'kk-KZ' : 'ru-RU'} />}
-                  <BusinessCta />
-                  <ResultDisclaimer />
-                  <SignatureChecks copy={copy} result={finished.result} onCropFrame={egov ? () => setRemoveFrame(true) : undefined} />
-                </>
-              )}
-            </section>
-            <div className="signature-actions signature-controls">
-              <button type="button" className="signature-button" onClick={() => { setCropping(false); go(2) }}>{copy.edit}</button>
-              <button type="button" className="signature-button" onClick={restart}>{copy.new}</button>
             </div>
-          </>
+            {!egov && exactSize && (
+              <>
+                <div className="signature-options">
+                  <label className="signature-field">
+                    <span>{copy.pixelWidth}</span>
+                    <input type="number" min="1" max="4096" step="1" value={customWidth} aria-invalid={invalidSize}
+                      aria-describedby="signature-size-hint" onChange={event => setCustomWidth(event.target.value)} />
+                  </label>
+                  <label className="signature-field">
+                    <span>{copy.pixelHeight}</span>
+                    <input type="number" min="1" max="4096" step="1" value={customHeight} aria-invalid={invalidSize}
+                      aria-describedby="signature-size-hint" disabled={!cropSize}
+                      onChange={event => setCustomWidth(event.target.value === '' ? '' :
+                        String(Math.round(event.target.valueAsNumber * cropSize.width / cropSize.height)))} />
+                  </label>
+                </div>
+                <p id="signature-size-hint" className="signature-help mt-2">{copy.sizeHint}</p>
+              </>
+            )}
+            {egov && (
+              <div className="my-3 space-y-1">
+                <p className="signature-help">
+                  {copy.egovDetails.replace('{width}', egovSignature.width).replace('{height}', egovSignature.height)}
+                </p>
+              </div>
+            )}
+            {invalidLimit && <p id="signature-invalid-limit" className="signature-alert">{copy.invalidLimit}</p>}
+            {invalidSize && <p role="alert" className="signature-alert">{copy.invalidSize}</p>}
+            {!egov && <div className="signature-actions mt-3">
+              <button ref={cropButton} type="button" className="signature-button" disabled={!exportImage}
+                aria-expanded={cropping} aria-controls="signature-result-crop" onClick={() => setCropping(!cropping)}>
+                {copy.cropResult}
+              </button>
+              {outputCrop !== fullPaper && !cropping && (
+                <button type="button" className="signature-button" onClick={() => setOutputCrop(fullPaper)}>{copy.resetOutputCrop}</button>
+              )}
+            </div>}
+            <div id="signature-result-crop">
+              {!egov && cropping && exportImage && (
+                <ResultCrop copy={copy} image={exportImage} crop={outputCrop} onCancel={closeCrop}
+                  onApply={crop => { setOutputCrop(crop); closeCrop() }} />
+              )}
+            </div>
+            {(egov || !cropping) && !exporting && !invalidOutput && finished?.result && (
+              <>
+                {egov
+                  ? <EgovDownload copy={copy} result={finished.result} onSaved={() => setSaved(true)} />
+                  : <Downloads copy={copy} result={finished.result} maxKb={maxKb} locale={lang === 'kz' ? 'kk-KZ' : 'ru-RU'} onSaved={() => setSaved(true)} />}
+                <ResultDisclaimer />
+              </>
+            )}
+          </section>
+          <div className="signature-actions order-4 lg:order-none">
+            <button type="button" className="signature-button" onClick={restart}>{copy.new}</button>
+          </div>
+          <div className="order-4 lg:order-none"><BusinessCta /></div>
+            </>} />
         )}
-        <SignatureRequirements copy={copy} />
-        {(step === 1 || step === 3) && <SignatureRules copy={copy} collapsed={step === 1} />}
+        <SignatureRules copy={copy} collapsed />
       </main>
+      {saved && (
+        <div aria-live="polite" className="fixed right-4 bottom-4 left-4 z-50 mx-auto flex max-w-md items-center gap-3 rounded-xl bg-emerald-accent px-4 py-3 text-base font-semibold text-white shadow-lg sm:left-auto">
+          <span aria-hidden="true" className="text-xl">✓</span> {copy.saved}
+        </div>
+      )}
       <Footer />
     </div>
   )

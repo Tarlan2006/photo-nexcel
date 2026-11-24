@@ -275,7 +275,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
       await withPage(async (page, { context }) => {
         await context.grantPermissions(['clipboard-read', 'clipboard-write'])
         await upload(page)
-        await button(page, ru.finish).click()
         const transparent = await download(page)
         const white = await download(page, true)
         assert.equal(transparent[25], 6)
@@ -297,11 +296,11 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
       const { defaultBrowserType, ...mobile } = devices['iPhone 13']
       await withPage(async page => {
         await upload(page, png('blue', 360, 260))
-        await button(page, ru.finish).click()
         const original = await download(page)
         await main(page).getByLabel(ru.outputFormat).selectOption({ label: ru.egovMode })
         const link = main(page).getByRole('link', { name: ru.downloadEgov, exact: true })
         await link.waitFor()
+        await main(page).locator('.signature-rules-outer').evaluate(details => { details.open = true })
         const source = main(page).getByRole('link', { name: /Образцы фотографий и подписей/ })
         assert.equal(await source.getAttribute('href'), 'https://zan.gov.kz/client/#!/doc/140840/rus/158')
         assert.equal(await source.getAttribute('target'), '_blank')
@@ -377,7 +376,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         assert.equal(await guide.count(), 0)
         await button(page, ru.contour).click()
         await guide.waitFor()
-        await button(page, ru.finish).click()
         const pngBefore = await download(page)
         await main(page).getByLabel(ru.outputFormat).selectOption('egov')
         const baseline = await downloadEgov(page)
@@ -429,7 +427,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
       await withPage(async page => {
         await upload(page)
         assert.equal(await button(page, ru.contour).getAttribute('aria-pressed'), 'true')
-        await button(page, ru.finish).click()
         await main(page).getByLabel(ru.outputFormat).selectOption('egov')
         const before = await downloadEgov(page)
         const pan = button(page, ru.panImage)
@@ -471,7 +468,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         }
         await upload(page, { name: 'framed.png', mimeType: 'image/png', buffer: fixturePng(image) })
         await button(page, ru.fitFrame).click()
-        await button(page, ru.finish).click()
         await main(page).getByLabel(ru.outputFormat).selectOption('egov')
         let bytes = await downloadEgov(page)
         if (edges === 2) {
@@ -491,7 +487,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
     await suite.test('result crop is reversible and custom dimensions reach both PNGs and eGov JPEG', async () => {
       await withPage(async page => {
         await upload(page)
-        await button(page, ru.finish).click()
         const original = await download(page)
         const originalSize = await inspectImage(page, original)
         await button(page, ru.cropResult).click()
@@ -526,7 +521,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         }
         assert.equal(await height.inputValue(), String(expectedHeight))
         assert.ok((await inspectImage(page, resizedWhite)).corners.every(pixel => pixel[3] === 255))
-        const image = main(page).getByRole('img', { name: ru.result, exact: true })
+        const image = main(page).getByRole('img', { name: ru.result, exact: true }).and(page.locator('img'))
         const box = await image.boundingBox()
         assert.ok(Math.abs(box.width / box.height - 720 / expectedHeight) < 0.02)
         assert.equal(await image.evaluate(el => getComputedStyle(el.parentElement).backgroundImage), 'none')
@@ -559,7 +554,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         await accessibility(page)
         await button(page, ru.new).click()
         await upload(page)
-        await button(page, ru.finish).click()
         assert.equal(await main(page).getByLabel(ru.width, { exact: true }).inputValue(), '0')
         assert.deepEqual(await download(page), original)
       })
@@ -568,7 +562,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
     await suite.test('result crop works by touch at 390 px with square exports and RU/KZ accessibility', async () => {
       await withPage(async page => {
         await upload(page)
-        await button(page, ru.finish).click()
         const original = await download(page)
         await button(page, ru.cropResult).click()
         await button(page, ru.squareCrop).click()
@@ -659,7 +652,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
     await suite.test('12 MP file, 100 KB and 50 KB limits, fixed width, custom warning', async t => {
       await withPage(async page => {
         await upload(page, png('textured', 4000, 3000))
-        await button(page, ru.finish).click()
         const limit = main(page).getByLabel(ru.limit, { exact: true })
         await limit.selectOption('100')
         const hundred = await download(page)
@@ -695,7 +687,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         await main(page).getByText(photo.errRead, { exact: true }).waitFor()
         await chooseFile(page).setInputFiles(png('blank'))
         await main(page).getByText(ru.noInk, { exact: true }).waitFor()
-        assert.equal(await button(page, ru.finish).isEnabled(), false)
+        assert.equal(await main(page).locator('a[download]').count(), 0)
         await button(page, ru.new).click()
         await chooseFile(page).setInputFiles(png('dark'))
         await main(page).getByText(ru.dark, { exact: true }).waitFor()
@@ -706,18 +698,15 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
       await withPage(async page => {
         await upload(page)
         const baseline = await fingerprint(page)
-        await button(page, ru.finish).click()
         const first = await download(page)
-        await button(page, ru.edit).click()
         await canvas(page).waitFor()
         for (const [i, name] of ['checker', 'white', 'gray', 'dark'].entries()) {
           const swatch = button(page, ru.backgrounds[i])
           await swatch.click()
           assert.equal(await swatch.getAttribute('aria-pressed'), 'true')
-          assert.equal(await main(page).locator('.signature-bg-' + name).count(), 1)
+          assert.equal(await main(page).locator('.signature-well.signature-bg-' + name).count(), 1)
           assert.equal(await fingerprint(page), baseline)
         }
-        await button(page, ru.finish).click()
         assert.deepEqual(await download(page), first)
         assert.equal(await page.evaluate(() => signatureQA.exports), 1)
       })
@@ -767,7 +756,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         await noOverflow()
         await page.setViewportSize({ width: 768, height: 900 })
         await noOverflow()
-        await button(page, kz.finish).click()
         await downloadLink(page).waitFor()
         await accessibility(page)
       }, { ...devices['iPhone 13'], defaultBrowserType: undefined })
@@ -831,7 +819,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         await button(page, ru.new).click()
         await upload(page, png('blue', 8000, 1200))
         assert.ok(await canvas(page).evaluate(element => element.width <= 800))
-        await button(page, ru.finish).click()
         assert.ok((await download(page)).readUInt32BE(16) <= 1600)
       })
     })
@@ -845,7 +832,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         }
         const cycle = async () => {
           await upload(page)
-          await button(page, ru.finish).click()
           await downloadLink(page).waitFor()
           await button(page, ru.new).click()
           await button(page, ru.upload).waitFor()
