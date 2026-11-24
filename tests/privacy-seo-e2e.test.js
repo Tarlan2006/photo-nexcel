@@ -118,6 +118,7 @@ test('privacy: real processing sends no images, EXIF or analysis and stores only
           await main.locator('input[type=file]').setInputFiles({ name: 'privacy-signature.png', mimeType: 'image/png',
             buffer: fixturePng(synthSignature('blue')) })
           await main.locator('canvas[aria-label="' + signatureCopy.ru.result + '"]').waitFor()
+          await main.getByLabel(signatureCopy.ru.outputFormat).selectOption('png')
           await page.waitForFunction(() => document.querySelector('#signature-main > .signature-status').textContent === '')
           await main.locator('a[download="signature.png"]').waitFor()
           snapshots.push(await storageSnapshot(page, 'signature-result')); assertStorage(snapshots.at(-1), 'ru')
@@ -236,6 +237,7 @@ test('SEO, privacy and result notices work in RU/KZ at 360, 390 and 1440 px with
           } else {
             await main.locator('input[type=file]').setInputFiles({ name: 'result-signature.png', mimeType: 'image/png', buffer: fixturePng(synthSignature('blue')) })
             await main.locator('canvas[aria-label="' + signatureCopy[lang].result + '"]').waitFor()
+            await main.getByLabel(signatureCopy[lang].outputFormat).selectOption('png')
             await page.waitForFunction(() => document.querySelector('#signature-main > .signature-status').textContent === '')
             download = main.locator('a[download="signature.png"]')
             await download.waitFor()

@@ -340,6 +340,7 @@
 "signatureCopy.pixelHeight","Высота, пикс.","Биіктігі, пикс.","",""
 "signatureCopy.pixelWidth","Ширина, пикс.","Ені, пикс.","",""
 "signatureCopy.pngMode","PNG","PNG","",""
+"signatureCopy.preparing","Готовим файл…","Файл дайындалуда…","",""
 "signatureCopy.preview","Предпросмотр","Алдын ала қарау","",""
 "signatureCopy.previewBackground","Фон предпросмотра","Алдын ала қарау фоны","",""
 "signatureCopy.processing","Обработка…","Өңделуде…","",""

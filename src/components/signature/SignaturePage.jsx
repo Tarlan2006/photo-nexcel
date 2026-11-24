@@ -15,7 +15,7 @@ import SignatureFraming from './SignatureFraming'
 import SignatureRules, { SignatureChecks, SignatureRequirements } from './SignatureRules'
 import './signature.css'
 
-const defaultDraft = { crop: fullPaper, square: false, options: signatureDefaults, strokes: [] }
+const defaultDraft = { crop: fullPaper, square: false, options: { ...signatureDefaults, color: 'black' }, strokes: [] }
 const colors = ['original', 'black', 'blue']
 const backgrounds = ['checker', 'white', 'gray', 'dark']
 const errorLabels = { NO_INK: 'noInk', TOO_DARK: 'dark', PROCESSING_FAILED: 'processingError' }
@@ -117,7 +117,7 @@ function Upload({ copy, busy, onFile }) {
   )
 }
 
-function Edit({ copy, photo, draft, setDraft, preview, busy, frame, setFrame, hidePaper, left, right }) {
+function Edit({ copy, photo, draft, setDraft, preview, busy, frame, setFrame, egov, left, right }) {
   const [background, setBackground] = useState('checker')
   const [before, setBefore] = useState(false)
   const [brush, setBrush] = useState(null)
@@ -162,12 +162,7 @@ function Edit({ copy, photo, draft, setDraft, preview, busy, frame, setFrame, hi
           </div>
           <p id="signature-brush-hint" className="signature-help mt-2" hidden={!brush || before}>{copy.brushHint}</p>
         </section>
-        <div className="order-5 lg:order-none"><SignatureFraming photo={photo} region={preview?.region} frame={frame} onChange={setFrame} copy={copy} /></div>
-        {!hidePaper && (
-          <div className="order-6 lg:order-none"><PaperCrop photo={photo} crop={draft.crop} square={draft.square} copy={copy}
-            onCrop={(crop, square) => setDraft(current => current.crop === crop && current.square === square
-              ? current : { ...current, crop, square })} /></div>
-        )}
+        {egov && <div className="order-5 lg:order-none"><SignatureFraming photo={photo} region={preview?.region} frame={frame} onChange={setFrame} copy={copy} /></div>}
         {left}
       </div>
       <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-4 lg:col-span-5">
@@ -203,7 +198,9 @@ function Edit({ copy, photo, draft, setDraft, preview, busy, frame, setFrame, hi
   )
 }
 
-function Downloads({ copy, result, maxKb, locale, onSaved }) {
+function Downloads({ copy, result, maxKb, locale, onSaved, stale }) {
+  const hold = event => { if (stale) event.preventDefault() }
+  const busyProps = stale ? { 'aria-disabled': 'true', className: ' signature-busy' } : {}
   const [urls, setUrls] = useState(null)
   const [copyStatus, setCopyStatus] = useState('')
   const canCopy = typeof ClipboardItem !== 'undefined' && !!navigator.clipboard?.write &&
@@ -234,10 +231,10 @@ function Downloads({ copy, result, maxKb, locale, onSaved }) {
       {result.exceedsLimit && <p role="alert" className="signature-alert">{copy.tooLarge.replace('{limit}', maxKb)}</p>}
       {urls && (
         <div className="signature-downloads">
-          <a className="signature-button signature-primary" download="signature.png" href={urls.transparent} onClick={onSaved}>
+          <a className={'signature-button signature-primary' + (busyProps.className ?? '')} aria-disabled={busyProps['aria-disabled']} download="signature.png" href={urls.transparent} onClick={event => { hold(event); if (!stale) onSaved() }}>
             {copy.download} · {format.format(result.transparent.size / 1000)} {copy.kb}
           </a>
-          <a className="signature-button" download="signature-white.png" href={urls.white} onClick={onSaved}>
+          <a className={'signature-button' + (busyProps.className ?? '')} aria-disabled={busyProps['aria-disabled']} download="signature-white.png" href={urls.white} onClick={event => { hold(event); if (!stale) onSaved() }}>
             {copy.downloadWhite} · {format.format(result.white.size / 1000)} {copy.kb}
           </a>
           {canCopy && <button type="button" className="signature-button" onClick={copyPng}>{copy.copy}</button>}
@@ -248,7 +245,7 @@ function Downloads({ copy, result, maxKb, locale, onSaved }) {
   )
 }
 
-function EgovDownload({ copy, result, onSaved }) {
+function EgovDownload({ copy, result, onSaved, stale }) {
   const [url, setUrl] = useState(null)
   useEffect(() => {
     const href = URL.createObjectURL(result.jpeg)
@@ -267,7 +264,8 @@ function EgovDownload({ copy, result, onSaved }) {
       {result.tooSmall && <p role="status" className="signature-alert">{copy.lowResolution}</p>}
       {href && result.checks?.content !== 'fail' && (
         <div className="signature-downloads">
-          <a className="signature-button signature-primary" download="signature-egov.jpg" href={href} onClick={onSaved}>{copy.downloadEgov}</a>
+          <a className={'signature-button signature-primary' + (stale ? ' signature-busy' : '')} aria-disabled={stale ? 'true' : undefined} download="signature-egov.jpg" href={href}
+            onClick={event => { if (stale) event.preventDefault(); else onSaved() }}>{copy.downloadEgov}</a>
         </div>
       )}
     </>
@@ -310,7 +308,7 @@ export default function SignaturePage() {
   const [exportImage, setExportImage] = useState(null)
   const [outputCrop, setOutputCrop] = useState(fullPaper)
   const [cropping, setCropping] = useState(false)
-  const [format, setFormat] = useState('png')
+  const [format, setFormat] = useState('egov')
   const [fixedWidth, setFixedWidth] = useState(0)
   const [customWidth, setCustomWidth] = useState('600')
   const [limit, setLimit] = useState('0')
@@ -328,6 +326,7 @@ export default function SignaturePage() {
   const egovOutput = useMemo(() => ({ format: 'egov', frame, removeFrame }), [frame, removeFrame])
   const pngOutput = useMemo(() => ({ format: 'png', crop: outputCrop, width, maxKb, exactSize }), [outputCrop, width, maxKb, exactSize])
   const output = egov ? egovOutput : pngOutput
+  const shown = finished?.result && finished.output?.format === output.format ? finished : null
   const hasCurrentExport = finished?.draft === draft && finished?.output === output && Boolean(finished.result)
 
   useEffect(() => () => {
@@ -399,7 +398,7 @@ export default function SignaturePage() {
     setCropping(false)
     setLoad({ busy: false, error: null })
     setSaved(false)
-    setFormat('png')
+    setFormat('egov')
     setFixedWidth(0)
     setCustomWidth('600')
     setLimit('0')
@@ -472,7 +471,7 @@ export default function SignaturePage() {
         {step === 1 && <Upload copy={copy} busy={load.busy} onFile={handleFile} />}
         {step === 2 && (
           <Edit copy={copy} photo={photo} draft={draft} setDraft={setDraft} preview={preview?.result}
-            busy={previewing} frame={frame} setFrame={setFraming} hidePaper={cropping}
+            busy={previewing} frame={frame} setFrame={setFraming} egov={egov}
             left={<>
           {!exporting && !invalidOutput && finished?.result && (
             <div className="order-7 lg:order-none"><SignatureChecks copy={copy} result={finished.result} onCropFrame={egov ? () => setRemoveFrame(true) : undefined} /></div>
@@ -562,11 +561,15 @@ export default function SignaturePage() {
                   onApply={crop => { setOutputCrop(crop); closeCrop() }} />
               )}
             </div>
-            {(egov || !cropping) && !exporting && !invalidOutput && finished?.result && (
+            {(egov || !cropping) && !invalidOutput && (shown || exporting) && (
               <>
-                {egov
-                  ? <EgovDownload copy={copy} result={finished.result} onSaved={() => setSaved(true)} />
-                  : <Downloads copy={copy} result={finished.result} maxKb={maxKb} locale={lang === 'kz' ? 'kk-KZ' : 'ru-RU'} onSaved={() => setSaved(true)} />}
+                {!shown ? (
+                  <div className="signature-downloads">
+                    <span aria-disabled="true" className="signature-button signature-primary signature-busy">{copy.preparing}</span>
+                  </div>
+                ) : egov
+                  ? <EgovDownload copy={copy} result={shown.result} stale={exporting} onSaved={() => setSaved(true)} />
+                  : <Downloads copy={copy} result={shown.result} stale={exporting} maxKb={maxKb} locale={lang === 'kz' ? 'kk-KZ' : 'ru-RU'} onSaved={() => setSaved(true)} />}
                 <ResultDisclaimer />
               </>
             )}

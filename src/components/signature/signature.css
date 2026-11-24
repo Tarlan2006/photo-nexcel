@@ -235,3 +235,8 @@
 
 .signature-link { min-height: 2.75rem; padding: 0 .25rem; background: none; border: 0; color: var(--color-emerald-accent); font-size: .875rem; font-weight: 700; cursor: pointer; }
 .signature-link:hover { text-decoration: underline; }
+
+.signature-busy { opacity: .6; cursor: progress; pointer-events: none; position: relative; }
+.signature-busy::after { content: ''; width: 1rem; height: 1rem; margin-left: .5rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: signature-spin .8s linear infinite; }
+@keyframes signature-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .signature-busy::after { animation: none; } }

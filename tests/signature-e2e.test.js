@@ -37,9 +37,10 @@ const fingerprint = page => canvas(page).evaluate(element => element.toDataURL()
 const waitUntilIdle = page => page.waitForFunction(() =>
   document.querySelector('#signature-main > .signature-status')?.textContent === '')
 
-async function upload(page, file = png()) {
+async function upload(page, file = png(), format = 'png') {
   await chooseFile(page).setInputFiles(file)
   await canvas(page).waitFor()
+  if (format !== 'egov') await main(page).getByLabel(ru.outputFormat).selectOption(format)
   await waitUntilIdle(page)
 }
 
@@ -367,7 +368,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
 
     await suite.test('contour toggle, buttons, range, wheel, pan, fit and centre change the exported frame', async () => {
       await withPage(async page => {
-        await upload(page)
+        await upload(page, png(), 'egov')
         const guide = main(page).locator('[data-signature-guide]')
         const ratio = await guide.locator('[data-signature-frame]').evaluate(el => el.width.baseVal.value / el.height.baseVal.value)
         assert.ok(Math.abs(ratio - 550 / 124) < 1e-6)
@@ -376,7 +377,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         assert.equal(await guide.count(), 0)
         await button(page, ru.contour).click()
         await guide.waitFor()
-        const pngBefore = await download(page)
         await main(page).getByLabel(ru.outputFormat).selectOption('egov')
         const baseline = await downloadEgov(page)
         const slider = main(page).getByRole('slider', { name: ru.zoom, exact: true })
@@ -417,15 +417,13 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         assert.equal(await main(page).locator('[data-check="format"]').getAttribute('data-status'), 'pass')
         await accessibility(page)
         await page.screenshot({ path: 'test-results/signature-egov-desktop.png', fullPage: true })
-        await main(page).getByLabel(ru.outputFormat).selectOption('png')
-        assert.deepEqual(await download(page), pngBefore)
       })
     })
 
     await suite.test('mobile pinch and pan update JPEG; 390 px layout and KZ remain accessible', async () => {
       const { defaultBrowserType, ...mobile } = devices['iPhone 13']
       await withPage(async page => {
-        await upload(page)
+        await upload(page, png(), 'egov')
         assert.equal(await button(page, ru.contour).getAttribute('aria-pressed'), 'true')
         await main(page).getByLabel(ru.outputFormat).selectOption('egov')
         const before = await downloadEgov(page)
@@ -466,7 +464,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
           if (y > 1 && y < 122 && !(edges >= 3 && x < 2) && !(edges === 4 && x > 547)) continue
           image.data.set([0, 0, 0, 255], (y * 550 + x) * 4)
         }
-        await upload(page, { name: 'framed.png', mimeType: 'image/png', buffer: fixturePng(image) })
+        await upload(page, { name: 'framed.png', mimeType: 'image/png', buffer: fixturePng(image) }, 'egov')
         await button(page, ru.fitFrame).click()
         await main(page).getByLabel(ru.outputFormat).selectOption('egov')
         let bytes = await downloadEgov(page)
@@ -604,15 +602,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         await thickness.press('ArrowLeft')
         await waitUntilIdle(page)
         assert.equal(await fingerprint(page), baseline)
-        const corner = main(page).getByRole('button', { name: ru.corners[0] })
-        await corner.press('ArrowRight')
-        await waitUntilIdle(page)
-        const mark = await corner.locator('.signature-grip-mark').boundingBox()
-        await page.mouse.move(mark.x + mark.width / 2, mark.y + mark.height / 2)
-        await page.mouse.down()
-        await page.mouse.move(mark.x + 52, mark.y + 22, { steps: 5 })
-        await page.mouse.up()
-        await waitUntilIdle(page)
         await button(page, ru.reset).click()
         await waitUntilIdle(page)
         assert.equal(await fingerprint(page), baseline)
@@ -721,32 +710,6 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         await accessibility(page)
         await upload(page)
         await noOverflow()
-        await button(page, ru.squareCrop).click()
-        const frame = main(page).getByRole('button', { name: ru.moveCrop, exact: true })
-        const square = await frame.boundingBox()
-        assert.ok(Math.abs(square.width - square.height) < 1)
-        const touch = await page.context().newCDPSession(page)
-        const grip = await main(page).locator('.signature-grip-mark').first().boundingBox()
-        const x = grip.x + grip.width / 2
-        const y = grip.y + grip.height / 2
-        await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
-        await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + 36, y: y + 18 }] })
-        await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
-        await waitUntilIdle(page)
-        await frame.scrollIntoViewIfNeeded()
-        const resized = await frame.boundingBox()
-        assert.ok(resized.width < square.width && Math.abs(resized.width - resized.height) < 1)
-        const centerX = resized.x + resized.width / 2
-        const centerY = resized.y + resized.height / 2
-        await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: centerX, y: centerY }] })
-        await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: centerX - 24, y: centerY + 5 }] })
-        await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
-        await waitUntilIdle(page)
-        const moved = await frame.boundingBox()
-        assert.ok(moved.x < resized.x && Math.abs(moved.width - resized.width) < 1)
-        await frame.press('ArrowLeft')
-        await waitUntilIdle(page)
-        assert.ok((await frame.boundingBox()).x < moved.x)
         await accessibility(page)
         await page.getByRole('button', { name: 'KZ', exact: true }).click()
         await main(page).getByRole('heading', { name: kz.title }).waitFor()
@@ -795,7 +758,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
           const camera = await checkSignatureCamera(page, lang)
           await accessibility(page)
           await camera.getByRole('button', { name: labels.cameraSignatureShoot, exact: true }).click()
-          await main(page).getByRole('heading', { name: signatureCopy[lang].paper }).waitFor()
+          await main(page).getByRole('heading', { name: signatureCopy[lang].framingTitle }).waitFor()
           await camera.waitFor({ state: 'hidden' })
         }, mobile, '/')
       })
@@ -814,7 +777,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         await button(page, ru.camera).click()
         const shoot = camera.getByRole('button', { name: photo.cameraSignatureShoot, exact: true })
         await shoot.click()
-        await main(page).getByRole('heading', { name: ru.paper }).waitFor()
+        await main(page).getByRole('heading', { name: ru.framingTitle }).waitFor()
         await camera.waitFor({ state: 'hidden' })
         await button(page, ru.new).click()
         await upload(page, png('blue', 8000, 1200))
