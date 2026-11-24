@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState } from 'react'
 import { useLang } from '../../contexts/LangContext'
 import { releaseCopy } from '../../content/release-copy'
@@ -164,6 +165,7 @@ export default function PhotoUpload({ presetId, onDocument, onFile, onCamera, ca
   const tips = useRef(null)
   const [dragging, setDragging] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
+  const slot = document.getElementById('tool-nav-actions')
   const [tipsOpen, setTipsOpen] = useState(false)
   const sources = requirements[presetId].sources
   const showTips = () => {
@@ -174,24 +176,11 @@ export default function PhotoUpload({ presetId, onDocument, onFile, onCamera, ca
   const summary = 'flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden after:text-xl after:font-normal after:text-text-muted after:content-["+"] group-open:after:content-["–"]'
   return (
     <>
-      <div className="border-b border-grid-border bg-white">
-        <div className="mx-auto flex max-w-[1040px] items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-accent text-white"><Icon d={paths.photo} /></span>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <p className="text-base font-bold">{page.pageTitle}</p>
-                <span className="rounded-full border border-emerald-accent/25 bg-emerald-accent/5 px-2 py-0.5 text-[11px] font-semibold text-emerald-accent">{doc.badge}</span>
-              </div>
-              <p className="hidden text-xs text-text-muted sm:block">{doc.subtitle}</p>
-            </div>
-          </div>
-          <button type="button" onClick={() => setRulesOpen(true)}
-            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-grid-border bg-white px-3 text-sm font-semibold hover:border-emerald-accent hover:text-emerald-accent">
-            <Icon d={paths.list} className="size-4" /> {page.requirementsButton}
-          </button>
-        </div>
-      </div>
+      {slot && createPortal(
+        <button type="button" onClick={() => setRulesOpen(true)}
+          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-grid-border bg-white px-3 text-sm font-semibold hover:border-emerald-accent hover:text-emerald-accent">
+          <Icon d={paths.list} className="size-4" /> {page.requirementsButton}
+        </button>, slot)}
       <RequirementsDialog doc={presetId} open={rulesOpen} onClose={() => setRulesOpen(false)} page={page} />
 
       <div className="mx-auto max-w-[1040px] space-y-5 px-4 pt-4 pb-10 sm:px-6 sm:pt-8">

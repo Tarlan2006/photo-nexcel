@@ -96,8 +96,8 @@ function Tools() {
     <>
       <Header tool={tool} />
       <nav aria-label={t.site.toolNavigation} className="mt-16 border-b border-grid-border bg-white">
-        <div className="mx-auto max-w-[1040px] px-4 py-3 sm:px-6">
-          <div className="grid w-full grid-cols-2 gap-1 rounded-xl bg-paper p-1 ring-1 ring-grid-border sm:inline-grid sm:w-auto">
+        <div className="mx-auto flex max-w-[1040px] items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="grid w-full min-w-0 grid-cols-2 gap-1 rounded-xl bg-paper p-1 ring-1 ring-grid-border sm:inline-grid sm:w-auto">
             {Object.entries({ photo: t.site.photoService, signature: t.site.signatureTab }).map(([key, label]) => (
               <a key={key} href={localizedPath(pathFor(key, photoDoc), lang)} aria-current={tool === key ? 'page' : undefined}
                 onClick={event => navigate(event, key)}
@@ -106,6 +106,7 @@ function Tools() {
               </a>
             ))}
           </div>
+          <div id="tool-nav-actions" hidden={tool !== 'photo'} className="shrink-0 empty:hidden" />
         </div>
       </nav>
       {visitedPhoto && (
