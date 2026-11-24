@@ -26,13 +26,14 @@ const icons = {
   warn: 'M12 9v2m0 4h.01',
 }
 
-export default function SignatureStudio({ copy, lang, source, onOther }) {
+export default function SignatureStudio({ copy, lang, source, drawn = false, onOther }) {
+  const base = drawn ? { level: 210, thickness: 0 } : { level: null, thickness: 1 }
   const t = studioCopy[lang]
   const [initial] = useState(() => {
-    const level = detectThreshold(source)
-    const canvas = buildProcessed(source, { threshold: level, mode: 'bw', thickness: 1 })
+    const level = base.level ?? detectThreshold(source)
+    const canvas = buildProcessed(source, { threshold: level, mode: 'bw', thickness: base.thickness })
     const { found, ...fit } = autoCenter(canvas, 0)
-    return { level, canvas, view: { ...studioDefaults, ...fit } }
+    return { level, canvas, view: { ...studioDefaults, thickness: base.thickness, ...fit } }
   })
   const [view, setView] = useState(initial.view)
   const [threshold, setThreshold] = useState(initial.level)
@@ -47,7 +48,7 @@ export default function SignatureStudio({ copy, lang, source, onOther }) {
   const [saved, setSaved] = useState('')
   const main = useRef(null)
   const thumb = useRef(null)
-  const processed = useRef({ key: `${initial.level}|bw|1`, canvas: initial.canvas })
+  const processed = useRef({ key: `${initial.level}|bw|${base.thickness}`, canvas: initial.canvas })
   const strokes = useRef([])
   const live = useRef({ view, threshold, eraser })
   live.current = { view, threshold, eraser }
@@ -161,8 +162,8 @@ export default function SignatureStudio({ copy, lang, source, onOther }) {
     patch(fit)
   }
   function resetFilters() {
-    patch({ mode: 'bw', thickness: 1 })
-    setThreshold(detectThreshold(source))
+    patch({ mode: 'bw', thickness: base.thickness })
+    setThreshold(base.level ?? detectThreshold(source))
   }
   function download() {
     const [w, h] = resolutions[res]

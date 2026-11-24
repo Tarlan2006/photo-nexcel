@@ -5,15 +5,17 @@ import { useLang } from '../../contexts/LangContext'
 import { identifyPhoto, photoFileError, photoMimeTypes } from '../../lib/photo'
 import { signatureCopy } from './copy'
 import SignatureRules, { SignatureRequirements } from './SignatureRules'
+import SignaturePad from './SignaturePad'
 import SignatureStudio from './SignatureStudio'
 import './signature.css'
 
-function Upload({ copy, busy, onFile }) {
+function Upload({ copy, busy, onFile, onDrawn }) {
   const { lang } = useLang()
   const input = useRef(null)
   const cameraButton = useRef(null)
   const [dragging, setDragging] = useState(false)
   const [camera, setCamera] = useState(false)
+  const [pad, setPad] = useState(false)
   function closeCamera() {
     setCamera(false)
     cameraButton.current?.focus()
@@ -46,6 +48,10 @@ function Upload({ copy, busy, onFile }) {
               {copy.camera}
             </button>
           )}
+          <button type="button" className="signature-button" disabled={busy} onClick={() => setPad(true)}>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 size-4 shrink-0 text-text-muted"><path d="M15.23 5.23l3.54 3.54m-2.04-5.04a2.5 2.5 0 1 1 3.54 3.54L6.5 21.04H3v-3.57L16.73 3.73Z" /></svg>
+            {copy.draw}
+          </button>
         </div>
       </div>
       <details className="signature-tips-more mx-auto w-full max-w-[960px] rounded-2xl border border-grid-border bg-white px-4 sm:px-5">
@@ -55,6 +61,7 @@ function Upload({ copy, busy, onFile }) {
         </ul>
         <p className="my-4 border-t border-grid-border pt-4 text-sm leading-relaxed text-text-main">{copy.legal}</p>
       </details>
+      <SignaturePad copy={copy} open={pad} onClose={() => setPad(false)} onUse={bitmap => { setPad(false); onDrawn(bitmap) }} />
       {camera && (
         <CameraCapture mode="signature" signatureGuideCopy={copy} onClose={closeCamera}
           onCapture={file => { setCamera(false); onFile(file) }}
@@ -83,6 +90,12 @@ export default function SignaturePage() {
     setLoad({ busy: false, error: null })
     window.scrollTo(0, 0)
     requestAnimationFrame(() => heading.current?.focus({ preventScroll: true }))
+  }
+  function handleDrawn(image) {
+    const id = ++generation.current
+    setPhoto({ image, id, drawn: true })
+    setLoad({ busy: false, error: null })
+    window.scrollTo(0, 0)
   }
   async function handleFile(file) {
     if (!file || load.busy) return
@@ -122,8 +135,8 @@ export default function SignaturePage() {
         <p role="status" className="signature-status" aria-live="polite">{load.busy ? copy.processing : ''}</p>
         {load.error && <p role="alert" className="signature-alert">{copy[load.error] ?? t[load.error]}</p>}
         {photo
-          ? <SignatureStudio key={photo.id} copy={copy} lang={lang} source={photo.image} onOther={restart} />
-          : <Upload copy={copy} busy={load.busy} onFile={handleFile} />}
+          ? <SignatureStudio key={photo.id} copy={copy} lang={lang} source={photo.image} drawn={photo.drawn} onOther={restart} />
+          : <Upload copy={copy} busy={load.busy} onFile={handleFile} onDrawn={handleDrawn} />}
         <SignatureRequirements copy={copy} />
         <div className="mt-6" />
         <SignatureRules copy={copy} collapsed />
