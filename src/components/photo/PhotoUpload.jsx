@@ -177,7 +177,7 @@ export default function PhotoUpload({ presetId, onDocument, onFile, onCamera, ca
   return (
     <>
       {slot && createPortal(
-        <button type="button" onClick={() => setRulesOpen(true)}
+        <button type="button" data-for="photo" onClick={() => setRulesOpen(true)}
           className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-grid-border bg-white px-3 text-sm font-semibold hover:border-emerald-accent hover:text-emerald-accent">
           <Icon d={paths.list} className="size-4" /> {page.requirementsButton}
         </button>, slot)}

@@ -12,7 +12,7 @@ import { egovSignature } from '../../presets'
 import { signatureCopy } from './copy'
 import { BrushCanvas, PaperCrop, SignatureCanvas } from './SignatureImages'
 import SignatureFraming from './SignatureFraming'
-import SignatureRules, { SignatureChecks } from './SignatureRules'
+import SignatureRules, { SignatureChecks, SignatureRequirements } from './SignatureRules'
 import './signature.css'
 
 const defaultDraft = { crop: fullPaper, square: false, options: signatureDefaults, strokes: [] }
@@ -566,6 +566,7 @@ export default function SignaturePage() {
             </div>
           </>
         )}
+        <SignatureRequirements copy={copy} />
         {(step === 1 || step === 3) && <SignatureRules copy={copy} />}
       </main>
       <Footer />

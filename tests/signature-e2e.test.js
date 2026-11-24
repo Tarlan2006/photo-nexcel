@@ -343,6 +343,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         for (const [lang, copy] of [['ru', ru], ['kz', kz]]) {
           if (lang === 'kz') await page.getByRole('button', { name: 'KZ', exact: true }).click()
           await main(page).getByRole('heading', { name: copy.rulesTitle, exact: true }).waitFor()
+          await main(page).locator('.signature-rules-more').evaluate(details => { details.open = true })
           for (const [title, description] of copy.rules) {
             await main(page).getByRole('heading', { name: title, exact: true }).waitFor()
             await main(page).getByText(description, { exact: true }).waitFor()

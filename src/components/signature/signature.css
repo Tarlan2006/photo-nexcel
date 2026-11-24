@@ -223,3 +223,9 @@
 @media (max-width: 29rem) {
   .signature-controls > *, .signature-downloads > * { flex: 1 1 100%; }
 }
+
+.signature-rules-more > summary { display: flex; min-height: 2.75rem; cursor: pointer; list-style: none; align-items: center; justify-content: space-between; gap: .75rem; font-size: .875rem; font-weight: 700; }
+.signature-rules-more > summary::-webkit-details-marker { display: none; }
+.signature-rules-more > summary::after { content: "+"; font-size: 1.25rem; font-weight: 400; color: var(--color-text-muted); }
+.signature-rules-more[open] > summary::after { content: "–"; }
+.signature-requirements-dialog .signature-sources { margin-top: 1rem; }

@@ -106,7 +106,7 @@ function Tools() {
               </a>
             ))}
           </div>
-          <div id="tool-nav-actions" hidden={tool !== 'photo'} className="shrink-0 empty:hidden" />
+          <div id="tool-nav-actions" data-tool={tool} className="shrink-0 empty:hidden data-[tool=signature]:[&>[data-for=photo]]:hidden data-[tool=photo]:[&>[data-for=signature]]:hidden" />
         </div>
       </nav>
       {visitedPhoto && (
