@@ -244,7 +244,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
     await suite.test('opening shows documents, upload, rules, FAQs and no step UI; models are lazy', async () => {
       await withPage(async (page, requests, context) => {
         await main(page).getByRole('heading', { level: 1, name: pageRu.docs.kz_id.h1 }).waitFor()
-        assert.equal(await main(page).locator('input[name=upload-document]').count(), 2)
+        assert.equal(await page.locator('nav a[data-doc]').count(), 2)
         const panel = main(page).locator('#photo-all-requirements')
         await panel.locator('summary').first().click()
         const ruleCount = () => panel.getByRole('list').first().getByRole('listitem').count()
@@ -277,7 +277,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         assert.equal(await disclosure.getByRole('link').count(), 2)
         for (const source of kzDocuments) await assertSource(disclosure, source, 'ru')
         await checkAxe(page)
-        await main(page).locator('label:has(input[name=upload-document][value=dv])').click()
+        await page.locator('nav a[data-doc=dv]').click()
         await panel.getByText(/Ровно 600 × 600/).waitFor()
         assert.ok(await ruleCount() >= 16)
         assert.equal(await disclosure.count(), 0)
@@ -288,7 +288,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         await panel.getByText(/Дәл 600 × 600/).waitFor()
         assert.ok(await ruleCount() >= 16)
         await assertSource(panel, dvPrimary, 'kz')
-        await main(page).locator('label:has(input[name=upload-document][value=kz_id])').click()
+        await page.locator('nav a[data-doc=kz_id]').click()
         await panel.getByText(requirements.kz_id.intro.kz, { exact: true }).waitFor()
         assert.equal(await ruleCount(), 13)
         assert.ok(await panel.getByText(requirements.kz_id.edition.kz, { exact: true }).isVisible())
@@ -301,7 +301,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
         await main(page).locator('#photo-faq summary').click()
         assert.equal(await main(page).locator('#photo-faq').getByRole('heading', { level: 3 }).count(), 6)
         assert.equal(await main(page).locator('summary').filter({ hasText: copy.examples }).count(), 1)
-        await main(page).getByRole('button', { name: pageRu.howTo }).click()
+        await main(page).locator('#photo-examples summary').click()
         assert.ok(await main(page).locator('#photo-examples').evaluate(element => element.open))
         assert.ok(!requests.some(({ url }) => /face_landmarker|detector-|\/models\/|\/wasm\//.test(url)))
         await checkAxe(page)
@@ -317,7 +317,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
     await suite.test('Green Card camera shows one silhouette with a blurred exterior on desktop and mobile', async () => {
       await withPage(async (page, _, context) => {
         await context.grantPermissions(['camera'], { origin })
-        await main(page).locator('label:has(input[name=upload-document][value=dv])').click()
+        await page.locator('nav a[data-doc=dv]').click()
         await button(main(page), ru.btnShootCamera).click()
         const camera = page.getByRole('dialog', { name: ru.cameraModalTitle })
         await checkDocumentCamera(camera, 'dv')
@@ -534,7 +534,7 @@ test('two-screen photo tool in the production build', { timeout: 240000 }, async
 
     await suite.test('DV filters default to off and settings have no clothing controls', { skip: skipPortrait }, async () => {
       await withPage(async page => {
-        await main(page).locator('label:has(input[name=upload-document][value=dv])').click()
+        await page.locator('nav a[data-doc=dv]').click()
         await upload(page)
         await dialog(page).getByText(copy.advanced, { exact: true }).click()
         const filter = dialog(page).getByLabel(ru.editor.filters, { exact: true })

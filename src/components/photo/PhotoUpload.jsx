@@ -173,7 +173,7 @@ export default function PhotoUpload({ presetId, onDocument, onFile, onCamera, ca
     requestAnimationFrame(() => tips.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }))
   }
   const accordion = 'group rounded-2xl border border-grid-border bg-white px-4 sm:px-5'
-  const summary = 'flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden after:text-xl after:font-normal after:text-text-muted after:content-["+"] group-open:after:content-["–"]'
+  const summary = 'flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-3 text-base font-bold [&::-webkit-details-marker]:hidden after:text-xl after:font-normal after:text-text-muted after:content-["+"] group-open:after:content-["–"]'
   return (
     <>
       {slot && createPortal(
@@ -183,25 +183,13 @@ export default function PhotoUpload({ presetId, onDocument, onFile, onCamera, ca
         </button>, slot)}
       <RequirementsDialog doc={presetId} open={rulesOpen} onClose={() => setRulesOpen(false)} page={page} />
 
-      <div className="mx-auto max-w-[1040px] space-y-5 px-4 pt-4 pb-10 sm:px-6 sm:pt-8">
+      <div className="mx-auto max-w-[1040px] space-y-5 px-4 pt-5 pb-10 sm:px-6 sm:pt-8">
         <div className="text-center">
-          <fieldset className="mx-auto mb-3 inline-block min-w-0 max-w-full sm:mb-4">
-            <legend className="sr-only">{copy.document}</legend>
-            <div className="grid grid-cols-2 gap-1 rounded-full bg-white p-1 ring-1 ring-grid-border">
-              {presetList.map(preset => (
-                <label key={preset.id} className="flex min-h-11 cursor-pointer items-center justify-center rounded-full px-3 text-center text-sm font-semibold has-checked:bg-emerald-accent has-checked:text-white has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-emerald-accent sm:px-5">
-                  <input type="radio" name="upload-document" value={preset.id} checked={presetId === preset.id}
-                    onChange={() => onDocument(preset.id)} className="sr-only" />
-                  {page.docs[preset.id].pill}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <p className="mx-auto mb-3 flex w-fit max-w-full items-center gap-1.5 rounded-full border border-emerald-accent/25 bg-emerald-accent/5 px-3 py-1 text-xs font-semibold text-emerald-accent">
-            <Icon d={paths.shield} className="size-3.5 shrink-0" width={2.2} /> {page.trust}
+          <p className="mx-auto mb-3 flex w-fit max-w-full items-center gap-1.5 rounded-full border border-emerald-accent/25 bg-emerald-accent/5 px-3 py-1.5 text-sm font-semibold text-emerald-accent">
+            <Icon d={paths.shield} className="size-4 shrink-0" width={2.2} /> {page.trust}
           </p>
-          <h1 ref={heading} tabIndex={-1} className="text-2xl leading-tight tracking-tight focus:outline-none sm:text-3xl">{doc.h1}</h1>
-          <p className="mx-auto mt-2 max-w-2xl text-sm text-text-muted sm:text-base">{doc.lead}</p>
+          <h1 ref={heading} tabIndex={-1} className="text-3xl leading-tight tracking-tight focus:outline-none sm:text-4xl">{doc.h1}</h1>
+          <p className="mx-auto mt-2 max-w-2xl text-base text-text-muted">{doc.lead}</p>
         </div>
 
         <div onDragOver={event => { event.preventDefault(); setDragging(true) }}
@@ -211,35 +199,18 @@ export default function PhotoUpload({ presetId, onDocument, onFile, onCamera, ca
             setDragging(false)
             onFile(event.dataTransfer.files?.[0], picker.current)
           }}
-          className={'mx-auto max-w-[960px] rounded-2xl border-2 border-dashed bg-white px-4 py-4 text-center transition-colors hover:border-emerald-accent sm:px-8 sm:py-10 ' +
+          className={'mx-auto max-w-[960px] rounded-2xl border-2 border-dashed bg-white px-4 py-6 text-center transition-colors hover:border-emerald-accent sm:px-8 sm:py-10 ' +
             (dragging ? 'border-emerald-accent bg-emerald-accent/5' : 'border-grid-border')}>
           <input ref={input} type="file" aria-label={t.choosePhotoLabel} accept={photoMimeTypes.join(',')} hidden
             onChange={event => { onFile(event.target.files?.[0], picker.current); event.target.value = '' }} />
-          <span className="mx-auto mb-3 hidden size-14 items-center justify-center rounded-2xl bg-emerald-accent/10 text-emerald-accent sm:flex"><Icon d={paths.upload} className="size-7" /></span>
-          <h2 className="text-base sm:text-lg">{page.uploadTitle}</h2>
-          <p className="mx-auto mt-1 max-w-md text-xs text-text-muted sm:text-sm">{page.uploadText}</p>
-          <div className="mt-4 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-            <button type="button" ref={picker} className={primaryButton + ' min-h-11 px-5 sm:min-h-12'} onClick={() => input.current.click()}>{t.btnChooseFile}</button>
-            {cameraAvailable && <button type="button" className={secondaryButton + ' min-h-11 px-5 sm:min-h-12'} onClick={event => onCamera(event.currentTarget)}>{t.btnShootCamera}</button>}
-          </div>
-          <p className="mt-3 text-xs font-medium text-emerald-accent">{releaseCopy[lang].privacyShort}</p>
-          <div className="mx-auto mt-5 flex max-w-xl flex-wrap items-center justify-center gap-x-6 gap-y-1 border-t border-grid-border pt-4 text-xs">
-            <button type="button" className="inline-flex min-h-11 items-center font-semibold text-emerald-accent underline underline-offset-4"
-              onClick={async () => onFile(await makeDemoPhoto(), picker.current, { demo: true })}>{page.tryDemo}</button>
-            <button type="button" className="inline-flex min-h-11 items-center font-semibold text-text-muted underline underline-offset-4 hover:text-emerald-accent"
-              onClick={showTips}>{page.howTo}</button>
+          <span className="mx-auto mb-3 hidden size-16 items-center justify-center rounded-2xl bg-emerald-accent/10 text-emerald-accent sm:flex"><Icon d={paths.upload} className="size-8" /></span>
+          <h2 className="text-xl">{page.uploadTitle}</h2>
+          <p className="mx-auto mt-1 max-w-md text-base text-text-muted">{page.uploadText}</p>
+          <div className="mt-5 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+            <button type="button" ref={picker} className={primaryButton + ' min-h-14 px-6 text-base'} onClick={() => input.current.click()}>{t.btnChooseFile}</button>
+            {cameraAvailable && <button type="button" className={secondaryButton + ' min-h-14 px-6 text-base'} onClick={event => onCamera(event.currentTarget)}>{t.btnShootCamera}</button>}
           </div>
         </div>
-
-        <ul className="mx-auto grid max-w-[960px] gap-3 sm:grid-cols-3">
-          {doc.cards.map(([title, text], index) => (
-            <li key={title} className="rounded-2xl border border-grid-border bg-white p-4">
-              <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-accent/10 text-xs font-bold text-emerald-accent">{index + 1}</span>
-              <h3 className="mt-2 text-sm">{title}</h3>
-              <p className="mt-1 text-xs leading-relaxed text-text-muted">{text}</p>
-            </li>
-          ))}
-        </ul>
 
         <div className="mx-auto max-w-[960px] space-y-2">
           <details id="photo-all-requirements" className={accordion}>
@@ -248,45 +219,45 @@ export default function PhotoUpload({ presetId, onDocument, onFile, onCamera, ca
           </details>
           <details id="photo-examples" ref={tips} open={tipsOpen} onToggle={event => setTipsOpen(event.currentTarget.open)} className={accordion}>
             <summary className={summary}>{page.howTo}</summary>
-            <ul className="grid gap-3 pb-4 sm:grid-cols-3">
+            <ul className="grid gap-3 pb-3 sm:grid-cols-3">
               {t.howToShootTips.slice(0, 3).map(tip => (
                 <li key={tip.icon} className="rounded-lg border border-grid-border bg-paper p-3">
-                  <h3 className="text-sm">{tip.title}</h3>
+                  <h3 className="text-base">{tip.title}</h3>
                   <p className="mt-1 text-sm text-text-muted">{tip.desc}</p>
                 </li>
               ))}
             </ul>
+            <button type="button" className="mb-4 inline-flex min-h-11 items-center font-semibold text-emerald-accent underline underline-offset-4"
+              onClick={async () => onFile(await makeDemoPhoto(), picker.current, { demo: true })}>{page.tryDemo}</button>
           </details>
           <details id="photo-faq" className={accordion}>
             <summary className={summary}>{copy.faq}</summary>
             <div className="divide-y divide-grid-border pb-2">
               {doc.faq.map(([question, answer]) => (
                 <div key={question} className="py-3">
-                  <h3 className="text-sm">{question}</h3>
+                  <h3 className="text-base">{question}</h3>
                   <p className="mt-1 text-sm text-text-muted">{answer}</p>
                 </div>
               ))}
             </div>
           </details>
-        </div>
-
-        <div className="mx-auto max-w-[960px] border-t border-grid-border pt-4 text-xs text-text-muted">
-          <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-center">
-            <p className="font-semibold text-text-main">{page.normativeBase} {doc.base}</p>
-            <p>{page.localCompute}</p>
-          </div>
-          <ul className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5">
-            <li>{page.officialSources}</li>
-            {sources.map(source => (
-              <li key={source.url}>
-                <a href={source.url} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex min-h-8 items-center gap-1 font-semibold text-emerald-accent hover:underline">
-                  {source.label[lang]} <Icon d={paths.external} className="size-3.5 shrink-0" />
-                </a>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3">{releaseCopy[lang].unofficial}</p>
+          <details id="photo-sources" className={accordion}>
+            <summary className={summary}>{page.normativeBase.replace(/:$/, '')}</summary>
+            <div className="pb-4 text-sm text-text-muted">
+              <p className="font-semibold text-text-main">{doc.base}</p>
+              <ul className="mt-3 flex flex-col gap-2">
+                {sources.map(source => (
+                  <li key={source.url}>
+                    <a href={source.url} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex min-h-8 items-center gap-1 font-semibold text-emerald-accent hover:underline">
+                      {source.label[lang]} <Icon d={paths.external} className="size-3.5 shrink-0" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3">{releaseCopy[lang].unofficial}</p>
+            </div>
+          </details>
         </div>
       </div>
     </>

@@ -62,7 +62,7 @@ export function SignatureRequirements({ copy }) {
   )
 }
 
-export default function SignatureRules({ copy }) {
+export default function SignatureRules({ copy, collapsed = false }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(false)
   const downloading = useRef(false)
@@ -82,15 +82,29 @@ export default function SignatureRules({ copy }) {
     }
   }
   return (
-    <section className="signature-card signature-rules">
-      <h2>{copy.rulesTitle}</h2>
+    collapsed ? (
+      <details className="signature-tips-more signature-rules-outer mx-auto w-full max-w-[960px] rounded-2xl border border-grid-border bg-white px-4 sm:px-5">
+        <summary><h2 className="m-0 text-base font-bold">{copy.rulesTitle}</h2></summary>
+    <div className="pb-4">
       <RulesList copy={copy} />
       <div className="signature-actions mt-4">
         <button type="button" className="signature-button" disabled={busy} onClick={download}>{copy.templateDownload}</button>
       </div>
       <p className="signature-help mt-2">{copy.templateNote}</p>
       {error && <p role="alert" className="signature-alert">{copy.templateError}</p>}
-    </section>
+    </div>
+      </details>
+    ) : (
+      <section className="signature-card signature-rules">
+        <h2>{copy.rulesTitle}</h2>
+        <RulesList copy={copy} />
+        <div className="signature-actions mt-4">
+          <button type="button" className="signature-button" disabled={busy} onClick={download}>{copy.templateDownload}</button>
+        </div>
+        <p className="signature-help mt-2">{copy.templateNote}</p>
+        {error && <p role="alert" className="signature-alert">{copy.templateError}</p>}
+      </section>
+      )
   )
 }
 

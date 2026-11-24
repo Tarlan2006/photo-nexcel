@@ -250,7 +250,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
           t.diagnostic('Portrait fixture unavailable; checked tab and history navigation from the first photo step.')
         }
         const nav = page.getByRole('navigation', { name: photo.site.toolNavigation })
-        const photoTab = nav.getByRole('link', { name: photo.site.photoService })
+        const photoTab = nav.locator('a[data-doc=kz_id]')
         const signatureTab = nav.getByRole('link', { name: photo.site.signatureTab })
         await signatureTab.click()
         await main(page).getByRole('heading', { level: 1 }).waitFor()
@@ -343,7 +343,7 @@ test('signature tool in the production build', { timeout: 240000 }, async suite 
         for (const [lang, copy] of [['ru', ru], ['kz', kz]]) {
           if (lang === 'kz') await page.getByRole('button', { name: 'KZ', exact: true }).click()
           await main(page).getByRole('heading', { name: copy.rulesTitle, exact: true }).waitFor()
-          await main(page).locator('.signature-rules-more').evaluate(details => { details.open = true })
+          await main(page).locator('.signature-rules-outer, .signature-rules-more').evaluateAll(list => list.forEach(details => { details.open = true }))
           for (const [title, description] of copy.rules) {
             await main(page).getByRole('heading', { name: title, exact: true }).waitFor()
             await main(page).getByText(description, { exact: true }).waitFor()

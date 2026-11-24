@@ -113,6 +113,7 @@ test('privacy: real processing sends no images, EXIF or analysis and stores only
           await saveDownload(page, main.getByRole('link', { name: photoCopy.ru.download, exact: true }))
           await main.getByRole('button', { name: translations.ru.btnNewPhoto, exact: true }).click()
         } else {
+          await main.locator('.signature-rules-outer').evaluate(details => { details.open = true })
           await saveDownload(page, main.getByRole('button', { name: signatureCopy.ru.templateDownload, exact: true }))
           await main.locator('input[type=file]').setInputFiles({ name: 'privacy-signature.png', mimeType: 'image/png',
             buffer: fixturePng(synthSignature('blue')) })

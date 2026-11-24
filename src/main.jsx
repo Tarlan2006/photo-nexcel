@@ -72,17 +72,17 @@ function Tools() {
     writeLd('faq-jsonld', faq)
   }, [lang, t, tool, photoDoc, path])
 
-  function navigate(event, next) {
+  function navigate(event, next, doc = photoDoc) {
     if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     event.preventDefault()
     if (next === tool) return
     if (tool === 'photo') savedPhotoHistory.current = window.history.state?.photoResult
     const saved = savedPhotoHistory.current
-    const state = next === 'photo' && saved ? { photoResult: saved } : null
-    window.history.pushState(state, '', localizedPath(pathFor(next, photoDoc), lang))
+    const state = next === 'photo' && saved && doc === photoDoc ? { photoResult: saved } : null
+    window.history.pushState(state, '', localizedPath(pathFor(next, doc), lang))
     window.scrollTo(0, 0)
     if (next === 'photo') setVisitedPhoto(true)
-    setRoute({ tool: next, doc: next === 'photo' ? photoDoc : null })
+    setRoute({ tool: next, doc: next === 'photo' ? doc : null })
   }
 
   function changeDocument(doc) {
@@ -96,17 +96,26 @@ function Tools() {
     <>
       <Header tool={tool} />
       <nav aria-label={t.site.toolNavigation} className="mt-16 border-b border-grid-border bg-white">
-        <div className="mx-auto flex max-w-[1040px] items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="grid w-full min-w-0 grid-cols-2 gap-1 rounded-xl bg-paper p-1 ring-1 ring-grid-border sm:inline-grid sm:w-auto">
-            {Object.entries({ photo: t.site.photoService, signature: t.site.signatureTab }).map(([key, label]) => (
-              <a key={key} href={localizedPath(pathFor(key, photoDoc), lang)} aria-current={tool === key ? 'page' : undefined}
-                onClick={event => navigate(event, key)}
-                className="flex min-h-10 items-center justify-center rounded-lg px-4 text-center text-sm font-semibold text-text-muted hover:text-emerald-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-accent aria-[current=page]:bg-emerald-accent aria-[current=page]:text-white aria-[current=page]:hover:text-white">
-                {label}
-              </a>
-            ))}
+        <div className="mx-auto flex max-w-[1040px] flex-wrap items-center justify-between gap-2 px-4 py-3 sm:flex-nowrap sm:gap-3 sm:px-6">
+          <div className="grid w-full min-w-0 grid-cols-3 gap-1 rounded-xl bg-paper p-1 ring-1 ring-grid-border sm:inline-grid sm:w-auto">
+            {[['kz_id', t.site.idTab], ['dv', t.site.greenCardTab], ['signature', t.site.signatureTab]].map(([key, label]) => {
+              const current = tool === 'signature' ? key === 'signature' : key === photoDoc
+              return (
+                <a key={key} href={localizedPath(key === 'signature' ? pathFor('signature') : pathFor('photo', key), lang)}
+                  aria-current={current ? 'page' : undefined} data-tab={key === 'signature' ? 'signature' : 'photo'} data-doc={key === 'signature' ? undefined : key}
+                  onClick={event => {
+                    if (key === 'signature') return navigate(event, 'signature')
+                    if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+                    event.preventDefault()
+                    if (tool === 'signature') { setPhotoDoc(key); navigate(event, 'photo', key) } else changeDocument(key)
+                  }}
+                  className="flex min-h-12 min-w-0 items-center justify-center rounded-lg px-1.5 text-center text-sm leading-tight font-semibold break-words hyphens-auto text-text-muted hover:text-emerald-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-accent aria-[current=page]:bg-emerald-accent aria-[current=page]:text-white aria-[current=page]:hover:text-white sm:px-4 sm:text-base">
+                  {label}
+                </a>
+              )
+            })}
           </div>
-          <div id="tool-nav-actions" data-tool={tool} className="shrink-0 empty:hidden data-[tool=signature]:[&>[data-for=photo]]:hidden data-[tool=photo]:[&>[data-for=signature]]:hidden" />
+          <div id="tool-nav-actions" data-tool={tool} className="ml-auto shrink-0 empty:hidden data-[tool=signature]:[&>[data-for=photo]]:hidden data-[tool=photo]:[&>[data-for=signature]]:hidden" />
         </div>
       </nav>
       {visitedPhoto && (

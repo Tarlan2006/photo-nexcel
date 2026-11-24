@@ -144,8 +144,8 @@ test('release metadata, privacy, language addresses and HEIC recovery', { timeou
 
     await suite.test('DV revision notice and static release assets remain available', async () => {
       await withPage('/', async page => {
-        await page.locator('label:has(input[name=upload-document][value=dv])').click()
-        await page.locator('summary').filter({ hasText: 'Все требования' }).click()
+        await page.locator('nav a[data-doc=dv]').click()
+        await page.locator('summary').filter({ hasText: 'Требования к фото' }).click()
         await page.getByText(requirements.dv.edition.ru, { exact: true }).waitFor()
         for (const asset of ['/favicon.png','/apple-touch-icon.png','/robots.txt','/sitemap.xml','/.well-known/security.txt']) {
           assert.equal((await page.request.get(origin + asset)).status(), 200)
