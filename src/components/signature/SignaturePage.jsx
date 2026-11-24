@@ -73,7 +73,7 @@ function Upload({ copy, busy, onFile }) {
   }
   return (
     <div className="signature-upload">
-      <div className={`signature-drop${dragging ? ' signature-dragging' : ''}`}
+      <div className={`signature-drop mx-auto w-full max-w-[960px] ${dragging ? 'signature-dragging' : ''}`}
         onDragOver={event => { event.preventDefault(); if (!busy) setDragging(true) }}
         onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget)) setDragging(false) }}
         onDrop={event => {
@@ -81,10 +81,13 @@ function Upload({ copy, busy, onFile }) {
           setDragging(false)
           if (!busy) onFile(event.dataTransfer.files[0])
         }}>
-        <svg aria-hidden="true" className="mx-auto mb-4 size-8 text-emerald-accent" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 16V4m-4 4 4-4 4 4M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" />
-        </svg>
+        <span className="mx-auto mb-3 hidden size-14 items-center justify-center rounded-2xl bg-emerald-accent/10 text-emerald-accent sm:flex">
+          <svg aria-hidden="true" className="size-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+          </svg>
+        </span>
+        <h2 className="text-base sm:text-lg">{copy.uploadTitle}</h2>
+        <p className="mx-auto mt-1 mb-4 max-w-md text-xs text-text-muted sm:text-sm">{copy.uploadText}</p>
         <input ref={input} type="file" hidden disabled={busy} aria-label={copy.upload} accept={photoMimeTypes.join(',')}
           onChange={event => { onFile(event.target.files[0]); event.target.value = '' }} />
         <div className="signature-actions justify-center">
@@ -98,16 +101,23 @@ function Upload({ copy, busy, onFile }) {
           )}
         </div>
         <p className="signature-help mt-2">{releaseCopy[lang].privacyShort}</p>
-        <p className="signature-help mt-3">{copy.drop}</p>
-        <p className="signature-help mt-1">{copy.formats}</p>
       </div>
-      <section className="signature-card">
-        <h2>{copy.tips}</h2>
-        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-text-muted">
+      <div className="mx-auto grid w-full max-w-[1040px] gap-4 sm:grid-cols-3">
+        {copy.quick.map(([title, text], number) => (
+          <article key={title} className="rounded-2xl border border-grid-border bg-white p-4">
+            <span className="mb-2.5 flex size-8 items-center justify-center rounded-lg bg-emerald-accent/10 text-xs font-semibold text-emerald-accent">{number + 1}</span>
+            <h3 className="mb-1 text-sm font-semibold">{title}</h3>
+            <p className="text-xs leading-relaxed text-text-muted">{text}</p>
+          </article>
+        ))}
+      </div>
+      <details className="signature-tips-more mx-auto w-full max-w-[1040px] rounded-2xl border border-grid-border bg-white px-4 sm:px-5">
+        <summary>{copy.tips}</summary>
+        <ul className="mt-1 list-disc space-y-2 pl-5 text-sm text-text-muted">
           {copy.tipsList.map(tip => <li key={tip}>{tip}</li>)}
         </ul>
-        <p className="mt-4 border-t border-grid-border pt-4 text-sm leading-relaxed text-text-main">{copy.legal}</p>
-      </section>
+        <p className="my-4 border-t border-grid-border pt-4 text-sm leading-relaxed text-text-main">{copy.legal}</p>
+      </details>
       {camera && (
         <CameraCapture mode="signature" signatureGuideCopy={copy} onClose={closeCamera}
           onCapture={file => { setCamera(false); onFile(file) }}
@@ -449,11 +459,20 @@ export default function SignaturePage() {
   return (
     <div className="flex min-h-[calc(100dvh-7rem)] flex-col">
       <main id="signature-main" tabIndex={-1} className="signature-main grow">
-        <h1 ref={heading} tabIndex={-1} className="text-2xl tracking-tight focus:outline-none sm:text-4xl">{copy.title}</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-muted sm:text-base">{copy.subtitle}</p>
-        <ol aria-label={copy.stepLabel} className="signature-steps">
-          {copy.steps.map((label, i) => <li key={label} aria-current={i + 1 === step ? 'step' : undefined}>{label}</li>)}
-        </ol>
+        <div className={step === 1 ? 'text-center' : ''}>
+          {step === 1 && (
+            <p className="mx-auto mb-3 flex w-fit max-w-full items-center gap-1.5 rounded-full border border-emerald-accent/25 bg-emerald-accent/5 px-3 py-1 text-xs font-semibold text-emerald-accent">
+              <svg aria-hidden="true" className="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" /></svg> {copy.trust}
+            </p>
+          )}
+          <h1 ref={heading} tabIndex={-1} className="text-2xl leading-tight tracking-tight focus:outline-none sm:text-3xl">{copy.title}</h1>
+          <p className={`mt-2 max-w-2xl text-sm leading-relaxed text-text-muted sm:text-base ${step === 1 ? 'mx-auto' : ''}`}>{copy.subtitle}</p>
+        </div>
+        {step !== 1 && (
+          <ol aria-label={copy.stepLabel} className="signature-steps">
+            {copy.steps.map((label, i) => <li key={label} aria-current={i + 1 === step ? 'step' : undefined}>{label}</li>)}
+          </ol>
+        )}
         <p role="status" className="signature-status" aria-live="polite">
           {(load.busy || previewing || exporting) ? copy.processing : ''}
         </p>
