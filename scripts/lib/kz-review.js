@@ -4,6 +4,7 @@ import { photoCopy } from '../../src/content/photo-copy.js'
 import { requirements } from '../../src/content/requirements.js'
 import { presets } from '../../src/presets.js'
 import { signatureCopy } from '../../src/components/signature/copy.js'
+import { studioCopy } from '../../src/components/signature/studio-copy.js'
 import { releaseCopy } from '../../src/content/release-copy.js'
 
 export function collectKzReview() {
@@ -21,7 +22,7 @@ export function collectKzReview() {
     if (Object.hasOwn(value, 'ru') && Object.hasOwn(value, 'kz')) paired(value.ru, value.kz, path)
     else for (const [key, child] of Object.entries(value)) scan(child, path + '.' + key)
   }
-  for (const [name, value] of Object.entries({ translations, photoCopy, photoPageCopy, requirements, presets, signatureCopy, releaseCopy })) scan(value, name)
+  for (const [name, value] of Object.entries({ translations, photoCopy, photoPageCopy, requirements, presets, signatureCopy, studioCopy, releaseCopy })) scan(value, name)
   return rows.sort((a, b) => a[0].localeCompare(b[0], 'en'))
 }
 

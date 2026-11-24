@@ -240,3 +240,10 @@
 .signature-busy::after { content: ''; width: 1rem; height: 1rem; margin-left: .5rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: signature-spin .8s linear infinite; }
 @keyframes signature-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .signature-busy::after { animation: none; } }
+
+/* Studio (signature editor) */
+.studio-backdrop { background-color: #f3f3f0; background-image: radial-gradient(#d4d4ce 1px, transparent 1px); background-size: 16px 16px; }
+.studio input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: #e4e4e0; border-radius: 999px; outline: none; }
+.studio input[type="range"]:focus-visible { outline: 2px solid var(--color-emerald-accent); outline-offset: 6px; }
+.studio input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--color-emerald-accent); cursor: pointer; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(24,24,27,.22); }
+.studio input[type="range"]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--color-emerald-accent); cursor: pointer; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(24,24,27,.22); }

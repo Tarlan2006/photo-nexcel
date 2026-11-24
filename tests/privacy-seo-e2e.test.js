@@ -9,6 +9,7 @@ import axe from 'axe-core'
 import { translations } from '../src/i18n.js'
 import { photoCopy } from '../src/content/photo-copy.js'
 import { signatureCopy } from '../src/components/signature/copy.js'
+import { studioCopy } from '../src/components/signature/studio-copy.js'
 import { releaseCopy } from '../src/content/release-copy.js'
 import { requirements } from '../src/content/requirements.js'
 import { pageMetadata } from '../src/lib/seo.js'
@@ -118,14 +119,12 @@ test('privacy: real processing sends no images, EXIF or analysis and stores only
           await main.locator('input[type=file]').setInputFiles({ name: 'privacy-signature.png', mimeType: 'image/png',
             buffer: fixturePng(synthSignature('blue')) })
           await main.locator('canvas[aria-label="' + signatureCopy.ru.result + '"]').waitFor()
-          await main.getByLabel(signatureCopy.ru.outputFormat).selectOption('png')
           await page.waitForFunction(() => document.querySelector('#signature-main > .signature-status').textContent === '')
-          await main.locator('a[download="signature.png"]').waitFor()
+          const signatureDownload = main.getByRole('button', { name: studioCopy.ru.download, exact: true })
+          await signatureDownload.waitFor()
           snapshots.push(await storageSnapshot(page, 'signature-result')); assertStorage(snapshots.at(-1), 'ru')
-          await saveDownload(page, main.locator('a[download="signature.png"]'))
-          await main.getByLabel(signatureCopy.ru.outputFormat).selectOption('egov')
-          await saveDownload(page, main.getByRole('link', { name: signatureCopy.ru.downloadEgov, exact: true }))
-          await main.getByRole('button', { name: signatureCopy.ru.new, exact: true }).click()
+          await saveDownload(page, signatureDownload)
+          await main.getByRole('button', { name: studioCopy.ru.otherPhoto, exact: true }).click()
         }
         snapshots.push(await storageSnapshot(page, 'reset-after-download')); assertStorage(snapshots.at(-1), 'ru')
         await page.reload()
@@ -237,9 +236,10 @@ test('SEO, privacy and result notices work in RU/KZ at 360, 390 and 1440 px with
           } else {
             await main.locator('input[type=file]').setInputFiles({ name: 'result-signature.png', mimeType: 'image/png', buffer: fixturePng(synthSignature('blue')) })
             await main.locator('canvas[aria-label="' + signatureCopy[lang].result + '"]').waitFor()
-            await main.getByLabel(signatureCopy[lang].outputFormat).selectOption('png')
             await page.waitForFunction(() => document.querySelector('#signature-main > .signature-status').textContent === '')
-            download = main.locator('a[download="signature.png"]')
+            download = main.getByRole('button', { name: studioCopy[lang].download, exact: true })
+            await main.locator('[data-file-size]').filter({ hasText: /КБ|KB|кб/i }).waitFor()
+            await main.locator('li[data-ok]').first().waitFor()
             await download.waitFor()
             assert.ok(await main.locator('a[href="https://zan.gov.kz/client/#!/doc/140840/rus/158"]').count())
           }

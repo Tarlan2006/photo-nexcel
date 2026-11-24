@@ -107,35 +107,3 @@ export default function SignatureRules({ copy, collapsed = false }) {
       )
   )
 }
-
-const symbols = { pass: '✓', warn: '⚠', fail: '✕' }
-
-export function SignatureChecks({ copy, result, onCropFrame }) {
-  const checks = result.checks
-  if (!checks) return null
-  const measurements = checks.measurements
-  function message(key) {
-    if (checks[key] === 'pass') return null
-    if (key === 'stroke') return copy.checkMessages[measurements.stroke.status === 'thick' ? 'thick' : 'thin']
-    if ((key === 'content' || key === 'margins') && !measurements.margins.count) return copy.checkMessages.empty
-    return copy.checkMessages[key]
-  }
-  return (
-    <section className="signature-checks mt-4" aria-label={copy.checksTitle}>
-      <h2>{copy.checksTitle}</h2>
-      <p className="signature-help">{copy.approximate}</p>
-      <ul className="signature-check-list">
-        {Object.entries(copy.checkLabels).map(([key, label]) => <li key={key} data-check={key} data-status={checks[key]}>
-          <p><span aria-hidden="true">{symbols[checks[key]]}</span> <strong>{label}</strong> · {copy.status[checks[key]]}</p>
-          {message(key) && <p className="signature-help">{message(key)}</p>}
-          {key === 'stroke' && measurements.margins.count > 0 && <p className="signature-help">{copy.strokeValue.replace('{mm}', measurements.stroke.mm.toFixed(2))}</p>}
-          {key === 'margins' && measurements.margins.count > 0 && <p className="signature-help">{copy.marginValue
-            .replace('{top}', Math.round(measurements.margins.top / result.height * 100))
-            .replace('{bottom}', Math.round(measurements.margins.bottom / result.height * 100))}</p>}
-        </li>)}
-      </ul>
-      {checks.frameRemoved && <p className="signature-help">{copy.frameRemoved}</p>}
-      {checks.frameDetected > 0 && onCropFrame && <button type="button" className="signature-button" onClick={onCropFrame}>{copy.cropFrame}</button>}
-    </section>
-  )
-}
